@@ -1,55 +1,23 @@
-# Open Foundry Java
+# 政务系统对象库业务项目
 
-Open Foundry Java 是面向对象、对象关系、状态历史和领域模型编译的数据底座实现。当前代码按 [Foundation v0.1 规约](spec/README.md) 逐步建设，领域业务通过 Domain Pack 接入。
+本仓库是基于 [Open Foundry](https://github.com/caochun/foundry) 构建的政务对象库具体业务项目。Foundry 作为 Git submodule 位于 [`foundry/`](foundry/)；本仓库维护政务领域对象模型、业务 Action、标签/风险/提醒等上层逻辑和部署配置。
 
-## 构建
+## 目录
 
-项目以 Java 21 为编译目标。使用 JDK 21 或更新版本均可构建；当前开发环境使用 OpenJDK 27。
+- [`gov-supervision-pack/`](gov-supervision-pack/)：人员、单位、岗位、任职分配、项目和风险事项的基础 Domain Pack。
+- `foundry/`：通用对象关系和状态历史底座，来自独立仓库。
+- 根目录 DOCX/XLSX：原始业务材料和测试数据，已通过 `.gitignore` 忽略。
+
+## 领域边界
+
+基础 Domain Pack 只描述对象、关系和生命周期。标签计算、风险判断、廉洁提醒、鹿路通送达和具体监督流程在本业务仓库扩展，Foundry 不包含这些政务业务语义。
+
+## 获取和验证 Foundry
 
 ```bash
+git clone --recurse-submodules git@github.com:caochun/mirror.git
+cd mirror/foundry
 mvn test
 ```
 
-## 模块
-
-| 模块 | 作用 |
-|---|---|
-| `foundry-spi` | 对象、关系、历史、事务和 Storage SPI 契约 |
-| `foundry-schema` | ODL 解析、Schema 校验、diff 和版本注册 |
-| `foundry-storage-memory` | 内存 Storage Provider 和一致性测试基线 |
-| `foundry-storage-jdbc` | 关系数据库 JDBC Provider、当前/历史表和时态遍历 |
-| `foundry-actions` | Action YAML 解析和受控事务效果执行 |
-| `foundry-pack` | Domain Pack manifest、ODL 和 Action 加载 |
-| `foundry-events` | 追加式审计与 Transactional Outbox 存储基线 |
-| `foundry-security` | 主体、租户、关系授权和字段脱敏契约 |
-| `foundry-sync` | 来源记录、映射、Provenance 和冲突解决契约 |
-| `foundry-conformance` | 内存/JDBC Provider 共享一致性测试 |
-| `foundry-api` | 应用服务、REST 路由和 GraphQL 契约生成 |
-
-## 当前实现边界
-
-已实现并测试：
-
-- ODL 对象、关系和 Action 类型解析；
-- Schema 变更分类和内存版本注册；
-- 对象/关系当前状态、版本、双时态历史；
-- `traverseAsOf` 历史关系遍历；
-- 内存和 JDBC Storage Provider；
-- Action YAML、基础前置条件和事务效果；
-- Action YAML、参数校验、CEL前置条件、幂等键和批量结果；
-- Domain Pack 加载；
-- 内存/JDBC 审计与 Outbox Store。
-- Outbox CloudEvent 发布、失败重试和进程内幂等。
-- 安全与同步领域契约。
-- JDBC/REST来源连接器和共享一致性测试。
-
-尚待完成：
-
-- 正式 CEL 运行时适配；
-- 对象、关系、历史、审计和 Outbox 的同一事务写入；
-- 国产数据库 Provider 和方言验证；
-- OIDC、关系授权、字段脱敏和 API 层；
-- JDBC/REST 同步写入执行器和持久化消费者幂等表；
-- 完整的一致性测试套件。
-
-办公文档被根目录 `.gitignore` 忽略，Open Foundry 上游代码位于 `references/open-foundry` 子模块中。
+Foundry 的版本通过 submodule 固定；更新平台版本时，在本仓库更新 submodule 指针并运行业务验证。
