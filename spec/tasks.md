@@ -4,7 +4,7 @@
 
 - [x] 评审并冻结 Foundation Constitution（ADR-0003）。
 - [x] 确定 Java 版本、构建工具、代码风格和包命名。
-- [ ] 确定第一种国产数据库 Provider 和最小支持能力。
+- [x] 确定第一种国产数据库 Provider 和最小支持能力（openGauss；现场连接验证待部署环境）。
 - [x] 建立 ADR 模板和变更审查流程。
 
 ## Schema 和 Pack
