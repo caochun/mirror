@@ -117,11 +117,15 @@ public interface DatabaseDialect {
                 );
                 CREATE INDEX IF NOT EXISTS idx_of_outbox_pending
                   ON of_outbox_events (tenant_id, published_at, occurred_at);
+                CREATE TABLE IF NOT EXISTS of_consumed_events (
+                  event_id VARCHAR(255) PRIMARY KEY,
+                  consumed_at %s NOT NULL
+                );
                 """.formatted(timestamp, timestamp, timestamp, text,
                         timestamp, timestamp, timestamp, text,
                         timestamp, timestamp, timestamp, timestamp, timestamp, text,
                         timestamp, timestamp, timestamp, text,
-                        timestamp, text, timestamp, text, timestamp);
+                        timestamp, text, timestamp, text, timestamp, timestamp);
     }
 
     static DatabaseDialect h2() {
