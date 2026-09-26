@@ -12,7 +12,7 @@
 - [x] 定义 Java 版 `ParsedSchema` 和 `CompiledOntology`。
 - [x] 实现 ODL 解析、指令解释和错误定位（Foundation v0.1 基础指令）。
 - [x] 实现 ObjectType、LinkType、ActionType 校验。
-- [x] 实现 Pack manifest、命名空间和确定性加载（依赖校验待补充）。
+- [x] 实现 Pack manifest、命名空间、确定性加载和依赖版本校验。
 - [x] 实现 Schema diff、迁移分类和版本注册（内存 Registry 基线）。
 
 ## 对象、关系和历史
@@ -50,4 +50,4 @@
 - [x] 实现来源优先级、时间优先级和 Action 优先级冲突策略基础实现。
 - [x] 将 [conformance/README.md](conformance/README.md) 转为 JUnit 测试套件（内存/JDBC基线）。
 - [ ] 为 PostgreSQL 和国产数据库运行相同测试。
-- [ ] 完成 Person/Organization/Assignment 调动场景端到端测试。
+- [x] 完成 Person/Organization/Assignment 调动场景端到端测试（内存/JDBC Provider）。

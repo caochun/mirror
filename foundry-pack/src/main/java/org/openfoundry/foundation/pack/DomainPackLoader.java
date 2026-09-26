@@ -18,6 +18,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 /** Loads one external Domain Pack deterministically from a directory. */
 public final class DomainPackLoader {
@@ -48,6 +52,44 @@ public final class DomainPackLoader {
             if (exception instanceof PackLoadException packLoadException) throw packLoadException;
             throw new PackLoadException("failed to load Domain Pack " + directory, exception);
         }
+    }
+
+    public List<LoadedDomainPack> loadAll(Collection<Path> directories) {
+        List<LoadedDomainPack> packs = directories.stream().map(this::load).toList();
+        Map<String, String> versions = new LinkedHashMap<>();
+        Set<String> names = new HashSet<>();
+        for (LoadedDomainPack pack : packs) {
+            if (!names.add(pack.manifest().name())) throw new PackLoadException("duplicate pack name: " + pack.manifest().name());
+            if (versions.put(pack.manifest().namespace(), pack.manifest().version()) != null) {
+                throw new PackLoadException("duplicate pack namespace: " + pack.manifest().namespace());
+            }
+        }
+        for (LoadedDomainPack pack : packs) {
+            for (Map.Entry<String, String> dependency : pack.manifest().dependencies().entrySet()) {
+                String version = versions.get(dependency.getKey());
+                if (version == null || !satisfies(version, dependency.getValue())) {
+                    throw new PackLoadException("pack " + pack.manifest().name() + " requires "
+                            + dependency.getKey() + " " + dependency.getValue() + ", loaded " + version);
+                }
+            }
+        }
+        return packs;
+    }
+
+    private static boolean satisfies(String version, String constraint) {
+        String normalized = constraint.trim();
+        if (normalized.startsWith(">=")) return compareVersion(version, normalized.substring(2).trim()) >= 0;
+        return compareVersion(version, normalized) == 0;
+    }
+
+    private static int compareVersion(String left, String right) {
+        String[] a = left.split("\\."), b = right.split("\\.");
+        for (int i = 0; i < 3; i++) {
+            int av = i < a.length ? Integer.parseInt(a[i]) : 0;
+            int bv = i < b.length ? Integer.parseInt(b[i]) : 0;
+            if (av != bv) return Integer.compare(av, bv);
+        }
+        return 0;
     }
 
     private PackManifest readManifest(Path path) throws IOException {

@@ -37,8 +37,12 @@ class StorageConformanceTest {
     private static final EntityKey ORG = new EntityKey("Organization", "org-1");
     private static final PropertyDefinition ID = new PropertyDefinition("id", "ID", true, true, true, true, false, true);
     private static final OntologySchema SCHEMA = new OntologySchema("conformance", "0.1.0",
-            List.of(new ObjectTypeDefinition("Person", List.of(ID)), new ObjectTypeDefinition("Organization", List.of(ID))),
-            List.of(new LinkTypeDefinition("BelongsTo", "Person", "Organization", Cardinality.MANY_TO_ONE, List.of(ID))), List.of());
+            List.of(new ObjectTypeDefinition("Person", List.of(ID)), new ObjectTypeDefinition("Organization", List.of(ID)),
+                    new ObjectTypeDefinition("Assignment", List.of(ID))),
+            List.of(
+                    new LinkTypeDefinition("BelongsTo", "Person", "Organization", Cardinality.MANY_TO_ONE, List.of(ID)),
+                    new LinkTypeDefinition("HoldsAssignment", "Person", "Assignment", Cardinality.MANY_TO_ONE, List.of(ID)),
+                    new LinkTypeDefinition("AssignmentInOrganization", "Assignment", "Organization", Cardinality.MANY_TO_ONE, List.of(ID))), List.of());
 
     @TestFactory
     Stream<DynamicTest> providersObeyCoreContract() {
@@ -48,7 +52,8 @@ class StorageConformanceTest {
                 .flatMap(testCase -> Stream.of(
                         DynamicTest.dynamicTest(testCase.name + " object/link history", () -> history(testCase.provider.get())),
                         DynamicTest.dynamicTest(testCase.name + " rollback", () -> rollback(testCase.provider.get())),
-                        DynamicTest.dynamicTest(testCase.name + " tenant isolation", () -> tenancy(testCase.provider.get()))));
+                        DynamicTest.dynamicTest(testCase.name + " tenant isolation", () -> tenancy(testCase.provider.get())),
+                        DynamicTest.dynamicTest(testCase.name + " person assignment transfer", () -> assignmentTransfer(testCase.provider.get()))));
     }
 
     private static void history(StorageProvider storage) {
@@ -80,6 +85,32 @@ class StorageConformanceTest {
             tx.commit();
         }
         assertNull(storage.getObject(TENANT_B, PERSON.type(), PERSON.id()));
+    }
+
+    private static void assignmentTransfer(StorageProvider storage) {
+        storage.applySchema(TENANT_A, SCHEMA);
+        EntityKey assignment = new EntityKey("Assignment", "assignment-1");
+        EntityKey orgB = new EntityKey("Organization", "org-2");
+        try (Transaction tx = storage.beginTransaction(TENANT_A)) {
+            tx.createObject("Person", PERSON.id(), Map.of("name", "Alice"));
+            tx.createObject("Organization", ORG.id(), Map.of("name", "A"));
+            tx.createObject("Organization", orgB.id(), Map.of("name", "B"));
+            tx.createObject("Assignment", assignment.id(), Map.of("title", "Engineer"));
+            tx.createLink("HoldsAssignment", "person-assignment", PERSON, assignment, Map.of());
+            tx.createLink("AssignmentInOrganization", "assignment-org-a", assignment, ORG, Map.of());
+            tx.commit();
+        }
+        Instant before = storage.getLink(TENANT_A, "AssignmentInOrganization", "assignment-org-a").validFrom().plusMillis(1);
+        try { Thread.sleep(5); } catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
+        try (Transaction tx = storage.beginTransaction(TENANT_A)) {
+            tx.deleteLink("AssignmentInOrganization", "assignment-org-a", 1);
+            tx.createLink("AssignmentInOrganization", "assignment-org-b", assignment, orgB, Map.of());
+            tx.commit();
+        }
+        assertEquals(orgB, storage.getLinks(TENANT_A, assignment, "AssignmentInOrganization",
+                StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).getFirst().to());
+        var historical = storage.getLinkAtTime(TENANT_A, "AssignmentInOrganization", "assignment-org-a", before, Instant.now());
+        assertEquals(ORG.id(), historical.state().get("_toId"));
     }
 
     private static StorageProvider jdbcProvider() {
