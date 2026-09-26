@@ -28,7 +28,7 @@
 ## Action、事件和审计
 
 - [x] 实现 Action manifest 解析。
-- [x] 实现参数校验、可插拔前置条件和受限效果执行（正式 CEL 适配待补充）。
+- [x] 实现参数校验、CEL 前置条件和受限效果执行。
 - [x] 实现幂等键、批量结果和基础失败结果。
 - [x] 实现审计表和追加式写入。
 - [x] 实现 Transactional Outbox（事务内写入和回滚语义）。
@@ -45,7 +45,7 @@
 
 ## 同步和一致性测试
 
-- [ ] 实现 JDBC/REST 连接器接口。
+- [x] 实现 JDBC/REST 连接器接口和基础读取实现。
 - [x] 实现来源映射和字段血缘基础类型。
 - [x] 实现来源优先级、时间优先级和 Action 优先级冲突策略基础实现。
 - [x] 将 [conformance/README.md](conformance/README.md) 转为 JUnit 测试套件（内存/JDBC基线）。

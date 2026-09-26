@@ -23,7 +23,7 @@ public final class ActionExecutor {
     private final IdempotencyStore idempotencyStore;
 
     public ActionExecutor() {
-        this(ExpressionEvaluator.simple(), null);
+        this(new CelExpressionEvaluator(), null);
     }
 
     public ActionExecutor(ExpressionEvaluator evaluator) {

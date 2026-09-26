@@ -23,6 +23,8 @@ mvn test
 | `foundry-events` | 追加式审计与 Transactional Outbox 存储基线 |
 | `foundry-security` | 主体、租户、关系授权和字段脱敏契约 |
 | `foundry-sync` | 来源记录、映射、Provenance 和冲突解决契约 |
+| `foundry-conformance` | 内存/JDBC Provider 共享一致性测试 |
+| `foundry-api` | 应用服务、REST 路由和 GraphQL 契约生成 |
 
 ## 当前实现边界
 
@@ -34,10 +36,12 @@ mvn test
 - `traverseAsOf` 历史关系遍历；
 - 内存和 JDBC Storage Provider；
 - Action YAML、基础前置条件和事务效果；
+- Action YAML、参数校验、CEL前置条件、幂等键和批量结果；
 - Domain Pack 加载；
 - 内存/JDBC 审计与 Outbox Store。
 - Outbox CloudEvent 发布、失败重试和进程内幂等。
 - 安全与同步领域契约。
+- JDBC/REST来源连接器和共享一致性测试。
 
 尚待完成：
 
@@ -45,7 +49,7 @@ mvn test
 - 对象、关系、历史、审计和 Outbox 的同一事务写入；
 - 国产数据库 Provider 和方言验证；
 - OIDC、关系授权、字段脱敏和 API 层；
-- JDBC/REST 具体连接器和同步执行器；
+- JDBC/REST 同步写入执行器和持久化消费者幂等表；
 - 完整的一致性测试套件。
 
 办公文档被根目录 `.gitignore` 忽略，Open Foundry 上游代码位于 `references/open-foundry` 子模块中。
