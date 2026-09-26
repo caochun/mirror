@@ -6,8 +6,9 @@ Foundry 位于 `foundry/` 子模块，负责通用对象关系、历史、事务
 
 ## 文档
 
+- [application-plan.md](application-plan.md)：当前有效的完整应用交付计划，React + Tailwind 前端、可启动后端、里程碑与完成门槛。
 - [business-plan.md](business-plan.md)：从零重建计划和阶段性交付物。
 - [domain-model.md](domain-model.md)：业务对象和关系模型。
 - [workflow-model.md](workflow-model.md)：业务状态和 Action 流程。
-- [tasks.md](tasks.md)：可执行任务清单。
-
+- [frontend-design.md](frontend-design.md)：重新对照原始文档形成的页面、角色、交互与验收设计草案，包含范围差异和待确认事项。
+- [tasks.md](tasks.md)：按完整业务验收重新校正的任务清单，原型代码不等于已完成交付。
