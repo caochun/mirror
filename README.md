@@ -4,7 +4,8 @@
 
 ## 目录
 
-- [`gov-supervision-pack/`](gov-supervision-pack/)：人员、单位、岗位、任职分配、项目和风险事项的基础 Domain Pack。
+- [`business-spec/`](business-spec/)：政务业务规约、对象模型、工作流和任务计划。
+- `domain-pack/`：按业务规约从零实现的政务 Domain Pack。
 - `foundry/`：通用对象关系和状态历史底座，来自独立仓库。
 - 根目录 DOCX/XLSX：原始业务材料和测试数据，已通过 `.gitignore` 忽略。
 
