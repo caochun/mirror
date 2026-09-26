@@ -1,0 +1,25 @@
+application:
+  name: mirror-object-library
+  namespace: gov.object-library
+  domain-pack: domain-pack
+  tenant-mode: required
+storage:
+  provider: jdbc
+  dialect: openGauss
+  jdbc-url: ${MIRROR_JDBC_URL}
+  username: ${MIRROR_JDBC_USERNAME}
+  password: ${MIRROR_JDBC_PASSWORD}
+  temporal-history: enabled
+  outbox: enabled
+delivery:
+  connector: lulutong
+  endpoint: ${LULUTONG_ENDPOINT}
+  connect-timeout-seconds: 10
+  retry-unknown: true
+authorization:
+  provider: openfga
+  endpoint: ${OPENFGA_ENDPOINT}
+  model: deployment/openfga-model.fga
+assistant:
+  enabled: true
+  require-human-confirmation: true

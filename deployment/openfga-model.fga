@@ -1,0 +1,22 @@
+model
+  schema 1.1
+
+type user
+
+type organization
+  relations
+    define parent: [organization]
+    define administrator: [user]
+    define reviewer: [user]
+
+type person
+  relations
+    define organization: [organization]
+    define can_read: administrator from organization or reviewer from organization
+
+type reminder_task
+  relations
+    define owner: [user]
+    define reviewer: [user]
+    define can_submit: owner
+    define can_approve: reviewer

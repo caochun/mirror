@@ -6,7 +6,10 @@
 
 - [`business-spec/`](business-spec/)：政务业务规约、对象模型、工作流和任务计划。
 - `domain-pack/`：按业务规约从零实现的政务 Domain Pack。
+- `business-core/`：基于 Foundry Storage SPI 的人员、标签、提醒、送达、权限和 AI 业务服务。
+- `business-verification/`：内存 Provider 的业务端到端验收测试。
 - `foundry/`：通用对象关系和状态历史底座，来自独立仓库。
+- `deployment/`：openGauss/国产关系库、鹿路通和 OpenFGA 的部署参数模板。
 - 根目录 DOCX/XLSX：原始业务材料和测试数据，已通过 `.gitignore` 忽略。
 
 ## 领域边界

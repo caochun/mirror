@@ -28,7 +28,7 @@ class BusinessPackVerificationTest {
         LoadedDomainPack pack = new DomainPackLoader().load(packPath);
         assertEquals("government-object-library", pack.manifest().name());
         assertEquals(28, pack.ontology().schema().objectTypes().size());
-        assertEquals(25, pack.ontology().schema().linkTypes().size());
+        assertEquals(26, pack.ontology().schema().linkTypes().size());
 
         RequestContext context = RequestContext.system("tenant", "operator");
         InMemoryStorageProvider storage = new InMemoryStorageProvider();

@@ -246,13 +246,13 @@ type PersonBelongsToOrganization @linkType(from: "Person", to: "Organization", c
   endedAt: DateTime
 }
 
-type PersonHoldsPosition @linkType(from: "Person", to: "Position", cardinality: MANY_TO_ONE) {
+type PersonHoldsPosition @linkType(from: "Person", to: "Position", cardinality: ONE_TO_MANY) {
   id: ID! @primary
   startedAt: DateTime!
   endedAt: DateTime
 }
 
-type PersonHasAssignment @linkType(from: "Person", to: "Assignment", cardinality: MANY_TO_ONE) {
+type PersonHasAssignment @linkType(from: "Person", to: "Assignment", cardinality: ONE_TO_MANY) {
   id: ID! @primary
   startedAt: DateTime!
   endedAt: DateTime
@@ -289,7 +289,14 @@ type AccountForPerson @linkType(from: "UserAccount", to: "Person", cardinality: 
   linkedAt: DateTime!
 }
 
-type PersonHasTag @linkType(from: "Person", to: "PersonTagAssignment", cardinality: MANY_TO_ONE) {
+type OrganizationParent @linkType(from: "Organization", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  relation: String!
+  startedAt: DateTime!
+  endedAt: DateTime
+}
+
+type PersonHasTag @linkType(from: "Person", to: "PersonTagAssignment", cardinality: ONE_TO_MANY) {
   id: ID! @primary
   linkedAt: DateTime!
 }
@@ -298,59 +305,59 @@ type TagAssignmentUsesDefinition @linkType(from: "PersonTagAssignment", to: "Tag
   id: ID! @primary
 }
 
-type TagCandidateForPerson @linkType(from: "TagCandidate", to: "Person", cardinality: MANY_TO_ONE) {
+type TagCandidateForPerson @linkType(from: "TagCandidate", to: "Person", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type IssueForTag @linkType(from: "TagProcessingIssue", to: "PersonTagAssignment", cardinality: MANY_TO_ONE) {
+type IssueForTag @linkType(from: "TagProcessingIssue", to: "PersonTagAssignment", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type BatchAffectsTag @linkType(from: "TagBatch", to: "PersonTagAssignment", cardinality: MANY_TO_ONE) {
+type BatchAffectsTag @linkType(from: "TagBatch", to: "PersonTagAssignment", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type ContentHasVersion @linkType(from: "ReminderContent", to: "ContentVersion", cardinality: MANY_TO_ONE) {
+type ContentHasVersion @linkType(from: "ReminderContent", to: "ContentVersion", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type ContentSuggestsTag @linkType(from: "ReminderContent", to: "TagDefinition", cardinality: MANY_TO_ONE) {
+type ContentSuggestsTag @linkType(from: "ReminderContent", to: "TagDefinition", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type VersionUsesMedia @linkType(from: "ContentVersion", to: "MediaAsset", cardinality: MANY_TO_ONE) {
+type VersionUsesMedia @linkType(from: "ContentVersion", to: "MediaAsset", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type TaskHasVersion @linkType(from: "ReminderTask", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+type TaskHasVersion @linkType(from: "ReminderTask", to: "ReminderTaskVersion", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type VersionTargetsRecipient @linkType(from: "ReminderTaskVersion", to: "RecipientRecord", cardinality: MANY_TO_ONE) {
+type VersionTargetsRecipient @linkType(from: "ReminderTaskVersion", to: "RecipientRecord", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type RecipientHasDeliveryAttempt @linkType(from: "RecipientRecord", to: "DeliveryAttempt", cardinality: MANY_TO_ONE) {
+type RecipientHasDeliveryAttempt @linkType(from: "RecipientRecord", to: "DeliveryAttempt", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type RecipientHasDeliveryReceipt @linkType(from: "RecipientRecord", to: "DeliveryReceipt", cardinality: MANY_TO_ONE) {
+type RecipientHasDeliveryReceipt @linkType(from: "RecipientRecord", to: "DeliveryReceipt", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type RecipientHasReadReceipt @linkType(from: "RecipientRecord", to: "ReadReceipt", cardinality: MANY_TO_ONE) {
+type RecipientHasReadReceipt @linkType(from: "RecipientRecord", to: "ReadReceipt", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type RecipientHasOverdueRecord @linkType(from: "RecipientRecord", to: "OverdueRecord", cardinality: MANY_TO_ONE) {
+type RecipientHasOverdueRecord @linkType(from: "RecipientRecord", to: "OverdueRecord", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type RecipientHasWithdrawal @linkType(from: "RecipientRecord", to: "WithdrawalRecord", cardinality: MANY_TO_ONE) {
+type RecipientHasWithdrawal @linkType(from: "RecipientRecord", to: "WithdrawalRecord", cardinality: ONE_TO_MANY) {
   id: ID! @primary
 }
 
-type RiskInvolvesPerson @linkType(from: "RiskEvent", to: "Person", cardinality: MANY_TO_ONE) {
+type RiskInvolvesPerson @linkType(from: "RiskEvent", to: "Person", cardinality: ONE_TO_MANY) {
   id: ID! @primary
   source: String
 }
