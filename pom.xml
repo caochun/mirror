@@ -22,6 +22,7 @@
         <module>foundry-security</module>
         <module>foundry-sync</module>
         <module>foundry-conformance</module>
+        <module>foundry-api</module>
     </modules>
 
     <properties>
