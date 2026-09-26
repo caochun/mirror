@@ -16,6 +16,9 @@ import org.openfoundry.foundation.spi.QueryOptions;
 import org.openfoundry.foundation.spi.schema.ObjectTypeDefinition;
 import org.openfoundry.foundation.spi.schema.OntologySchema;
 import org.openfoundry.foundation.spi.schema.PropertyDefinition;
+import org.openfoundry.foundation.actions.ActionManifest;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +29,11 @@ public final class GraphqlApiRuntime {
     private GraphqlApiRuntime() {}
 
     public static GraphQL create(OntologySchema schema, ApplicationService application) {
+        return create(schema, application, Map.of());
+    }
+
+    public static GraphQL create(OntologySchema schema, ApplicationService application,
+                                 Map<String, ActionManifest> manifests) {
         Map<String, GraphQLObjectType> objectTypes = new java.util.LinkedHashMap<>();
         for (ObjectTypeDefinition definition : schema.objectTypes()) {
             GraphQLObjectType.Builder object = GraphQLObjectType.newObject().name(definition.name());
@@ -63,8 +71,28 @@ public final class GraphqlApiRuntime {
                     }).build());
         }
 
-        GraphQLSchema graphQLSchema = GraphQLSchema.newSchema().query(query.build()).build();
-        return GraphQL.newGraphQL(graphQLSchema).build();
+        graphql.schema.GraphQLObjectType.Builder mutation = GraphQLObjectType.newObject().name("Mutation");
+        for (Map.Entry<String, ActionManifest> entry : manifests.entrySet()) {
+            ActionManifest manifest = entry.getValue();
+            mutation.field(GraphQLFieldDefinition.newFieldDefinition().name(lower(entry.getKey()))
+                    .type(Scalars.GraphQLString)
+                    .argument(GraphQLArgument.newArgument().name("input").type(GraphQLNonNull.nonNull(Scalars.GraphQLString)))
+                    .dataFetcher(environment -> {
+                        ApiRequestContext request = request(environment);
+                        String rawInput = environment.getArgument("input");
+                        Map<String, Object> input;
+                        try {
+                            input = new ObjectMapper().readValue(rawInput, new TypeReference<>() {});
+                        } catch (Exception exception) {
+                            throw new IllegalArgumentException("Action input must be valid JSON", exception);
+                        }
+                        String key = environment.getGraphQlContext().get("idempotencyKey");
+                        return String.valueOf(application.execute(manifest, request.request(), request.principal(), input, key));
+                    }).build());
+        }
+        GraphQLSchema.Builder graphQLSchema = GraphQLSchema.newSchema().query(query.build());
+        if (!manifests.isEmpty()) graphQLSchema.mutation(mutation.build());
+        return GraphQL.newGraphQL(graphQLSchema.build()).build();
     }
 
     private static ApiRequestContext request(DataFetchingEnvironment environment) {
