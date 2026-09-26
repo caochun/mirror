@@ -1,0 +1,122 @@
+package org.openfoundry.foundation.storage.jdbc;
+
+/** Database-specific spellings kept outside the storage engine. */
+public interface DatabaseDialect {
+    String name();
+
+    String textType();
+
+    String timestampType();
+
+    default String paginationClause() {
+        return " LIMIT ? OFFSET ?";
+    }
+
+    default String currentTablesDdl() {
+        String text = textType();
+        String timestamp = timestampType();
+        return """
+                CREATE TABLE IF NOT EXISTS of_objects (
+                  tenant_id VARCHAR(255) NOT NULL,
+                  object_type VARCHAR(255) NOT NULL,
+                  object_id VARCHAR(512) NOT NULL,
+                  version BIGINT NOT NULL,
+                  created_at %s NOT NULL,
+                  updated_at %s NOT NULL,
+                  deleted_at %s NULL,
+                  last_transaction_id VARCHAR(255),
+                  last_action_id VARCHAR(255),
+                  properties_json %s NOT NULL,
+                  PRIMARY KEY (tenant_id, object_type, object_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_of_objects_type ON of_objects (tenant_id, object_type, object_id);
+                CREATE TABLE IF NOT EXISTS of_object_history (
+                  tenant_id VARCHAR(255) NOT NULL,
+                  object_type VARCHAR(255) NOT NULL,
+                  object_id VARCHAR(512) NOT NULL,
+                  version BIGINT NOT NULL,
+                  operation VARCHAR(32) NOT NULL,
+                  valid_from %s NOT NULL,
+                  valid_to %s NULL,
+                  recorded_at %s NOT NULL,
+                  transaction_id VARCHAR(255) NOT NULL,
+                  action_id VARCHAR(255),
+                  actor_id VARCHAR(255),
+                  source_system VARCHAR(255),
+                  state_json %s NOT NULL,
+                  PRIMARY KEY (tenant_id, object_type, object_id, version)
+                );
+                CREATE INDEX IF NOT EXISTS idx_of_object_history_time
+                  ON of_object_history (tenant_id, object_type, object_id, valid_from, recorded_at);
+                CREATE TABLE IF NOT EXISTS of_links (
+                  tenant_id VARCHAR(255) NOT NULL,
+                  link_type VARCHAR(255) NOT NULL,
+                  link_id VARCHAR(512) NOT NULL,
+                  from_type VARCHAR(255) NOT NULL,
+                  from_id VARCHAR(512) NOT NULL,
+                  to_type VARCHAR(255) NOT NULL,
+                  to_id VARCHAR(512) NOT NULL,
+                  version BIGINT NOT NULL,
+                  created_at %s NOT NULL,
+                  updated_at %s NOT NULL,
+                  deleted_at %s NULL,
+                  valid_from %s NOT NULL,
+                  valid_to %s NULL,
+                  last_transaction_id VARCHAR(255),
+                  last_action_id VARCHAR(255),
+                  properties_json %s NOT NULL,
+                  PRIMARY KEY (tenant_id, link_type, link_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_of_links_from
+                  ON of_links (tenant_id, link_type, from_type, from_id);
+                CREATE INDEX IF NOT EXISTS idx_of_links_to
+                  ON of_links (tenant_id, link_type, to_type, to_id);
+                CREATE TABLE IF NOT EXISTS of_link_history (
+                  tenant_id VARCHAR(255) NOT NULL,
+                  link_type VARCHAR(255) NOT NULL,
+                  link_id VARCHAR(512) NOT NULL,
+                  from_type VARCHAR(255) NOT NULL,
+                  from_id VARCHAR(512) NOT NULL,
+                  to_type VARCHAR(255) NOT NULL,
+                  to_id VARCHAR(512) NOT NULL,
+                  version BIGINT NOT NULL,
+                  operation VARCHAR(32) NOT NULL,
+                  valid_from %s NOT NULL,
+                  valid_to %s NULL,
+                  recorded_at %s NOT NULL,
+                  transaction_id VARCHAR(255) NOT NULL,
+                  action_id VARCHAR(255),
+                  actor_id VARCHAR(255),
+                  source_system VARCHAR(255),
+                  state_json %s NOT NULL,
+                  PRIMARY KEY (tenant_id, link_type, link_id, version)
+                );
+                CREATE INDEX IF NOT EXISTS idx_of_link_history_time
+                  ON of_link_history (tenant_id, link_type, link_id, valid_from, recorded_at);
+                """.formatted(timestamp, timestamp, timestamp, text,
+                        timestamp, timestamp, timestamp, text,
+                        timestamp, timestamp, timestamp, timestamp, timestamp, text,
+                        timestamp, timestamp, timestamp, text);
+    }
+
+    static DatabaseDialect h2() {
+        return new SimpleDialect("h2", "CLOB", "TIMESTAMP WITH TIME ZONE");
+    }
+
+    static DatabaseDialect postgresql() {
+        return new SimpleDialect("postgresql", "TEXT", "TIMESTAMPTZ");
+    }
+
+    static DatabaseDialect standard(String name, String textType, String timestampType) {
+        return new SimpleDialect(name, textType, timestampType);
+    }
+
+    record SimpleDialect(String name, String textType, String timestampType) implements DatabaseDialect {
+        public SimpleDialect {
+            if (name == null || name.isBlank() || textType == null || textType.isBlank()
+                    || timestampType == null || timestampType.isBlank()) {
+                throw new IllegalArgumentException("dialect values must not be blank");
+            }
+        }
+    }
+}
