@@ -1,0 +1,33 @@
+server:
+  address: ${MIRROR_BIND_ADDRESS:127.0.0.1}
+  port: ${MIRROR_PORT:8080}
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: strict
+        secure: ${MIRROR_SECURE_COOKIE:false}
+spring:
+  application:
+    name: mirror
+  datasource:
+    url: ${MIRROR_JDBC_URL:jdbc:h2:file:./.runtime/mirror;MODE=PostgreSQL;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${MIRROR_JDBC_USERNAME:sa}
+    password: ${MIRROR_JDBC_PASSWORD:}
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 13MB
+mirror:
+  dialect: ${MIRROR_DB_DIALECT:h2}
+  pack: ${MIRROR_DOMAIN_PACK:./domain-pack}
+  bootstrap-password: ${MIRROR_BOOTSTRAP_PASSWORD:}
+  demo: ${MIRROR_DEMO:false}
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.jdbc: INFO

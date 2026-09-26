@@ -8,6 +8,8 @@
 - `domain-pack/`：按业务规约从零实现的政务 Domain Pack。
 - `business-core/`：基于 Foundry Storage SPI 的人员、标签、提醒、送达、权限和 AI 业务服务。
 - `business-verification/`：内存 Provider 的业务端到端验收测试。
+- `mirror-server/`：Spring Boot 应用入口、数据库账号/会话、受权限控制的业务 API。
+- `web/`：React + TypeScript + Tailwind 管理端、独立 H5 构建入口和 Playwright 测试。
 - `foundry/`：通用对象关系和状态历史底座，来自独立仓库。
 - `deployment/`：openGauss/国产关系库、鹿路通和 OpenFGA 的部署参数模板。
 - 根目录 DOCX/XLSX：原始业务材料和测试数据，已通过 `.gitignore` 忽略。
@@ -25,3 +27,43 @@ mvn test
 ```
 
 Foundry 的版本通过 submodule 固定；更新平台版本时，在本仓库更新 submodule 指针并运行业务验证。
+
+## 当前可运行版本
+
+已接通账号登录、组织权限、人员查询、档案基础信息和变更记录。提醒审核、标签工作和接收端阅读仍在开发；H5目前只有独立构建入口，不产生阅读回执。完整进度见 [业务任务清单](business-spec/tasks.md)。
+
+本地需要 JDK 21+、Maven、Node.js 22.12+（建议当前 LTS）。从仓库根目录运行：
+
+```bash
+mvn -pl mirror-server -am package
+npm --prefix web ci
+```
+
+在终端设置 `MIRROR_BOOTSTRAP_PASSWORD` 为自行选择的 12–72 字符初始密码。只在首次创建账号时使用，不会覆盖已有密码；不设置时不创建账号。显式启用演示模式后生成24名虚构人员及四种测试账号，禁止用于正式环境：
+
+```bash
+export MIRROR_DEMO=true
+java -jar mirror-server/target/mirror-server-0.1.0-SNAPSHOT.jar
+```
+
+另一个终端启动前端：
+
+```bash
+npm --prefix web run dev
+```
+
+访问终端输出的本地地址（默认 `http://127.0.0.1:5173`）。账号为 `admin`；演示模式另外提供 `unit`、`area`、`reviewer`，初始密码均取上述环境变量。后端默认 `127.0.0.1:8080`，前端通过同源代理调用 API。修改后端端口时相应设置 `MIRROR_API_TARGET`。
+
+默认开发数据库为 `.runtime/mirror.mv.db`（H2文件数据库）；人员、历史、账号授权跨重启保存，会话重启后需重新登录。该环境不代表国产库兼容或生产验收。生产参数与验证边界见 [deployment/README.md](deployment/README.md)。
+
+## 验证应用
+
+```bash
+mvn test
+npm --prefix web run build
+cd web
+npx playwright install chromium
+npm run test:e2e
+```
+
+浏览器测试需要已构建最新后端 JAR；测试自动启动独立后端和前端，使用专用端口18080/15173、内存测试数据库及明确的测试密码，不连接本地文件库。测试覆盖真实登录、CSRF、组织范围、跨页查询、档案历史、审核员拒绝访问、移动宽度及失败状态；完整提醒闭环测试待后续交付。

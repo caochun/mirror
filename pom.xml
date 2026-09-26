@@ -12,6 +12,7 @@
     <modules>
         <module>foundry</module>
         <module>business-core</module>
+        <module>mirror-server</module>
         <module>business-verification</module>
     </modules>
 
