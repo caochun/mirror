@@ -12,6 +12,16 @@
     <name>Open Foundry API Contracts</name>
     <dependencies>
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.18.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.18.3</version>
+        </dependency>
+        <dependency>
             <groupId>org.openfoundry</groupId>
             <artifactId>foundry-spi</artifactId>
             <version>${project.version}</version>
@@ -30,6 +40,12 @@
             <groupId>org.openfoundry</groupId>
             <artifactId>foundry-security</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openfoundry</groupId>
+            <artifactId>foundry-storage-memory</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

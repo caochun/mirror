@@ -41,7 +41,7 @@
 - [x] 实现字段级脱敏。
 - [x] 实现通用 ApplicationService 和关系/历史读取入口。
 - [x] 实现框架无关的 REST 路由和 Action 路由契约。
-- [x] 生成基础 GraphQL 查询/Mutation 契约（HTTP/GraphQL 容器适配待补充）。
+- [x] 生成基础 GraphQL 查询/Mutation 契约并提供 GraphQL/JDK REST 运行时适配。
 
 ## 同步和一致性测试
 
