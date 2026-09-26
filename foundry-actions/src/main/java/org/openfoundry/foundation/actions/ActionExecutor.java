@@ -88,8 +88,10 @@ public final class ActionExecutor {
                             resolveMap(create.properties(), parameters));
                     affected.add(new EntityKey(link.type(), link.id()));
                 } else if (effect instanceof ActionManifest.DeleteLink delete) {
-                    transaction.deleteLink(delete.linkType(), delete.linkId(), currentLinkVersion(storage, context, delete));
-                    affected.add(new EntityKey(delete.linkType(), delete.linkId()));
+                    String linkId = resolveId(delete.linkId(), parameters);
+                    transaction.deleteLink(delete.linkType(), linkId, currentLinkVersion(storage, context,
+                            new ActionManifest.DeleteLink(delete.linkType(), linkId)));
+                    affected.add(new EntityKey(delete.linkType(), linkId));
                 }
             }
             Map<String, Object> detail = Map.of(
@@ -144,7 +146,9 @@ public final class ActionExecutor {
     }
 
     private static String resolveId(String reference, Map<String, Object> parameters) {
-        Object value = parameters.get(reference);
+        Object value = reference.startsWith("params.")
+                ? parameters.get(reference.substring("params.".length()))
+                : parameters.get(reference);
         if (value instanceof ObjectRecord object) return object.id();
         if (value instanceof EntityKey key) return key.id();
         return reference.startsWith("params.") ? String.valueOf(value) : reference + "-" + Instant.now().toEpochMilli();

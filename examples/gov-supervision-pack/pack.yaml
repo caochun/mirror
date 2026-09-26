@@ -1,0 +1,8 @@
+name: gov-supervision
+version: 0.1.0
+namespace: gov.supervision
+description: "政务监督对象基础模型，不包含标签规则和提醒业务"
+schema:
+  - schema/core.odl
+actions:
+  - actions/transfer-assignment.yaml
