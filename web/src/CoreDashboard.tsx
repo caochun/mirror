@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { dashboardMock } from './dashboardMock';
 import type { DashboardPerson } from './dashboardMock';
@@ -17,8 +17,17 @@ const qualityAccent: Record<string, string> = {
 
 export function Dashboard() {
   const data = dashboardMock;
+  const mode = new URLSearchParams(window.location.search).get('state');
+  const [loading, setLoading] = useState(true);
   const [drilldown, setDrilldown] = useState<Drilldown>(null);
   const open = (title: string, description: string, people = data.overduePeople) => setDrilldown({ title, description, people });
+  useEffect(() => {
+    if (mode === 'loading') return;
+    const timer = window.setTimeout(() => setLoading(false), 120);
+    return () => window.clearTimeout(timer);
+  }, [mode]);
+  if (loading || mode === 'loading') return <DashboardState title="正在加载核心价值数据" description="正在汇总对象、标签和提醒闭环指标…" />;
+  if (mode === 'empty') return <DashboardState title="当前统计范围暂无数据" description="调整组织范围或统计时间后重新加载。演示页面保留空数据状态供原型验收。" empty />;
   return <div className="dashboard-shell min-h-[calc(100vh-8rem)] overflow-x-hidden bg-[#07111f] p-5 text-slate-100 lg:p-9">
     <header className="flex flex-wrap items-end justify-between gap-6">
       <div><p className="text-xs font-semibold tracking-[0.32em] text-cyan-300">MIRROR · OBJECT LIBRARY</p><h1 className="mt-3 text-3xl font-semibold tracking-tight lg:text-4xl">政务系统对象库 · 核心价值总览</h1><p className="mt-3 text-sm text-slate-400">对象 · 关系 · 画像 · 提醒 · 闭环</p></div>
@@ -35,6 +44,10 @@ export function Dashboard() {
     <section className="mt-5 overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/70"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/60 px-5 py-4"><div><p className="text-[10px] font-semibold tracking-[0.2em] text-slate-500">05 · TRACEABLE OPERATIONS</p><h2 className="mt-1 font-medium">最近提醒任务</h2></div><span className="text-xs text-slate-500">点击上方指标可查看演示下钻</span></div><div className="overflow-x-auto"><table className="w-full min-w-[620px]"><thead><tr className="text-left text-xs text-slate-500"><th className="px-5 py-3 font-normal">任务</th><th className="px-5 py-3 font-normal">创建组织</th><th className="px-5 py-3 font-normal">目标人数</th><th className="px-5 py-3 font-normal">最新版本已读</th><th className="px-5 py-3 font-normal">状态</th></tr></thead><tbody>{data.recentTasks.map(task => <tr key={task.title} className="border-t border-slate-800 text-sm"><td className="px-5 py-4 font-medium text-slate-200">{task.title}</td><td className="px-5 py-4 text-slate-400">{task.organization}</td><td className="px-5 py-4 tabular-nums text-slate-300">{task.target.toLocaleString()}</td><td className="px-5 py-4 tabular-nums text-cyan-300">{task.read.toLocaleString()}</td><td className="px-5 py-4"><span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs text-emerald-300">{task.state}</span></td></tr>)}</tbody></table></div></section>
     {drilldown && <div className="fixed inset-0 z-30 grid place-items-center bg-slate-950/70 p-5" role="presentation" onClick={() => setDrilldown(null)}><section className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl" role="dialog" aria-modal="true" aria-label={drilldown.title} onClick={event => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="text-xs tracking-widest text-cyan-300">演示下钻</p><h2 className="mt-2 text-xl font-semibold">{drilldown.title}</h2><p className="mt-2 text-sm text-slate-400">{drilldown.description}</p></div><button className="text-slate-400 hover:text-white" onClick={() => setDrilldown(null)} aria-label="关闭">×</button></div>{drilldown.people.length === 0 ? <p className="mt-6 rounded-lg bg-slate-800 p-4 text-sm text-slate-400">当前 Mock 范围没有明细。</p> : <div className="mt-6 divide-y divide-slate-800">{drilldown.people.map(person => <div className="flex items-center justify-between py-3" key={`${person.name}-${person.organization}`}><div><p className="text-sm text-slate-200">{person.name}</p><p className="mt-1 text-xs text-slate-500">{person.organization} · {person.tag}</p></div><span className="text-xs text-rose-300">{person.state}</span></div>)}</div>}<p className="mt-6 text-[11px] text-slate-500">Mock 明细仅用于展示从指标回到对象的业务路径。</p></section></div>}
   </div>;
+}
+
+function DashboardState({ title, description, empty = false }: { title: string; description: string; empty?: boolean }) {
+  return <div className="dashboard-shell grid min-h-[calc(100vh-8rem)] place-items-center overflow-x-hidden bg-[#07111f] p-5 text-slate-100 lg:p-9"><div className="w-full max-w-lg rounded-2xl border border-slate-700/60 bg-slate-900/80 p-8 text-center" role="status"><span className={`mx-auto grid h-12 w-12 place-items-center rounded-full ${empty ? 'bg-slate-700 text-slate-300' : 'bg-cyan-400/10 text-cyan-300'}`}>{empty ? '—' : '…'}</span><h1 className="mt-5 text-xl font-semibold">{title}</h1><p className="mt-3 text-sm leading-6 text-slate-400">{description}</p><p className="mt-6 text-xs text-amber-200">演示数据 / Mock</p></div></div>;
 }
 
 function Metric({ label, value, detail, color }: { label: string; value: string | number; detail: string; color: string }) {

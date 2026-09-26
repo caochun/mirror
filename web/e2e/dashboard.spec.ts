@@ -16,3 +16,11 @@ test('public core value dashboard shows the mock supervision chain', async ({ pa
   await expect(page.getByText('演示数据 / Mock', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('dashboard exposes loading and empty data states', async ({ page }) => {
+  await page.goto('/dashboard?state=loading');
+  await expect(page.getByRole('status')).toContainText('正在加载核心价值数据');
+  await page.goto('/dashboard?state=empty');
+  await expect(page.getByRole('status')).toContainText('当前统计范围暂无数据');
+  await expect(page.getByText('演示数据 / Mock', { exact: true })).toBeVisible();
+});
