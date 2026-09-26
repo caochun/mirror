@@ -136,6 +136,18 @@ public interface DatabaseDialect {
         return new SimpleDialect("postgresql", "TEXT", "TIMESTAMPTZ");
     }
 
+    static DatabaseDialect openGauss() {
+        return new SimpleDialect("openGauss", "TEXT", "TIMESTAMPTZ");
+    }
+
+    static DatabaseDialect kingbase() {
+        return new SimpleDialect("kingbase", "TEXT", "TIMESTAMPTZ");
+    }
+
+    static DatabaseDialect dameng() {
+        return new SimpleDialect("dameng", "CLOB", "TIMESTAMP");
+    }
+
     static DatabaseDialect standard(String name, String textType, String timestampType) {
         return new SimpleDialect(name, textType, timestampType);
     }

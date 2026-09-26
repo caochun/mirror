@@ -1,6 +1,7 @@
 package org.openfoundry.foundation.conformance;
 
 import org.h2.jdbcx.JdbcDataSource;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.openfoundry.foundation.spi.EntityKey;
@@ -46,9 +47,13 @@ class StorageConformanceTest {
 
     @TestFactory
     Stream<DynamicTest> providersObeyCoreContract() {
-        return Stream.of(
+        Stream<ProviderCase> builtIns = Stream.of(
                 new ProviderCase("memory", InMemoryStorageProvider::new),
-                new ProviderCase("jdbc", StorageConformanceTest::jdbcProvider))
+                new ProviderCase("jdbc", StorageConformanceTest::jdbcProvider));
+        String pgUrl = System.getenv("PG_TEST_URL");
+        Stream<ProviderCase> external = pgUrl == null || pgUrl.isBlank() ? Stream.empty()
+                : Stream.of(new ProviderCase("postgresql", () -> postgresProvider(pgUrl)));
+        return Stream.concat(builtIns, external)
                 .flatMap(testCase -> Stream.of(
                         DynamicTest.dynamicTest(testCase.name + " object/link history", () -> history(testCase.provider.get())),
                         DynamicTest.dynamicTest(testCase.name + " rollback", () -> rollback(testCase.provider.get())),
@@ -117,6 +122,12 @@ class StorageConformanceTest {
         JdbcDataSource dataSource = new JdbcDataSource();
         dataSource.setURL("jdbc:h2:mem:conformance_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
         return new JdbcStorageProvider(dataSource, DatabaseDialect.h2());
+    }
+
+    private static StorageProvider postgresProvider(String url) {
+        PGSimpleDataSource dataSource = new PGSimpleDataSource();
+        dataSource.setURL(url);
+        return new JdbcStorageProvider(dataSource, DatabaseDialect.postgresql());
     }
 
     private record ProviderCase(String name, Supplier<StorageProvider> provider) {}

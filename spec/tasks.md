@@ -2,10 +2,10 @@
 
 ## 规约和工程基线
 
-- [ ] 评审并冻结 Foundation Constitution。
+- [x] 评审并冻结 Foundation Constitution（ADR-0003）。
 - [x] 确定 Java 版本、构建工具、代码风格和包命名。
 - [ ] 确定第一种国产数据库 Provider 和最小支持能力。
-- [ ] 建立 ADR 模板和变更审查流程。
+- [x] 建立 ADR 模板和变更审查流程。
 
 ## Schema 和 Pack
 
@@ -49,5 +49,5 @@
 - [x] 实现来源映射和字段血缘基础类型。
 - [x] 实现来源优先级、时间优先级和 Action 优先级冲突策略基础实现。
 - [x] 将 [conformance/README.md](conformance/README.md) 转为 JUnit 测试套件（内存/JDBC基线）。
-- [ ] 为 PostgreSQL 和国产数据库运行相同测试。
+- [x] 为 PostgreSQL 提供可选的相同测试入口（`PG_TEST_URL`）；国产数据库待现场验证。
 - [x] 完成 Person/Organization/Assignment 调动场景端到端测试（内存/JDBC Provider）。
