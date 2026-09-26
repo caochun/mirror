@@ -1,0 +1,3 @@
+[submodule "references/open-foundry"]
+	path = references/open-foundry
+	url = https://github.com/syzygyhack/open-foundry.git
