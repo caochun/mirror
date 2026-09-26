@@ -21,6 +21,7 @@
         <module>foundry-events</module>
         <module>foundry-security</module>
         <module>foundry-sync</module>
+        <module>foundry-conformance</module>
     </modules>
 
     <properties>

@@ -20,31 +20,52 @@ import java.util.UUID;
 /** Executes constrained Action effects in one Storage SPI transaction. */
 public final class ActionExecutor {
     private final ExpressionEvaluator evaluator;
+    private final IdempotencyStore idempotencyStore;
 
     public ActionExecutor() {
-        this(ExpressionEvaluator.simple());
+        this(ExpressionEvaluator.simple(), null);
     }
 
     public ActionExecutor(ExpressionEvaluator evaluator) {
+        this(evaluator, null);
+    }
+
+    public ActionExecutor(ExpressionEvaluator evaluator, IdempotencyStore idempotencyStore) {
         this.evaluator = evaluator;
+        this.idempotencyStore = idempotencyStore;
     }
 
     public ActionResult execute(ActionManifest manifest, RequestContext context,
                                 ActionActor actor, Map<String, Object> parameters,
                                 StorageProvider storage) {
-        return execute(manifest, null, context, actor, parameters, storage);
+        return execute(manifest, null, context, actor, parameters, null, storage);
     }
 
     public ActionResult execute(ActionManifest manifest, ActionTypeDefinition definition,
                                 RequestContext context, ActionActor actor,
                                 Map<String, Object> parameters, StorageProvider storage) {
+        return execute(manifest, definition, context, actor, parameters, null, storage);
+    }
+
+    public ActionResult execute(ActionManifest manifest, ActionTypeDefinition definition,
+                                RequestContext context, ActionActor actor,
+                                Map<String, Object> parameters, String idempotencyKey,
+                                StorageProvider storage) {
         String actionId = "act_" + UUID.randomUUID();
+        if (idempotencyKey != null && idempotencyStore != null) {
+            ActionResult previous = idempotencyStore.get(idempotencyKey);
+            if (previous != null) return previous;
+        }
         if (definition != null && !new ActionParameterValidator().validate(definition, parameters).isEmpty()) {
-            return new ActionResult(false, actionId, List.of());
+            ActionResult result = new ActionResult(false, actionId, List.of());
+            remember(idempotencyKey, result);
+            return result;
         }
         for (ActionManifest.Precondition precondition : manifest.preconditions()) {
             if (!evaluator.evaluate(precondition.expression(), parameters, actor)) {
-                return new ActionResult(false, actionId, List.of());
+                ActionResult result = new ActionResult(false, actionId, List.of());
+                remember(idempotencyKey, result);
+                return result;
             }
         }
 
@@ -83,7 +104,24 @@ public final class ActionExecutor {
                     manifest.action() + "/" + actionId, Instant.now(), transaction.transactionId(), detail));
             transaction.commit();
         }
-        return new ActionResult(true, actionId, affected);
+        ActionResult result = new ActionResult(true, actionId, affected);
+        remember(idempotencyKey, result);
+        return result;
+    }
+
+    public ActionBatchResult executeBatch(List<ActionInvocation> invocations,
+                                          RequestContext context, StorageProvider storage) {
+        List<ActionResult> results = new ArrayList<>();
+        for (ActionInvocation invocation : invocations) {
+            results.add(execute(invocation.manifest(), null, context, invocation.actor(),
+                    invocation.parameters(), invocation.idempotencyKey(), storage));
+        }
+        int succeeded = (int) results.stream().filter(ActionResult::success).count();
+        return new ActionBatchResult(results, succeeded, results.size() - succeeded);
+    }
+
+    private void remember(String key, ActionResult result) {
+        if (key != null && idempotencyStore != null) idempotencyStore.put(key, result);
     }
 
     private static long currentLinkVersion(StorageProvider storage, RequestContext context, ActionManifest.DeleteLink effect) {

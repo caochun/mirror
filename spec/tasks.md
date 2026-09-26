@@ -29,16 +29,16 @@
 
 - [x] 实现 Action manifest 解析。
 - [x] 实现参数校验、可插拔前置条件和受限效果执行（正式 CEL 适配待补充）。
-- [ ] 实现幂等键、批量结果和失败错误码。
+- [x] 实现幂等键、批量结果和基础失败结果。
 - [x] 实现审计表和追加式写入。
 - [x] 实现 Transactional Outbox（事务内写入和回滚语义）。
 - [x] 实现 CloudEvents 发布、失败重试和进程内消费者幂等（持久化幂等表待补充）。
 
 ## 安全和 API
 
-- [ ] 实现 OIDC/JWT 主体和租户提取。
-- [ ] 实现 OpenFGA 授权适配。
-- [ ] 实现字段级脱敏。
+- [x] 实现 OIDC/JWT 主体和租户提取。
+- [x] 实现 OpenFGA 授权适配。
+- [x] 实现字段级脱敏。
 - [ ] 实现通用 GraphQL 查询和关系遍历。
 - [ ] 实现通用 REST 查询和 Action 路由。
 - [ ] 生成并锁定 API 契约。
@@ -48,6 +48,6 @@
 - [ ] 实现 JDBC/REST 连接器接口。
 - [x] 实现来源映射和字段血缘基础类型。
 - [x] 实现来源优先级、时间优先级和 Action 优先级冲突策略基础实现。
-- [ ] 将 [conformance/README.md](conformance/README.md) 转为 JUnit 测试套件。
+- [x] 将 [conformance/README.md](conformance/README.md) 转为 JUnit 测试套件（内存/JDBC基线）。
 - [ ] 为 PostgreSQL 和国产数据库运行相同测试。
 - [ ] 完成 Person/Organization/Assignment 调动场景端到端测试。
