@@ -1,0 +1,350 @@
+extend schema @namespace(name: "gov.object-library", version: "0.1.0")
+
+type Person @objectType {
+  id: ID! @primary
+  name: String! @indexed
+  employeeNo: String @unique @indexed
+  status: String!
+  identityStatus: String!
+}
+
+type Organization @objectType {
+  id: ID! @primary
+  name: String! @indexed
+  organizationCode: String @unique @indexed
+  nature: String!
+  status: String!
+}
+
+type Position @objectType {
+  id: ID! @primary
+  name: String! @indexed
+  level: String
+  domain: String
+}
+
+type Assignment @objectType {
+  id: ID! @primary
+  title: String!
+  status: String!
+  startedAt: DateTime
+  endedAt: DateTime
+}
+
+type ExternalIdentity @objectType {
+  id: ID! @primary
+  sourceSystem: String! @indexed
+  sourceRecordId: String! @indexed
+  status: String!
+  observedAt: DateTime
+}
+
+type DataAssociationIssue @objectType {
+  id: ID! @primary
+  category: String! @indexed
+  field: String
+  reason: String!
+  status: String!
+  detectedAt: DateTime!
+  resolvedAt: DateTime
+}
+
+type ObjectEligibility @objectType {
+  id: ID! @primary
+  state: String! @indexed
+  reason: String
+  changedAt: DateTime!
+}
+
+type TagDefinition @objectType {
+  id: ID! @primary
+  code: String! @unique @indexed
+  name: String! @indexed
+  scope: String!
+  status: String!
+  level: Int!
+}
+
+type TagVersion @objectType {
+  id: ID! @primary
+  tagDefinitionId: String! @indexed
+  version: String!
+  status: String!
+  publishedAt: DateTime
+}
+
+type TagRule @objectType {
+  id: ID! @primary
+  tagDefinitionId: String! @indexed
+  ruleType: String!
+  expression: String!
+  status: String!
+  version: String!
+}
+
+type PersonTagAssignment @objectType {
+  id: ID! @primary
+  state: String! @indexed
+  source: String! @indexed
+  sourceReference: String
+  tagVersion: String!
+  effectiveFrom: DateTime!
+  effectiveTo: DateTime
+  manualSuppressed: Boolean!
+  note: String
+}
+
+type TagCandidate @objectType {
+  id: ID! @primary
+  state: String! @indexed
+  source: String!
+  reason: String!
+  createdAt: DateTime!
+  reviewedAt: DateTime
+}
+
+type TagProcessingIssue @objectType {
+  id: ID! @primary
+  category: String! @indexed
+  reason: String!
+  field: String
+  state: String!
+  detectedAt: DateTime!
+}
+
+type TagBatch @objectType {
+  id: ID! @primary
+  kind: String!
+  state: String! @indexed
+  startedAt: DateTime!
+  finishedAt: DateTime
+  successCount: Int!
+  failureCount: Int!
+}
+
+type Project @objectType {
+  id: ID! @primary
+  name: String! @indexed
+  phase: String!
+  status: String!
+}
+
+type RiskEvent @objectType {
+  id: ID! @primary
+  category: String! @indexed
+  severity: String!
+  occurredAt: DateTime!
+  state: String!
+  description: String
+}
+
+type ReminderContent @objectType {
+  id: ID! @primary
+  title: String!
+  category: String! @indexed
+  state: String! @indexed
+}
+
+type ContentVersion @objectType {
+  id: ID! @primary
+  contentId: String! @indexed
+  version: String!
+  title: String!
+  body: String!
+  state: String!
+  createdAt: DateTime!
+}
+
+type MediaAsset @objectType {
+  id: ID! @primary
+  mediaType: String!
+  storageKey: String!
+  state: String!
+  createdAt: DateTime!
+}
+
+type ReminderTask @objectType {
+  id: ID! @primary
+  state: String! @indexed
+  sendMode: String!
+  plannedAt: DateTime
+  readingWindow: String!
+  createdAt: DateTime!
+}
+
+type ReminderTaskVersion @objectType {
+  id: ID! @primary
+  taskId: String! @indexed
+  version: String!
+  state: String!
+  titleSnapshot: String!
+  bodySnapshot: String!
+  readingWindow: String!
+  publishedAt: DateTime
+}
+
+type RecipientRecord @objectType {
+  id: ID! @primary
+  taskVersionId: String! @indexed
+  personId: String! @indexed
+  state: String! @indexed
+  sentAt: DateTime
+  deadlineAt: DateTime
+}
+
+type DeliveryAttempt @objectType {
+  id: ID! @primary
+  recipientId: String! @indexed
+  state: String!
+  attemptedAt: DateTime!
+  errorCode: String
+}
+
+type DeliveryReceipt @objectType {
+  id: ID! @primary
+  recipientId: String! @indexed
+  state: String!
+  receivedAt: DateTime!
+  externalId: String
+}
+
+type ReadReceipt @objectType {
+  id: ID! @primary
+  recipientId: String! @indexed
+  taskVersionId: String! @indexed
+  readAt: DateTime!
+}
+
+type OverdueRecord @objectType {
+  id: ID! @primary
+  recipientId: String! @indexed
+  state: String!
+  createdAt: DateTime!
+  resolvedAt: DateTime
+}
+
+type WithdrawalRecord @objectType {
+  id: ID! @primary
+  recipientId: String! @indexed
+  state: String!
+  reason: String
+  requestedAt: DateTime!
+  completedAt: DateTime
+}
+
+type PersonBelongsToOrganization @linkType(from: "Person", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  startedAt: DateTime!
+  endedAt: DateTime
+}
+
+type PersonHoldsPosition @linkType(from: "Person", to: "Position", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  startedAt: DateTime!
+  endedAt: DateTime
+}
+
+type PersonHasAssignment @linkType(from: "Person", to: "Assignment", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  startedAt: DateTime!
+  endedAt: DateTime
+}
+
+type AssignmentInOrganization @linkType(from: "Assignment", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  startedAt: DateTime!
+  endedAt: DateTime
+}
+
+type AssignmentOnProject @linkType(from: "Assignment", to: "Project", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  role: String
+}
+
+type ExternalIdentityForPerson @linkType(from: "ExternalIdentity", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  linkedAt: DateTime!
+}
+
+type IssueForPerson @linkType(from: "DataAssociationIssue", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  linkedAt: DateTime!
+}
+
+type EligibilityForPerson @linkType(from: "ObjectEligibility", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  linkedAt: DateTime!
+}
+
+type PersonHasTag @linkType(from: "Person", to: "PersonTagAssignment", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  linkedAt: DateTime!
+}
+
+type TagAssignmentUsesDefinition @linkType(from: "PersonTagAssignment", to: "TagDefinition", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TagCandidateForPerson @linkType(from: "TagCandidate", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type IssueForTag @linkType(from: "TagProcessingIssue", to: "PersonTagAssignment", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type BatchAffectsTag @linkType(from: "TagBatch", to: "PersonTagAssignment", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ContentHasVersion @linkType(from: "ReminderContent", to: "ContentVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ContentSuggestsTag @linkType(from: "ReminderContent", to: "TagDefinition", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type VersionUsesMedia @linkType(from: "ContentVersion", to: "MediaAsset", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TaskHasVersion @linkType(from: "ReminderTask", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type VersionTargetsRecipient @linkType(from: "ReminderTaskVersion", to: "RecipientRecord", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RecipientHasDeliveryAttempt @linkType(from: "RecipientRecord", to: "DeliveryAttempt", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RecipientHasDeliveryReceipt @linkType(from: "RecipientRecord", to: "DeliveryReceipt", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RecipientHasReadReceipt @linkType(from: "RecipientRecord", to: "ReadReceipt", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RecipientHasOverdueRecord @linkType(from: "RecipientRecord", to: "OverdueRecord", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RecipientHasWithdrawal @linkType(from: "RecipientRecord", to: "WithdrawalRecord", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RiskInvolvesPerson @linkType(from: "RiskEvent", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  source: String
+}
+
+type TransferAssignment @actionType {
+  assignment: Assignment! @param
+  oldLinkId: String! @param
+  organization: Organization! @param
+  reason: String @param
+}

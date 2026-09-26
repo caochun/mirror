@@ -1,0 +1,8 @@
+name: government-object-library
+version: 0.1.0
+namespace: gov.object-library
+description: "政务系统对象库业务 Domain Pack"
+schema:
+  - schema/domain.odl
+actions:
+  - actions/transfer-assignment.yaml
