@@ -11,6 +11,7 @@
 
     <modules>
         <module>foundry</module>
+        <module>business-core</module>
         <module>business-verification</module>
     </modules>
 

@@ -27,8 +27,8 @@ class BusinessPackVerificationTest {
         if (!Files.exists(packPath)) packPath = Path.of("domain-pack").toAbsolutePath().normalize();
         LoadedDomainPack pack = new DomainPackLoader().load(packPath);
         assertEquals("government-object-library", pack.manifest().name());
-        assertEquals(27, pack.ontology().schema().objectTypes().size());
-        assertEquals(24, pack.ontology().schema().linkTypes().size());
+        assertEquals(28, pack.ontology().schema().objectTypes().size());
+        assertEquals(25, pack.ontology().schema().linkTypes().size());
 
         RequestContext context = RequestContext.system("tenant", "operator");
         InMemoryStorageProvider storage = new InMemoryStorageProvider();

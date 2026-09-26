@@ -8,22 +8,12 @@
         <artifactId>government-object-library-business</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
-    <artifactId>business-verification</artifactId>
-    <name>Government Object Library Business Verification</name>
+    <artifactId>business-core</artifactId>
+    <name>Government Object Library Business Core</name>
     <dependencies>
         <dependency>
-            <groupId>gov.object-library</groupId>
-            <artifactId>business-core</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
             <groupId>org.openfoundry</groupId>
-            <artifactId>foundry-pack</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openfoundry</groupId>
-            <artifactId>foundry-storage-memory</artifactId>
+            <artifactId>foundry-spi</artifactId>
             <version>0.1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
@@ -36,13 +26,11 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration><release>21</release></configuration>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
             </plugin>

@@ -56,6 +56,14 @@ type ObjectEligibility @objectType {
   changedAt: DateTime!
 }
 
+type UserAccount @objectType {
+  id: ID! @primary
+  username: String! @unique @indexed
+  state: String! @indexed
+  personId: String @indexed
+  changedAt: DateTime!
+}
+
 type TagDefinition @objectType {
   id: ID! @primary
   code: String! @unique @indexed
@@ -272,6 +280,11 @@ type IssueForPerson @linkType(from: "DataAssociationIssue", to: "Person", cardin
 }
 
 type EligibilityForPerson @linkType(from: "ObjectEligibility", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+  linkedAt: DateTime!
+}
+
+type AccountForPerson @linkType(from: "UserAccount", to: "Person", cardinality: MANY_TO_ONE) {
   id: ID! @primary
   linkedAt: DateTime!
 }
