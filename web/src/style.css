@@ -15,3 +15,9 @@
   .muted { @apply text-sm leading-6 text-slate-500; }
   .eyebrow { @apply text-xs font-semibold tracking-widest text-slate-500; }
 }
+
+@layer components {
+  .dashboard-shell .panel { @apply rounded-2xl border bg-slate-900/70 text-slate-100 shadow-none; }
+  .dashboard-shell .panel { min-width: 0; max-width: 100%; }
+  .dashboard-shell button { @apply transition-colors; }
+}

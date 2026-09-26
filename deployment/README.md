@@ -35,7 +35,7 @@ java -jar mirror-server/target/mirror-server-0.1.0-SNAPSHOT.jar \
 
 应用身份和功能权限表通过Flyway的 `db/migration/` 版本脚本管理。Foundry负责自身对象/关系/历史表初始化；当前Domain Pack载入不等同于已经实现完整在线业务Schema升级流程。
 
-前端 `npm --prefix web run build` 生成 `web/dist`，包含管理端 `index.html` 和独立的 `receiver.html` 构建入口。`scripts/build-and-run.sh` 会先构建前端，再将 `web/dist` 复制进 Spring Boot JAR，由同一个后端HTTP服务提供 `/` 管理端和 `/r/**` 接收端入口；不再需要单独启动 Vite 才能访问应用。当前H5明确显示未接通，不产生阅读回执。
+前端 `npm --prefix web run build` 生成 `web/dist`，包含管理端 `index.html`、核心价值大屏 `dashboard.html` 和独立的 `receiver.html` 构建入口。`scripts/build-and-run.sh` 会先构建前端，再将 `web/dist` 复制进 Spring Boot JAR，由同一个后端HTTP服务提供 `/` 管理端、`/dashboard` 大屏和 `/r/**` 接收端入口；不再需要单独启动 Vite 才能访问应用。当前H5明确显示未接通，不产生阅读回执。
 
 `openfga-model.fga` 仍为早期参考，当前应用未接入OpenFGA，不能把部署该文件视为已经启用授权。实际目录权限由Mirror服务端的账号、租户和组织关系校验执行。鹿路通及AI正式配置也待相应里程碑接入，不保留看似启用但没有消费者的配置项。
 

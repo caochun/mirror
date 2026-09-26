@@ -9,6 +9,9 @@ class SpaController {
     @GetMapping({"/", "/workbench", "/people", "/people/{id}", "/tags"})
     String admin() { return "forward:/index.html"; }
 
+    @GetMapping("/dashboard")
+    String dashboard() { return "forward:/dashboard.html"; }
+
     @GetMapping("/r/**")
     String receiver() { return "forward:/receiver.html"; }
 }

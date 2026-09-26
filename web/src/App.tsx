@@ -2,10 +2,11 @@ import { useEffect, useState, createContext, useContext } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, Link } from 'react-router-dom';
 import { api, ApiError } from './api';
-import type { Actor, Page, Person } from './api';
-import { ErrorBox, Heading } from './ui';
+import type { Actor } from './api';
+import { ErrorBox } from './ui';
 import { People, PersonDetail } from './People';
 import { TagDirectory } from './Tags';
+import { Dashboard } from './CoreDashboard';
 
 const Session = createContext<{ actor: Actor; logout: () => void } | null>(null);
 const roleNames: Record<string, string> = { SUPER_ADMIN: '超级管理员', UNIT_ADMIN: '单位管理员', AREA_ADMIN: '片区管理员', REVIEWER: '推送审核员' };
@@ -81,12 +82,5 @@ function Menu({ to, children }: { to: string; children: ReactNode }) {
   return <NavLink to={to} className={({ isActive }) => `block rounded-lg px-4 py-3 text-sm ${isActive ? 'bg-blue-50 font-semibold text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>{children}</NavLink>;
 }
 function Workbench() {
-  const { actor } = useSession(); const [count, setCount] = useState<number | null>(null); const [error, setError] = useState('');
-  useEffect(() => { if (actor.role !== 'REVIEWER') api<Page<Person>>('/people?size=1').then(p => setCount(p.total)).catch(e => setError(e.message)); }, [actor]);
-  return <><Heading title="工作台" subtitle="从当前管理范围出发，核对人员信息与业务依据。" />
-    <section className="panel overflow-hidden"><div className="border-b border-slate-100 p-7"><p className="eyebrow">当前工作空间</p><h2 className="mt-3 text-xl font-medium">{actor.displayName}，欢迎回来</h2><p className="muted mt-2">当前职责：{roleNames[actor.role]}。</p></div>
-      {actor.role === 'REVIEWER' ? <p className="muted p-7">审核工作台正在建设中。审核员账号不开放人员库浏览。</p> : <div className="flex flex-wrap items-center justify-between gap-6 p-7"><div><p className="text-sm text-slate-500">当前范围内有效人员</p><p className="mt-2 text-4xl font-semibold tabular-nums">{count ?? '—'}</p></div><Link className="primary" to="/people">查看人员档案 →</Link></div>}
-    </section>{error && <div className="mt-5"><ErrorBox message={error} /></div>}
-    <section className="mt-6 grid gap-5 lg:grid-cols-2"><div className="panel p-6"><h2 className="font-medium">人员与组织</h2><p className="muted mt-3">查看当前单位、人员状态与档案变更记录。基础信息异常应回到权威来源核实。</p></div><div className="panel p-6"><h2 className="font-medium">本阶段交付范围</h2><p className="muted mt-3">已接通人员目录、标签配置及人工赋标。自动规则、提醒审核和阅读闭环将在后续阶段接入。</p></div></section>
-  </>;
+  return <Dashboard />;
 }
