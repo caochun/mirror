@@ -22,7 +22,9 @@ class SecurityConfiguration {
     @Bean HttpSessionSecurityContextRepository contexts() { return new HttpSessionSecurityContextRepository(); }
     @Bean SecurityFilterChain security(HttpSecurity http, HttpSessionSecurityContextRepository contexts) throws Exception {
         return http.securityContext(c -> c.securityContextRepository(contexts))
-                .authorizeHttpRequests(a -> a.requestMatchers("/api/health", "/api/auth/csrf", "/api/auth/login").permitAll()
+                .authorizeHttpRequests(a -> a.requestMatchers("/", "/index.html", "/receiver.html", "/assets/**", "/favicon.ico",
+                                "/workbench", "/people", "/people/**", "/tags", "/r/**",
+                                "/api/health", "/api/auth/csrf", "/api/auth/login").permitAll()
                         .requestMatchers("/api/**").authenticated().anyRequest().denyAll())
                 .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
                     res.setStatus(401); res.setContentType("application/json;charset=UTF-8");

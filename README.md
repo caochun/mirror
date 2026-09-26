@@ -46,13 +46,15 @@ export MIRROR_DEMO=true
 java -jar mirror-server/target/mirror-server-0.1.0-SNAPSHOT.jar
 ```
 
-另一个终端启动前端：
+开发阶段也可以让后端直接提供前端：
 
 ```bash
-npm --prefix web run dev
+./scripts/build-and-run.sh
 ```
 
-访问终端输出的本地地址（默认 `http://127.0.0.1:5173`）。账号为 `admin`；演示模式另外提供 `unit`、`area`、`reviewer`，初始密码均取上述环境变量。后端默认 `127.0.0.1:8080`，前端通过同源代理调用 API。修改后端端口时相应设置 `MIRROR_API_TARGET`。
+访问 `http://127.0.0.1:8080/`。账号为 `admin`；演示模式另外提供 `unit`、`area`、`reviewer`，初始密码均取上述环境变量。管理端和未来接收端现在都由后端同源提供；修改后端端口时设置 `MIRROR_PORT`。
+
+如果只开发前端交互，仍可单独运行 `npm --prefix web run dev`，它只用于前端热更新，不是完整应用的启动方式。
 
 默认开发数据库为 `.runtime/mirror.mv.db`（H2文件数据库）；人员、历史、账号授权跨重启保存，会话重启后需重新登录。该环境不代表国产库兼容或生产验收。生产参数与验证边界见 [deployment/README.md](deployment/README.md)。
 
