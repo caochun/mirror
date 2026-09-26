@@ -1,10 +1,12 @@
 package org.openfoundry.foundation.storage.memory;
 
+import org.openfoundry.foundation.spi.AuditEntry;
 import org.openfoundry.foundation.spi.EntityKey;
 import org.openfoundry.foundation.spi.EntityOperation;
 import org.openfoundry.foundation.spi.HistorySnapshot;
 import org.openfoundry.foundation.spi.LinkRecord;
 import org.openfoundry.foundation.spi.ObjectRecord;
+import org.openfoundry.foundation.spi.OutboxEntry;
 import org.openfoundry.foundation.spi.QueryOptions;
 import org.openfoundry.foundation.spi.RequestContext;
 import org.openfoundry.foundation.spi.StorageCapabilities;
@@ -164,6 +166,18 @@ public final class InMemoryStorageProvider implements StorageProvider {
         return findHistory(context, key);
     }
 
+    public List<AuditEntry> auditEntries(RequestContext context) {
+        synchronized (monitor) {
+            return state.audits.stream().filter(entry -> entry.tenantId().equals(context.tenantId())).toList();
+        }
+    }
+
+    public List<OutboxEntry> outboxEntries(RequestContext context) {
+        synchronized (monitor) {
+            return state.outbox.stream().filter(entry -> entry.tenantId().equals(context.tenantId())).toList();
+        }
+    }
+
     @Override
     public Transaction beginTransaction(RequestContext context) {
         Objects.requireNonNull(context, "context must not be null");
@@ -251,6 +265,11 @@ public final class InMemoryStorageProvider implements StorageProvider {
             this.context = context;
             this.baseRevision = baseRevision;
             this.working = working;
+        }
+
+        @Override
+        public String transactionId() {
+            return transactionId;
         }
 
         @Override
@@ -362,6 +381,26 @@ public final class InMemoryStorageProvider implements StorageProvider {
         }
 
         @Override
+        public void appendAudit(AuditEntry audit) {
+            assertOpen();
+            if (!audit.tenantId().equals(context.tenantId())) throw new IllegalArgumentException("audit tenant mismatch");
+            if (working.audits.stream().anyMatch(existing -> existing.id().equals(audit.id()))) {
+                throw new IllegalArgumentException("duplicate audit id: " + audit.id());
+            }
+            working.audits.add(audit);
+        }
+
+        @Override
+        public void enqueueOutbox(OutboxEntry event) {
+            assertOpen();
+            if (!event.tenantId().equals(context.tenantId())) throw new IllegalArgumentException("event tenant mismatch");
+            if (working.outbox.stream().anyMatch(existing -> existing.id().equals(event.id()))) {
+                throw new IllegalArgumentException("duplicate outbox id: " + event.id());
+            }
+            working.outbox.add(event);
+        }
+
+        @Override
         public void commit() {
             assertOpen();
             synchronized (monitor) {
@@ -461,22 +500,28 @@ public final class InMemoryStorageProvider implements StorageProvider {
         private final Map<String, ObjectRecord> objects;
         private final Map<String, LinkRecord> links;
         private final Map<String, List<HistorySnapshot>> history;
+        private final List<AuditEntry> audits;
+        private final List<OutboxEntry> outbox;
 
         private State() {
-            this(new HashMap<>(), new HashMap<>(), new HashMap<>());
+            this(new HashMap<>(), new HashMap<>(), new HashMap<>(), new ArrayList<>(), new ArrayList<>());
         }
 
         private State(Map<String, ObjectRecord> objects, Map<String, LinkRecord> links,
-                      Map<String, List<HistorySnapshot>> history) {
+                      Map<String, List<HistorySnapshot>> history, List<AuditEntry> audits,
+                      List<OutboxEntry> outbox) {
             this.objects = objects;
             this.links = links;
             this.history = history;
+            this.audits = audits;
+            this.outbox = outbox;
         }
 
         private State copy() {
             Map<String, List<HistorySnapshot>> copiedHistory = new HashMap<>();
             history.forEach((key, value) -> copiedHistory.put(key, new ArrayList<>(value)));
-            return new State(new HashMap<>(objects), new HashMap<>(links), copiedHistory);
+            return new State(new HashMap<>(objects), new HashMap<>(links), copiedHistory,
+                    new ArrayList<>(audits), new ArrayList<>(outbox));
         }
     }
 }

@@ -51,5 +51,7 @@ class ActionRuntimeTest {
 
         assertTrue(result.success());
         assertEquals("PROMOTED", storage.getObject(context, "Person", "p-1").properties().get("status"));
+        assertEquals(1, storage.auditEntries(context).size());
+        assertEquals("openfoundry.action.completed", storage.outboxEntries(context).getFirst().type());
     }
 }

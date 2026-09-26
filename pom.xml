@@ -19,6 +19,8 @@
         <module>foundry-storage-memory</module>
         <module>foundry-storage-jdbc</module>
         <module>foundry-events</module>
+        <module>foundry-security</module>
+        <module>foundry-sync</module>
     </modules>
 
     <properties>

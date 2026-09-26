@@ -93,10 +93,35 @@ public interface DatabaseDialect {
                 );
                 CREATE INDEX IF NOT EXISTS idx_of_link_history_time
                   ON of_link_history (tenant_id, link_type, link_id, valid_from, recorded_at);
+                CREATE TABLE IF NOT EXISTS of_audit_records (
+                  id VARCHAR(255) PRIMARY KEY,
+                  tenant_id VARCHAR(255) NOT NULL,
+                  timestamp_value %s NOT NULL,
+                  actor_id VARCHAR(255),
+                  operation_type VARCHAR(64) NOT NULL,
+                  object_type VARCHAR(255), object_id VARCHAR(512), action_type VARCHAR(255),
+                  transaction_id VARCHAR(255), result VARCHAR(32) NOT NULL,
+                  detail_json %s NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_of_audit_object
+                  ON of_audit_records (tenant_id, object_type, object_id, timestamp_value);
+                CREATE TABLE IF NOT EXISTS of_outbox_events (
+                  id VARCHAR(255) PRIMARY KEY,
+                  tenant_id VARCHAR(255) NOT NULL,
+                  type VARCHAR(255) NOT NULL,
+                  subject VARCHAR(512),
+                  occurred_at %s NOT NULL,
+                  transaction_id VARCHAR(255),
+                  data_json %s NOT NULL,
+                  published_at %s NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_of_outbox_pending
+                  ON of_outbox_events (tenant_id, published_at, occurred_at);
                 """.formatted(timestamp, timestamp, timestamp, text,
                         timestamp, timestamp, timestamp, text,
                         timestamp, timestamp, timestamp, timestamp, timestamp, text,
-                        timestamp, timestamp, timestamp, text);
+                        timestamp, timestamp, timestamp, text,
+                        timestamp, text, timestamp, text, timestamp);
     }
 
     static DatabaseDialect h2() {

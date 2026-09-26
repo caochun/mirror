@@ -1,11 +1,14 @@
 package org.openfoundry.foundation.actions;
 
 import org.openfoundry.foundation.spi.EntityKey;
+import org.openfoundry.foundation.spi.AuditEntry;
 import org.openfoundry.foundation.spi.LinkRecord;
 import org.openfoundry.foundation.spi.ObjectRecord;
+import org.openfoundry.foundation.spi.OutboxEntry;
 import org.openfoundry.foundation.spi.RequestContext;
 import org.openfoundry.foundation.spi.StorageProvider;
 import org.openfoundry.foundation.spi.Transaction;
+import org.openfoundry.foundation.spi.schema.ActionTypeDefinition;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,7 +32,16 @@ public final class ActionExecutor {
     public ActionResult execute(ActionManifest manifest, RequestContext context,
                                 ActionActor actor, Map<String, Object> parameters,
                                 StorageProvider storage) {
+        return execute(manifest, null, context, actor, parameters, storage);
+    }
+
+    public ActionResult execute(ActionManifest manifest, ActionTypeDefinition definition,
+                                RequestContext context, ActionActor actor,
+                                Map<String, Object> parameters, StorageProvider storage) {
         String actionId = "act_" + UUID.randomUUID();
+        if (definition != null && !new ActionParameterValidator().validate(definition, parameters).isEmpty()) {
+            return new ActionResult(false, actionId, List.of());
+        }
         for (ActionManifest.Precondition precondition : manifest.preconditions()) {
             if (!evaluator.evaluate(precondition.expression(), parameters, actor)) {
                 return new ActionResult(false, actionId, List.of());
@@ -59,6 +71,16 @@ public final class ActionExecutor {
                     affected.add(new EntityKey(delete.linkType(), delete.linkId()));
                 }
             }
+            Map<String, Object> detail = Map.of(
+                    "action", manifest.action(),
+                    "affected", affected.stream().map(key -> key.type() + "/" + key.id()).toList());
+            transaction.appendAudit(new AuditEntry(
+                    "audit_" + actionId, Instant.now(), context.tenantId(), actor.id(),
+                    "action", null, null, manifest.action(), transaction.transactionId(),
+                    "success", detail));
+            transaction.enqueueOutbox(new OutboxEntry(
+                    "event_" + actionId, context.tenantId(), "openfoundry.action.completed",
+                    manifest.action() + "/" + actionId, Instant.now(), transaction.transactionId(), detail));
             transaction.commit();
         }
         return new ActionResult(true, actionId, affected);

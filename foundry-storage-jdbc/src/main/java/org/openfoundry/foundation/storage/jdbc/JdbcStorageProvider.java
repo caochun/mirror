@@ -3,11 +3,13 @@ package org.openfoundry.foundation.storage.jdbc;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.openfoundry.foundation.spi.AuditEntry;
 import org.openfoundry.foundation.spi.EntityKey;
 import org.openfoundry.foundation.spi.EntityOperation;
 import org.openfoundry.foundation.spi.HistorySnapshot;
 import org.openfoundry.foundation.spi.LinkRecord;
 import org.openfoundry.foundation.spi.ObjectRecord;
+import org.openfoundry.foundation.spi.OutboxEntry;
 import org.openfoundry.foundation.spi.QueryOptions;
 import org.openfoundry.foundation.spi.RequestContext;
 import org.openfoundry.foundation.spi.StorageCapabilities;
@@ -420,6 +422,11 @@ public final class JdbcStorageProvider implements StorageProvider, AutoCloseable
         }
 
         @Override
+        public String transactionId() {
+            return transactionId;
+        }
+
+        @Override
         public ObjectRecord createObject(String type, String id, Map<String, Object> properties) {
             assertOpen();
             requireObjectType(type);
@@ -523,6 +530,31 @@ public final class JdbcStorageProvider implements StorageProvider, AutoCloseable
                 insertLinkHistory(type, id, existing.from(), existing.to(), version, EntityOperation.DELETED,
                         existing.validFrom(), now, now, existing.properties());
             } catch (SQLException exception) { throw sqlError("delete link", exception); }
+        }
+
+        @Override
+        public void appendAudit(AuditEntry audit) {
+            assertOpen();
+            if (!audit.tenantId().equals(context.tenantId())) throw new IllegalArgumentException("audit tenant mismatch");
+            String sql = "INSERT INTO of_audit_records (id, tenant_id, timestamp_value, actor_id, operation_type, object_type, object_id, action_type, transaction_id, result, detail_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, audit.id()); statement.setString(2, audit.tenantId()); statement.setTimestamp(3, timestamp(audit.timestamp()));
+                statement.setString(4, audit.actorId()); statement.setString(5, audit.operationType()); statement.setString(6, audit.objectType());
+                statement.setString(7, audit.objectId()); statement.setString(8, audit.actionType()); statement.setString(9, audit.transactionId());
+                statement.setString(10, audit.result()); statement.setString(11, json(audit.detail())); statement.executeUpdate();
+            } catch (SQLException exception) { throw sqlError("append transactional audit", exception); }
+        }
+
+        @Override
+        public void enqueueOutbox(OutboxEntry event) {
+            assertOpen();
+            if (!event.tenantId().equals(context.tenantId())) throw new IllegalArgumentException("event tenant mismatch");
+            String sql = "INSERT INTO of_outbox_events (id, tenant_id, type, subject, occurred_at, transaction_id, data_json, published_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)";
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, event.id()); statement.setString(2, event.tenantId()); statement.setString(3, event.type());
+                statement.setString(4, event.subject()); statement.setTimestamp(5, timestamp(event.occurredAt()));
+                statement.setString(6, event.transactionId()); statement.setString(7, json(event.data())); statement.executeUpdate();
+            } catch (SQLException exception) { throw sqlError("enqueue transactional outbox event", exception); }
         }
 
         @Override

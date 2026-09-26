@@ -4,6 +4,8 @@ import java.util.Map;
 
 /** Transaction boundary for object and relationship changes. */
 public interface Transaction extends AutoCloseable {
+    String transactionId();
+
     ObjectRecord createObject(String type, String id, Map<String, Object> properties);
 
     ObjectRecord updateObject(String type, String id, Map<String, Object> properties,
@@ -18,6 +20,10 @@ public interface Transaction extends AutoCloseable {
                           long expectedVersion);
 
     void deleteLink(String type, String id, long expectedVersion);
+
+    void appendAudit(AuditEntry audit);
+
+    void enqueueOutbox(OutboxEntry event);
 
     void commit();
 

@@ -18,6 +18,7 @@ import org.openfoundry.foundation.spi.schema.OntologySchema;
 import org.openfoundry.foundation.spi.schema.PropertyDefinition;
 
 import java.time.Instant;
+import java.sql.ResultSet;
 import java.util.List;
 import java.util.Map;
 
@@ -28,13 +29,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class JdbcStorageProviderTest {
     private static final RequestContext CONTEXT = RequestContext.system("tenant-a", "tester");
     private JdbcStorageProvider storage;
+    private JdbcDataSource dataSource;
     private final EntityKey person = new EntityKey("Person", "p-1");
     private final EntityKey orgA = new EntityKey("Organization", "org-a");
     private final EntityKey orgB = new EntityKey("Organization", "org-b");
 
     @BeforeEach
     void setUp() {
-        JdbcDataSource dataSource = new JdbcDataSource();
+        dataSource = new JdbcDataSource();
         dataSource.setURL("jdbc:h2:mem:foundry_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
         storage = new JdbcStorageProvider(dataSource, DatabaseDialect.h2());
         PropertyDefinition id = new PropertyDefinition("id", "ID", true, true, true, true, false, true);
@@ -112,5 +114,29 @@ class JdbcStorageProviderTest {
                 List.of(new TraversalStep("BelongsTo", StorageProvider.Direction.OUTBOUND)),
                 beforeTransfer, Instant.now(), QueryOptions.defaults());
         assertEquals(List.of(orgA), result.nodes());
+    }
+
+    @Test
+    void auditAndOutboxShareTheObjectTransaction() throws Exception {
+        try (Transaction transaction = storage.beginTransaction(CONTEXT)) {
+            transaction.createObject("Person", person.id(), Map.of());
+            transaction.appendAudit(new org.openfoundry.foundation.spi.AuditEntry(
+                    "audit-tx", Instant.now(), "tenant-a", "tester", "create",
+                    "Person", person.id(), null, transaction.transactionId(), "success", Map.of()));
+            transaction.enqueueOutbox(new org.openfoundry.foundation.spi.OutboxEntry(
+                    "event-tx", "tenant-a", "openfoundry.object.created", "Person/p-1",
+                    Instant.now(), transaction.transactionId(), Map.of("id", person.id())));
+            transaction.commit();
+        }
+        try (var connection = dataSource.getConnection(); var statement = connection.createStatement()) {
+            try (ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM of_audit_records")) {
+                result.next();
+                assertEquals(1, result.getInt(1));
+            }
+            try (ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM of_outbox_events")) {
+                result.next();
+                assertEquals(1, result.getInt(1));
+            }
+        }
     }
 }
