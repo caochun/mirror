@@ -26,6 +26,7 @@ public class DirectoryService {
         }
     }
     public Set<String> scope(Accounts.Actor actor) {
+        accounts.requirePermission(actor, "PERSON_READ");
         var roots=switch(actor.role()) {
             case "SUPER_ADMIN" -> all(actor,"Organization").stream().map(ObjectRecord::id).toList();
             case "UNIT_ADMIN" -> List.of(actor.organizationId());

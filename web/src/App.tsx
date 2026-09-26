@@ -5,6 +5,7 @@ import { api, ApiError } from './api';
 import type { Actor, Page, Person } from './api';
 import { ErrorBox, Heading } from './ui';
 import { People, PersonDetail } from './People';
+import { TagDirectory } from './Tags';
 
 const Session = createContext<{ actor: Actor; logout: () => void } | null>(null);
 const roleNames: Record<string, string> = { SUPER_ADMIN: '超级管理员', UNIT_ADMIN: '单位管理员', AREA_ADMIN: '片区管理员', REVIEWER: '推送审核员' };
@@ -29,6 +30,7 @@ export function App() {
     <Route path="/workbench" element={<Workbench />} />
     <Route path="/people" element={<People />} />
     <Route path="/people/:id" element={<PersonDetail />} />
+    <Route path="/tags" element={<TagDirectory />} />
     <Route path="*" element={<Navigate to="/workbench" replace />} />
   </Routes></Shell></Session.Provider>;
 }
@@ -62,7 +64,7 @@ function Shell({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen">
     <aside className="hidden w-56 shrink-0 border-r border-slate-200 bg-white md:block">
       <div className="flex h-20 items-center gap-3 px-6"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-700 text-lg text-white">镜</span><div className="font-semibold">明镜<span className="ml-2 text-xs tracking-wider text-slate-400">MIRROR</span></div></div>
-      <p className="eyebrow px-6 py-6">业务工作空间</p><nav className="space-y-2 px-3"><Menu to="/workbench">工作台</Menu>{actor.role !== 'REVIEWER' && <Menu to="/people">人员与组织</Menu>}</nav>
+      <p className="eyebrow px-6 py-6">业务工作空间</p><nav className="space-y-2 px-3"><Menu to="/workbench">工作台</Menu>{actor.role !== 'REVIEWER' && <><Menu to="/people">人员与组织</Menu><Menu to="/tags">标签目录</Menu></>}</nav>
       <div className="mx-5 mt-14 border-t border-slate-100 pt-5 text-xs leading-6 text-slate-400">对象信息 · 业务留痕<br />按当前授权范围展示</div>
     </aside>
     <div className="min-w-0 flex-1">
@@ -70,7 +72,7 @@ function Shell({ children }: { children: ReactNode }) {
         <div><p className="text-sm font-semibold">政务系统对象库</p><p className="mt-1 text-xs text-slate-500">{actor.role === 'SUPER_ADMIN' ? '全市数据范围' : actor.role === 'UNIT_ADMIN' ? '本单位及全部下级单位' : actor.role === 'AREA_ADMIN' ? '授权组织及下级单位' : '本单位审核职责'}</p></div>
         <div className="flex items-center gap-4"><div className="text-right"><p className="text-sm">{actor.displayName}</p><p className="text-xs text-slate-400">{roleNames[actor.role]}</p></div><button className="secondary" onClick={logout}>退出</button></div>
       </header>
-      <nav className="flex gap-4 px-5 py-3 text-sm md:hidden"><Link to="/workbench">工作台</Link>{actor.role !== 'REVIEWER' && <Link to="/people">人员与组织</Link>}</nav>
+      <nav className="flex gap-4 px-5 py-3 text-sm md:hidden"><Link to="/workbench">工作台</Link>{actor.role !== 'REVIEWER' && <><Link to="/people">人员与组织</Link><Link to="/tags">标签目录</Link></>}</nav>
       <main className="mx-auto max-w-[1600px] p-5 lg:p-9">{children}</main>
     </div>
   </div>;
@@ -85,6 +87,6 @@ function Workbench() {
     <section className="panel overflow-hidden"><div className="border-b border-slate-100 p-7"><p className="eyebrow">当前工作空间</p><h2 className="mt-3 text-xl font-medium">{actor.displayName}，欢迎回来</h2><p className="muted mt-2">当前职责：{roleNames[actor.role]}。</p></div>
       {actor.role === 'REVIEWER' ? <p className="muted p-7">审核工作台正在建设中。审核员账号不开放人员库浏览。</p> : <div className="flex flex-wrap items-center justify-between gap-6 p-7"><div><p className="text-sm text-slate-500">当前范围内有效人员</p><p className="mt-2 text-4xl font-semibold tabular-nums">{count ?? '—'}</p></div><Link className="primary" to="/people">查看人员档案 →</Link></div>}
     </section>{error && <div className="mt-5"><ErrorBox message={error} /></div>}
-    <section className="mt-6 grid gap-5 lg:grid-cols-2"><div className="panel p-6"><h2 className="font-medium">人员与组织</h2><p className="muted mt-3">查看当前单位、人员状态与档案变更记录。基础信息异常应回到权威来源核实。</p></div><div className="panel p-6"><h2 className="font-medium">本阶段交付范围</h2><p className="muted mt-3">已接通账号登录和人员目录。标签工作、提醒审核及阅读闭环将在后续阶段接入。</p></div></section>
+    <section className="mt-6 grid gap-5 lg:grid-cols-2"><div className="panel p-6"><h2 className="font-medium">人员与组织</h2><p className="muted mt-3">查看当前单位、人员状态与档案变更记录。基础信息异常应回到权威来源核实。</p></div><div className="panel p-6"><h2 className="font-medium">本阶段交付范围</h2><p className="muted mt-3">已接通人员目录、标签配置及人工赋标。自动规则、提醒审核和阅读闭环将在后续阶段接入。</p></div></section>
   </>;
 }

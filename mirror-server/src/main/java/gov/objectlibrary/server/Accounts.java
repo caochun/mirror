@@ -31,6 +31,13 @@ public class Accounts implements UserDetailsService {
     public List<String> roots(String username) {
         return jdbc.queryForList("SELECT organization_id FROM mirror_scope_roots WHERE username = ?", String.class, username);
     }
+    public List<String> permissions(Actor actor) {
+        return jdbc.queryForList("SELECT permission_name FROM mirror_role_permissions WHERE role_name = ? ORDER BY permission_name",
+                String.class, actor.role());
+    }
+    public void requirePermission(Actor actor, String permission) {
+        if (!permissions(actor).contains(permission)) throw new AccessDeniedException("Missing functional permission");
+    }
     public record Actor(String username, String displayName, String tenantId, String organizationId, String role) {
         public RequestContext context() { return RequestContext.system(tenantId, username); }
     }

@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestControllerAdvice
 class ApiErrors {
+    @ExceptionHandler(BusinessConflict.class) @ResponseStatus(HttpStatus.CONFLICT)
+    Map<String, String> conflict(BusinessConflict exception) { return Map.of("message", exception.getMessage()); }
     @ExceptionHandler(AuthenticationException.class) @ResponseStatus(HttpStatus.UNAUTHORIZED)
     Map<String, String> authentication() { return Map.of("message", "账号或密码错误"); }
     @ExceptionHandler(AccessDeniedException.class) @ResponseStatus(HttpStatus.FORBIDDEN)

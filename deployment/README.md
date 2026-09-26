@@ -1,6 +1,6 @@
 # 应用启动与部署边界
 
-目前可运行的是M1阶段的应用骨架和人员目录：Spring Boot后端、数据库账号/会话、组织授权、React + Tailwind页面。标签、任务审核、鹿路通和正式H5仍未接通，不能作为完整生产系统部署。
+目前可运行的是应用骨架、人员目录、标签配置与人工赋标：Spring Boot后端、数据库账号/会话、组织和功能授权、React + Tailwind页面。自动规则、AI复核、任务审核、鹿路通和正式H5仍未接通，不能作为完整生产系统部署。
 
 ## 本地运行
 
@@ -33,7 +33,7 @@ java -jar mirror-server/target/mirror-server-0.1.0-SNAPSHOT.jar \
 
 ## 迁移与静态资源
 
-应用身份表通过Flyway的 `db/migration/V1__application_identity.sql` 管理。Foundry负责自身对象/关系/历史表初始化；当前Domain Pack载入不等同于已经实现完整在线业务Schema升级流程。
+应用身份和功能权限表通过Flyway的 `db/migration/` 版本脚本管理。Foundry负责自身对象/关系/历史表初始化；当前Domain Pack载入不等同于已经实现完整在线业务Schema升级流程。
 
 前端 `npm --prefix web run build` 生成 `web/dist`，包含管理端 `index.html` 和独立的 `receiver.html` 构建入口。开发使用Vite同源代理；正式发布需静态服务器和HTTPS反向代理，管理入口与未来H5外网路由应按权限隔离。当前H5明确显示未接通，不产生阅读回执。
 

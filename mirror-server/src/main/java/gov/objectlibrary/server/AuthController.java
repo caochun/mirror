@@ -39,6 +39,9 @@ class AuthController {
         return accounts.actor(auth.getName());
     }
     @GetMapping("/auth/me") Accounts.Actor me(Principal principal) { return accounts.actor(principal.getName()); }
+    @GetMapping("/auth/permissions") java.util.List<String> permissions(Principal principal) {
+        return accounts.permissions(accounts.actor(principal.getName()));
+    }
     record Login(@NotBlank @Size(max=100) String username, @NotBlank @Size(max=128) String password) {
         @Override public String toString() { return "Login[credentials=REDACTED]"; }
     }

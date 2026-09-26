@@ -5,6 +5,7 @@ import { api } from './api';
 import type { Organization, Page, Person, Detail } from './api';
 import { useSession } from './App';
 import { ErrorBox, Heading, Field } from './ui';
+import { PersonTags } from './Tags';
 
 export function People() {
   const { actor } = useSession(); const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -71,6 +72,7 @@ export function PersonDetail() {
       </section><section className="panel p-6"><h2 className="mb-6 font-semibold">档案变更记录</h2>
         <ol className="space-y-6">{data.history.map(h => <li key={h.version} className="border-l-2 border-blue-100 pl-5"><p className="text-sm font-medium">{h.operation === 'CREATED' ? '建立档案' : '档案变更'} <span className="text-xs text-slate-400">版本 {h.version}</span></p><p className="mt-2 text-sm text-slate-500">{h.name} · {h.status === 'ACTIVE' ? '有效' : h.status}</p><p className="mt-2 text-xs text-slate-400">记录于 {new Date(h.recordedAt).toLocaleString('zh-CN')}</p></li>)}</ol>
       </section></div>
+      <PersonTags personId={data.person.id} active={data.person.status === 'ACTIVE'} />
     </>}
   </>;
 }

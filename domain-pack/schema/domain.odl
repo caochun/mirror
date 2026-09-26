@@ -71,6 +71,10 @@ type TagDefinition @objectType {
   scope: String!
   status: String!
   level: Int!
+  parentId: String @indexed
+  dimension: String!
+  description: String
+  currentVersionId: String
 }
 
 type TagVersion @objectType {
@@ -79,6 +83,8 @@ type TagVersion @objectType {
   version: String!
   status: String!
   publishedAt: DateTime
+  nameSnapshot: String
+  descriptionSnapshot: String
 }
 
 type TagRule @objectType {
@@ -100,6 +106,25 @@ type PersonTagAssignment @objectType {
   effectiveTo: DateTime
   manualSuppressed: Boolean!
   note: String
+  personId: String @indexed
+  tagDefinitionId: String @indexed
+  tagNameSnapshot: String
+  operatorId: String
+  sourceOrganizationId: String
+  operatorOrganizationId: String
+}
+
+type BusinessCommandReceipt @objectType {
+  id: ID! @primary
+  action: String!
+  actorId: String!
+  requestHash: String!
+  responseJson: String!
+}
+
+type BusinessWriteLock @objectType {
+  id: ID! @primary
+  actorId: String!
 }
 
 type TagCandidate @objectType {
