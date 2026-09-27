@@ -164,6 +164,12 @@ public class ReferenceProbe {
         queryData.setURL("jdbc:h2:mem:audit_queries;DB_CLOSE_DELAY=-1");
         queries.put("jdbc_h2", governedQueryProbe(new JdbcStorageProvider(queryData, DatabaseDialect.h2())));
         observations.put("governed_object_queries", queries);
+        var aggregates = new LinkedHashMap<String, Object>();
+        aggregates.put("memory", aggregateProbe(new InMemoryStorageProvider()));
+        var aggregateData = new JdbcDataSource();
+        aggregateData.setURL("jdbc:h2:mem:audit_aggregates;DB_CLOSE_DELAY=-1");
+        aggregates.put("jdbc_h2", aggregateProbe(new JdbcStorageProvider(aggregateData, DatabaseDialect.h2())));
+        observations.put("governed_aggregates", aggregates);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -230,6 +236,35 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> aggregateProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name: "aggregation", version: "1.0.0")
+                type Entry @objectType { id: ID! @primary category: String amount: Float secret: Float @sensitive }
+                """);
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Entry", "hidden", Map.of("category", "hidden-only", "amount", 100000, "secret", 999));
+            tx.createObject("Entry", "visible-a", Map.of("category", "A", "amount", 1));
+            tx.createObject("Entry", "visible-b", Map.of("category", "A", "amount", 3));
+            tx.createObject("Entry", "visible-c", Map.of("category", "B"));
+            tx.commit();
+        }
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> key.id().startsWith("visible-")),
+                new ActionExecutor(), schema, Map.of(), Map.of());
+        var fields = List.of(new AggregateQuery.Field("*", AggregateQuery.Function.COUNT),
+                new AggregateQuery.Field("amount", AggregateQuery.Function.SUM), new AggregateQuery.Field("amount", AggregateQuery.Function.AVG));
+        var total = app.aggregateObjects(CTX, PRINCIPAL, "Entry", new AggregateQuery(fields, List.of(), Map.of(), List.of()));
+        var grouped = app.aggregateObjects(CTX, PRINCIPAL, "Entry", new AggregateQuery(fields, List.of("category"), Map.of(), List.of(),
+                1, 0, null, null, false));
+        boolean hiddenRejected = false;
+        try {
+            app.aggregateObjects(CTX, PRINCIPAL, "Entry", new AggregateQuery(List.of(new AggregateQuery.Field("secret", AggregateQuery.Function.SUM)), List.of(), Map.of(), List.of()));
+        } catch (SecurityException expected) { hiddenRejected = true; }
+        return Map.of("visible_totals", total.groups().getFirst().values(), "total_visible_groups", grouped.totalGroups(),
+                "page_group_count", grouped.groups().size(), "first_group_keys", grouped.groups().getFirst().keys(),
+                "first_group_values", grouped.groups().getFirst().values(), "hidden_metric_rejected", hiddenRejected);
     }
 
     static Map<String, Object> governedQueryProbe(StorageProvider storage) {

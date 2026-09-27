@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry受控对象聚合
+
+Foundry提交5a73285：接通COUNT/SUM/AVG/MIN/MAX、分组/组排序/分页及totalGroups，提供REST/GraphQL聚合；隐藏对象及字段不能影响统计结果。常规根reactor472项，其中Foundry362项，全部通过，新增23项memory/H2及接口测试。独立探针确认可见总数及SUM/AVG正确、隐藏组不出现、分页不改变总组数，见[阶段报告](../platform-review/governed-aggregations.md)。
+
+原生Storage SPI聚合、SQL/授权下推、搜索、Consent、ObjectSet及生产规模验收仍待继续。Mirror更新平台引用和证据，运行库未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry受控对象查询
 
 Foundry提交fb9da9c：修复先分页后验权的对象列表，接通字段过滤、排序、授权后分页/总数及REST/GraphQL Connection；隐藏字段不能参与查询。常规根reactor449项，其中Foundry339项，全部通过。新增19项memory/H2及契约测试，独立探针也确认分页越过隐藏记录且总数仅含可见对象，见[阶段报告](../platform-review/governed-object-queries.md)。
