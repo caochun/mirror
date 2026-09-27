@@ -11,6 +11,7 @@ import { ReminderList, ReminderTaskDetail } from './Reminders';
 import { ReminderEditor } from './ReminderEditor';
 import { ContentLibrary } from './ContentLibrary';
 import { Reading } from './Reading';
+import { Rules } from './Rules';
 import { ReminderRevision } from './ReminderRevision';
 
 const Session = createContext<{ actor: Actor; logout: () => void } | null>(null);
@@ -37,6 +38,7 @@ export function App() {
     <Route path="/people" element={<People />} />
     <Route path="/people/:id" element={<PersonDetail />} />
     <Route path="/reading" element={<Reading />} />
+    <Route path="/rules" element={<Rules />} />
     <Route path="/tags" element={<TagDirectory />} />
     <Route path="/content-examples" element={<ContentLibrary />} />
     <Route path="/reminders" element={<ReminderList />} />
@@ -77,7 +79,7 @@ function Shell({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen">
     <aside className="hidden w-56 shrink-0 border-r border-slate-200 bg-white md:block">
       <div className="flex h-20 items-center gap-3 px-6"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-700 text-lg text-white">镜</span><div className="font-semibold">明镜<span className="ml-2 text-xs tracking-wider text-slate-400">MIRROR</span></div></div>
-      <p className="eyebrow px-6 py-6">业务工作空间</p><nav className="space-y-2 px-3"><Menu to="/workbench">工作台</Menu><Menu to="/reminders">{actor.role === 'REVIEWER' ? '审核工作台' : '提醒任务'}</Menu>{actor.role !== 'REVIEWER' && <><Menu to="/people">人员与组织</Menu><Menu to="/tags">标签目录</Menu><Menu to="/content-examples">内容示例库</Menu><Menu to="/reading">阅读与逾期</Menu></>}</nav>
+      <p className="eyebrow px-6 py-6">业务工作空间</p><nav className="space-y-2 px-3"><Menu to="/workbench">工作台</Menu><Menu to="/reminders">{actor.role === 'REVIEWER' ? '审核工作台' : '提醒任务'}</Menu>{actor.role !== 'REVIEWER' && <><Menu to="/people">人员与组织</Menu><Menu to="/tags">标签目录</Menu><Menu to="/rules">标签规则</Menu><Menu to="/content-examples">内容示例库</Menu><Menu to="/reading">阅读与逾期</Menu></>}</nav>
       <div className="mx-5 mt-14 border-t border-slate-100 pt-5 text-xs leading-6 text-slate-400">对象信息 · 业务留痕<br />按当前授权范围展示</div>
     </aside>
     <div className="min-w-0 flex-1">

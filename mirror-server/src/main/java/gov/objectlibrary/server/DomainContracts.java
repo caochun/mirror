@@ -29,19 +29,24 @@ public class DomainContracts {
             "DispatchReminder", "RecordDeliveryReceipt", "RetryFailedRecipients", "ReadOwnReminder", "RecordFirstRead",
             "EvaluateOverdue", "RecordIntegrationIssue", "ReadOverdueList",
             "SaveReminderRevision", "SubmitReminderRevision", "PublishReminderRevision",
-            "RequestReminderWithdrawal", "DispatchReminderWithdrawal", "RecordWithdrawalResult", "RetryWithdrawal", "QueryBusinessMetrics");
+            "RequestReminderWithdrawal", "DispatchReminderWithdrawal", "RecordWithdrawalResult", "RetryWithdrawal", "QueryBusinessMetrics", "CreateTagRule", "PreviewRuleChange", "PublishRuleVersion",
+            "StartTagBatch", "ApplyRuleEvaluation", "CompleteTagBatch");
 
     private static final Set<String> RECIPIENT_ACTIONS = Set.of("ReadOwnReminder", "RecordFirstRead");
 
-    private static final Map<String, String> SYSTEM_ACTIONS = Map.of(
-            "ExpireReminderReview", "scheduler",
-            "DispatchReminder", "delivery-worker",
-            "RecordDeliveryReceipt", "channel-adapter",
-            "EvaluateOverdue", "scheduler",
-            "PublishReminderRevision", "publication-worker",
-            "DispatchReminderWithdrawal", "withdrawal-worker",
-            "RecordWithdrawalResult", "channel-adapter",
-            "RecordIntegrationIssue", "channel-or-receiver-adapter");
+    private static final Map<String, String> SYSTEM_ACTIONS = Map.ofEntries(
+            Map.entry("ExpireReminderReview", "scheduler"),
+            Map.entry("DispatchReminder", "delivery-worker"),
+            Map.entry("RecordDeliveryReceipt", "channel-adapter"),
+            Map.entry("EvaluateOverdue", "scheduler"),
+            Map.entry("PublishReminderRevision", "publication-worker"),
+            Map.entry("DispatchReminderWithdrawal", "withdrawal-worker"),
+            Map.entry("RecordWithdrawalResult", "channel-adapter"),
+            Map.entry("RecordIntegrationIssue", "channel-or-receiver-adapter"),
+            Map.entry("StartTagBatch", "system-or-configuration-admin"),
+            Map.entry("PreviewRuleChange", "system-or-configuration-admin"),
+            Map.entry("ApplyRuleEvaluation", "rule-worker"),
+            Map.entry("CompleteTagBatch", "batch-worker"));
 
     private final Map<String, Map<String, Object>> actions = new LinkedHashMap<>();
     private final Map<String, Map<String, Object>> states = new LinkedHashMap<>();
@@ -100,7 +105,7 @@ public class DomainContracts {
 
     public void authorize(Accounts.Actor actor, String action) {
         var definition = requireConnected(action);
-        if (SYSTEM_ACTIONS.containsKey(action) || RECIPIENT_ACTIONS.contains(action)) {
+        if ((SYSTEM_ACTIONS.containsKey(action) && !Set.of("StartTagBatch", "PreviewRuleChange").contains(action)) || RECIPIENT_ACTIONS.contains(action)) {
             throw new org.springframework.security.access.AccessDeniedException("Internal actions cannot be invoked by an account");
         }
         // Reload the principal so a retained Java Actor cannot bypass a disabled account or changed role.

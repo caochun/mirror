@@ -342,3 +342,32 @@ scenarios:
       - "按发送时T v1筛选只得到P1，不把整份任务名单算作该标签接收人"
       - "任务修订保留原逐人标签依据；旧记录缺依据标未知，不用今天的标签回填"
       - "Mock记录明确标识；自动规则/AI未产生记录不等于无业务问题"
+  -
+    id: "S29"
+    name: "映射预览不得发布另一份配置"
+    given: "单位A原继承父单位性质，管理员预览将A映射到另一个性质标签"
+    actions: ["PreviewClassificationMapping", "SynchronizeOrganizationFacts", "PublishClassificationMapping"]
+    expect:
+      - "预览期间原映射和人员标签不变；新建映射无需先伪造生效配置"
+      - "确认只能发布预览冻结配置，不能替换标签或组织范围；原件版本、依赖或日期变化须重新预览"
+      - "旧范围和新范围都纳入影响计算；停用后模拟继承回退，歧义记UNKNOWN不猜测"
+      - "发布、预览消费及重算意图原子提交，重复命令不多建版本或批次，历史依据保留"
+  -
+    id: "S30"
+    name: "规则停用与在途评估隔离"
+    given: "规则R正在批量评估，P的同一标签有R与人工来源，Q只有R来源，S已人工删除"
+    actions: ["DeactivateTagRule", "ApplyRuleEvaluation", "PreviewRuleChange", "PublishRuleVersion"]
+    expect:
+      - "停用R后P仍有效、Q立即不再凭R进入筛选，S保持SUPPRESSED；目录与其他规则未停用"
+      - "清理仅结束R的贡献并保留历史；旧批次晚提交不得恢复R，处理结果SKIPPED"
+      - "清理中断可恢复，重复命令不重复失效；重新启用必须重新预览确认，不能直接复活历史贡献"
+  -
+    id: "S31"
+    name: "规则无法计算是局部且可追溯的策略"
+    given: "P此前命中年龄规则并有人工贡献，随后出生日期缺失；Q从未获得任何标签"
+    actions: ["CreateTagRule", "PreviewRuleChange", "PublishRuleVersion", "ApplyRuleEvaluation"]
+    expect:
+      - "新建规则仅DRAFT，不赋标；预览不改变来源或标签，确认发布才安排重算"
+      - "缺字段明确UNKNOWN而非NO_MATCH，仅暂停对应规则贡献，P人工来源保留"
+      - "Q可在没有逻辑标签记录时产生局部问题；其他不依赖年龄的规则正常计算"
+      - "新增/失效/不变与未知/跳过/抑制不是同一组互斥统计，页面不得相加冒充总人数"

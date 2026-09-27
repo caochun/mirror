@@ -141,7 +141,7 @@ class TagWorkflowTest {
     void rejectsUnknownUnconnectedAndInvalidContractInputs() throws Exception {
         var actor = accounts.actor("unit");
         assertThrows(IllegalArgumentException.class, () -> contracts.authorize(actor, "ArbitraryWrite"));
-        assertThrows(BusinessConflict.class, () -> contracts.authorize(actor, "PublishRuleVersion"));
+        assertThrows(BusinessConflict.class, () -> contracts.authorize(actor, "ReadSensitivePersonFields"));
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> contracts.authorize(actor, "DispatchReminder"));
         assertThrows(IllegalArgumentException.class, () -> contracts.validateInputs(actor, "AddPersonTag",

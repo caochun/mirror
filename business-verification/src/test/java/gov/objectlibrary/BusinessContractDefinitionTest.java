@@ -24,6 +24,31 @@ class BusinessContractDefinitionTest {
     private static final Set<String> SCALARS = Set.of("ID", "String", "Int", "Boolean", "DateTime", "Date", "JSON");
 
     @Test
+    void mappingPublicationBindsPreviewAndRuleReactivationRequiresPublication() throws IOException {
+        var actions = records(yaml("contracts/actions.yaml"), "actions").stream()
+                .collect(Collectors.toMap(action -> (String) action.get("name"), action -> action));
+        var inputs = mapping(actions.get("PublishClassificationMapping").get("inputs"));
+        assertEquals("MappingImpactPreview", inputs.get("previewId"));
+        assertEquals("String", inputs.get("confirmedDigest"));
+        assertFalse(inputs.containsKey("targetTagId"), "Publication cannot substitute a second configuration after preview");
+        assertFalse(inputs.containsKey("organizationIds"));
+        var proposedInputs = mapping(actions.get("PreviewClassificationMapping").get("inputs"));
+        assertEquals("Boolean", proposedInputs.get("enabled"), "Disabling a mapping must also have a preview");
+        assertEquals("Int", proposedInputs.get("expectedVersion"));
+
+        var models = records(yaml("contracts/states.yaml"), "models");
+        assertTransition(models, "MappingImpactPreview", "state", "COMPLETED", "CONSUMED", "PublishClassificationMapping");
+        assertTransition(models, "TagRule", "status", "ACTIVE", "INACTIVE", "DeactivateTagRule");
+        assertTransition(models, "TagRule", "status", "INACTIVE", "ACTIVE", "PublishRuleVersion");
+        assertTransition(models, "TagContribution", "state", "ACTIVE", "EXPIRED", "DeactivateTagRule");
+        var rule = models.stream().filter(model -> "TagRule".equals(model.get("object"))).findFirst().orElseThrow();
+        assertTrue(records(rule, "transitions").stream()
+                .filter(transition -> "ACTIVE".equals(transition.get("to")))
+                .allMatch(transition -> "PublishRuleVersion".equals(transition.get("action"))),
+                "Re-enabling a directory cannot silently restore old rules");
+    }
+
+    @Test
     void participationExitAndLateReceiptsHaveLegalTransitionsWithoutErasingSuccess() throws IOException {
         var models = records(yaml("contracts/states.yaml"), "models");
         assertTransition(models, "MatterParticipation", "state", "ACTIVE", "ENDED", "EndMatterParticipation");

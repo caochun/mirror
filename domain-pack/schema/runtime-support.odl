@@ -12,3 +12,15 @@ type BusinessWriteLock @objectType {
   id: ID! @primary
   actorId: String!
 }
+
+# Technical current evaluation index; immutable evidence remains in TagEvaluation.
+type RuleProcessingCursor @objectType {
+  id: ID! @primary
+  personId: String!
+  ruleId: String!
+  ruleVersionId: String!
+  tagVersionId: String!
+  inputDigest: String!
+  evaluationId: String!
+  evaluatedAt: DateTime!
+}

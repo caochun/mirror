@@ -139,7 +139,7 @@ public class PersonTagCommands {
                         text(c, "actorId"), text(c, "organizationId"), text(c, "reason"))).toList();
     }
 
-    private void preserveLegacyContribution(Accounts.Actor actor, Transaction tx, ObjectRecord assignment) {
+    void preserveLegacyContribution(Accounts.Actor actor, Transaction tx, ObjectRecord assignment) {
         if (!directory.links(actor, assignment.key(), "AssignmentHasContribution", StorageProvider.Direction.OUTBOUND).isEmpty()) return;
         String versionId = text(assignment, "tagVersion");
         var version = required(actor, "TagVersion", versionId);

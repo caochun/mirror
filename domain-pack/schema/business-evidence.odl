@@ -35,7 +35,39 @@ type ClassificationMapping @objectType {
   publishedAt: DateTime
 }
 
+# Proposed configuration and its impact; never an active classification source.
+type MappingImpactPreview @objectType {
+  id: ID! @primary
+  mappingId: String!
+  expectedMappingVersion: Int!
+  state: String!
+  proposedMappingJson: String!
+  configurationDigest: String!
+  inputDigest: String!
+  scopeJson: String!
+  resultJson: String @sensitive
+  confirmedDigest: String
+  createdBy: String!
+  createdAt: DateTime!
+  evaluatedAt: DateTime
+  publishedAt: DateTime
+}
+
+type MappingPreviewForMapping @linkType(from: "MappingImpactPreview", to: "ClassificationMapping", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type MappingPreviewForTag @linkType(from: "MappingImpactPreview", to: "TagDefinition", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type MappingPreviewForOrganization @linkType(from: "MappingImpactPreview", to: "Organization", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
 type RuleVersion @objectType {
+  ruleId: String
+  tagDefinitionId: String
   id: ID! @primary
   version: String!
   state: String!
@@ -47,6 +79,22 @@ type RuleVersion @objectType {
 }
 
 type RuleImpactPreview @objectType {
+  processedCount: Int
+  totalCount: Int
+  leaseOwner: String
+  leaseUntil: DateTime
+  state: String
+  ruleId: String
+  ruleVersionId: String
+  tagVersionId: String
+  createdBy: String
+  sourceStamp: String
+  evaluatedDate: String
+  confirmedDigest: String
+  resultJson: String
+  error: String
+  skippedCount: Int
+  suppressedCount: Int
   id: ID! @primary
   inputDigest: String!
   scopeJson: String!
@@ -69,6 +117,12 @@ type AiPolicyVersion @objectType {
 }
 
 type TagEvaluation @objectType {
+  personId: String
+  ruleId: String
+  ruleVersionId: String
+  tagVersionId: String
+  batchId: String
+  change: String
   id: ID! @primary
   state: String!
   inputDigest: String!
@@ -78,6 +132,8 @@ type TagEvaluation @objectType {
 }
 
 type TagContribution @objectType {
+  ruleId: String
+  ruleVersionId: String
   id: ID! @primary
   source: String!
   sourceReference: String!

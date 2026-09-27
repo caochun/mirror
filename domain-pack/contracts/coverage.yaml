@@ -84,7 +84,9 @@ requirements:
     title: "标签版本和规则变更"
     section: "3.2.2"
     actions:
+      - "DeactivateTagRule"
       - "PublishTagDefinition"
+      - "CreateTagRule"
       - "PreviewRuleChange"
       - "PublishRuleVersion"
       - "PublishAiPolicyVersion"
@@ -104,6 +106,8 @@ requirements:
     title: "自动赋标"
     section: "3.2.3"
     actions:
+      - "DeactivateTagRule"
+      - "CreateTagRule"
       - "PreviewRuleChange"
       - "PublishRuleVersion"
       - "StartTagBatch"
@@ -125,6 +129,7 @@ requirements:
     title: "单位性质映射"
     section: "3.2.4"
     actions:
+      - "PreviewClassificationMapping"
       - "PublishClassificationMapping"
     rules:
       - "AUDIT"
@@ -138,6 +143,7 @@ requirements:
     title: "职务层级和岗位领域识别"
     section: "3.2.5"
     actions:
+      - "PreviewClassificationMapping"
       - "PublishClassificationMapping"
       - "PublishAiPolicyVersion"
       - "RecordTagCandidate"
@@ -210,6 +216,7 @@ requirements:
     title: "标签历史"
     section: "3.2.9"
     actions:
+      - "DeactivateTagRule"
       - "ApplyRuleEvaluation"
       - "RemovePersonTag"
       - "RestorePersonTag"

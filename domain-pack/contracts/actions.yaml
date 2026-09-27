@@ -491,17 +491,14 @@ actions:
     permission: "TAG_CONFIGURE"
     objects:
       - "ClassificationMapping"
+      - "MappingImpactPreview"
       - "Organization"
       - "TagDefinition"
     inputs:
       mappingId: "ID"
-      kind: "String"
-      sourceCode: "String"
-      targetTagId: "TagDefinition"
-      organizationIds: "Organization[]"
-      priority: "Int"
-      inherit: "Boolean"
+      previewId: "MappingImpactPreview"
       expectedVersion: "Int"
+      confirmedDigest: "String"
     rules:
       - "AUTH"
       - "RULES"
@@ -509,11 +506,13 @@ actions:
       - "AUDIT"
       - "REFERENCES"
     preconditions:
-      - "目标标签可用于该分类"
-      - "发布影响已预览和确认"
+      - "启用时目标标签可用于该分类；停用可引用原有已停用目标，但不恢复目标目录"
+      - "同租户同mappingId的预览已完成；预览基础版本等于expectedVersion，新建为0且该ID尚不存在"
+      - "confirmedDigest匹配预览配置、输入与结果；人员、组织树、相关映射、规则、标签或业务日期变化后拒绝发布并要求重新预览"
     effects:
-      - "发布映射版本不改组织主数据"
-      - "安排受影响组织/任职的局部重算"
+      - "仅发布预览中冻结的映射配置，生成新版本并保留旧版本及引用证据，不改组织主数据"
+      - "enabled=false表示停用该映射，重新计算继承回退和分类结果，不等于停用目标标签"
+      - "原子消费预览并安排旧范围与新范围并集的局部重算，其他来源及人工抑制保留，不创建提醒或AI批次"
     idempotency: "tenant+actor+commandId"
     output:
       affectedIds: "ID[]"
@@ -526,7 +525,7 @@ actions:
     source: "BQZX_BGGX BQZX_ZDFB"
     status: "definition-only"
     scope: "core"
-    actor: "configuration-admin"
+    actor: "system-or-configuration-admin"
     permission: "TAG_CONFIGURE"
     objects:
       - "RuleVersion"
@@ -662,7 +661,7 @@ actions:
       - "记录命中/未命中/无法计算事实"
       - "命中建立或续接对应规则贡献；不命中仅结束该贡献"
       - "人工抑制时记录计算但不恢复逻辑标签"
-      - "无法计算单独记异常，其他规则继续"
+      - "无法计算单独记异常并暂停本规则贡献，其他规则和人工来源继续"
     idempotency: "tenant+person+ruleVersion+batch+inputDigest"
     output:
       affectedIds: "ID[]"
@@ -2424,3 +2423,86 @@ actions:
       recordedAt: "DateTime"
     event: "gov.object-library.DispatchReminderWithdrawal"
     failure: "超时为UNKNOWN；渠道成功而本地中断时重放同一请求，不能创建重复撤回"
+  -
+    name: "CreateTagRule"
+    source: "BQZX_BGGX BQZX_ZDFB"
+    status: "definition-only"
+    scope: "core"
+    actor: "configuration-admin"
+    permission: "TAG_CONFIGURE"
+    objects: ["TagRule", "TagDefinition"]
+    inputs:
+      ruleId: "ID"
+      tagDefinitionId: "TagDefinition"
+      name: "String"
+    rules: ["AUTH", "RULES", "TAG_VERSION", "AUDIT", "REFERENCES"]
+    preconditions:
+      - "启用末级标签且允许配置规则；新提拔和退休过渡期拒绝规则"
+    effects:
+      - "登记未启用的规则身份，预览和发布前不影响人员标签"
+    idempotency: "tenant+actor+commandId"
+    output:
+      result: "JSON"
+    event: "gov.object-library.CreateTagRule"
+    failure: "不接受直接设置生效状态或可执行脚本"
+  -
+    name: "PreviewClassificationMapping"
+    source: "BQZX_DWXZ BQZX_ZWLY"
+    status: "definition-only"
+    scope: "core"
+    actor: "system-or-configuration-admin"
+    permission: "TAG_CONFIGURE"
+    objects: ["ClassificationMapping", "MappingImpactPreview", "Organization", "TagDefinition", "TagEvaluation"]
+    inputs:
+      mappingId: "ID"
+      kind: "String"
+      sourceCode: "String"
+      targetTagId: "TagDefinition"
+      organizationIds: "Organization[]"
+      priority: "Int"
+      inherit: "Boolean"
+      enabled: "Boolean"
+      expectedVersion: "Int"
+    rules: ["AUTH", "RULES", "TAG_VERSION", "TAG_ISSUES", "REFERENCES", "AUDIT"]
+    preconditions:
+      - "仅全局配置管理员可申请，后台仅执行已授权且持久化的预览，不接受客户端伪造系统身份"
+      - "kind为ORGANIZATION_NATURE/ROLE_LEVEL/POSITION_DOMAIN，字段和标准编码白名单；启用目标是该类可用末级标签，禁止MANUAL_ONLY；停用允许引用原已停用目标"
+      - "已有映射校验预期版本，新建expectedVersion=0；组织、标签和旧新范围均在配置权限内"
+    effects:
+      - "冻结拟发布配置及旧新影响范围并集，后台计算新增/失效/不变/无法计算项数和去重人数，保存来源及结果摘要"
+      - "计算包含父组织继承回退、职务最高层级、多领域及人工抑制；有歧义的等优先级映射不得猜测"
+      - "预览不修改生效映射、人员标签、组织主数据，不创建提醒或AI批次；来源变化标STALE"
+    idempotency: "tenant+actor+commandId"
+    output:
+      affectedIds: "ID[]"
+      result: "JSON"
+      recordedAt: "DateTime"
+    event: "gov.object-library.PreviewClassificationMapping"
+    failure: "校验拒绝不写配置；后台失败保存FAILED及可解释原因，失败/过时预览不得发布"
+  -
+    name: "DeactivateTagRule"
+    source: "BQZX_BGGX BQZX_ZDFB BQZX_BQLS"
+    status: "definition-only"
+    scope: "core"
+    actor: "system-or-configuration-admin"
+    permission: "TAG_CONFIGURE"
+    objects: ["TagRule", "RuleVersion", "TagBatch", "TagContribution", "PersonTagAssignment"]
+    inputs:
+      ruleId: "TagRule"
+      expectedVersion: "Int"
+      confirmation: "Boolean"
+    rules: ["AUTH", "TAG_VERSION", "TAG_SOURCES", "TAG_ISSUES", "HISTORY", "AUDIT", "REFERENCES"]
+    preconditions:
+      - "申请时规则当前ACTIVE，版本相符且管理员明确二次确认停用；后台只能续跑已持久化的该停用命令，不能伪造新的授权"
+    effects:
+      - "规则改为INACTIVE；已发布条件和历史引用保留，不停用目录或其他规则"
+      - "同事务登记持久清理批次，结束该规则贡献；生效标签查询立即排除该停用规则，即使清理尚未结束"
+      - "尚未提交的旧规则评估不得继续产生贡献，记录SKIPPED；其他人工/规则/AI/专项来源保留，SUPPRESSED不解除"
+      - "再次启用须通过PreviewRuleChange和PublishRuleVersion，重新核验当前输入并重算，不复活旧贡献，不产生提醒"
+    idempotency: "tenant+actor+commandId"
+    output:
+      affectedIds: "ID[]"
+      result: "JSON"
+      recordedAt: "DateTime"
+    event: "gov.object-library.DeactivateTagRule"
+    failure: "版本或权限变化拒绝；停用及清理意图原子提交，清理可恢复且不重复结束贡献"

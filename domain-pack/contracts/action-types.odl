@@ -100,13 +100,27 @@ type DeleteUnusedTagDefinition @actionType {
 
 type PublishClassificationMapping @actionType {
   mappingId: ID! @param
+  previewId: MappingImpactPreview! @param
+  expectedVersion: Int! @param
+  confirmedDigest: String! @param
+}
+
+type PreviewClassificationMapping @actionType {
+  mappingId: ID! @param
   kind: String! @param
   sourceCode: String! @param
   targetTagId: TagDefinition! @param
   organizationIds: [Organization]! @param
   priority: Int! @param
   inherit: Boolean! @param
+  enabled: Boolean! @param
   expectedVersion: Int! @param
+}
+
+type DeactivateTagRule @actionType {
+  ruleId: TagRule! @param
+  expectedVersion: Int! @param
+  confirmation: Boolean! @param
 }
 
 type PreviewRuleChange @actionType {
@@ -492,4 +506,10 @@ type DispatchReminderWithdrawal @actionType {
   withdrawalId: WithdrawalRecord! @param
   expectedVersion: Int! @param
   evaluatedAt: DateTime! @param
+}
+
+type CreateTagRule @actionType {
+  ruleId: ID! @param
+  tagDefinitionId: TagDefinition! @param
+  name: String! @param
 }

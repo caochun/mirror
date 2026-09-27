@@ -1,4 +1,4 @@
-extend schema @namespace(name: "gov.object-library", version: "0.2.5")
+extend schema @namespace(name: "gov.object-library", version: "0.2.7")
 
 type Person @objectType {
   id: ID! @primary
@@ -35,6 +35,7 @@ type Organization @objectType {
 }
 
 type Position @objectType {
+  standardCode: String
   id: ID! @primary
   name: String! @indexed
   level: String
@@ -129,6 +130,9 @@ type TagVersion @objectType {
 }
 
 type TagRule @objectType {
+  name: String
+  currentVersionId: String
+  lastScanStamp: String
   id: ID! @primary
   tagDefinitionId: String! @indexed
   ruleType: String!
@@ -181,6 +185,10 @@ type TagCandidate @objectType {
 }
 
 type TagProcessingIssue @objectType {
+  ruleId: String
+  personId: String
+  tagVersionId: String
+  batchId: String
   id: ID! @primary
   category: String! @indexed
   reason: String!
@@ -193,6 +201,14 @@ type TagProcessingIssue @objectType {
 }
 
 type TagBatch @objectType {
+  ruleVersionIdsJson: String
+  tagVersionsJson: String
+  personIdsJson: String
+  cursor: Int
+  totalCount: Int
+  leaseOwner: String
+  leaseUntil: DateTime
+  triggerReference: String
   id: ID! @primary
   kind: String!
   state: String! @indexed

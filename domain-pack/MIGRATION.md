@@ -43,3 +43,15 @@
 VersionTargetsRecipient新增可选tagVersionIdsJson，固定每名接收人在提交时的标签版本；人员选择快照也带该证据，修订复制原关系属性。旧记录缺失表示未知，不能用当前标签回填；新增记录以空数组明确“当时无标签”。保存中的旧确认可能因版本依据变化而失效，须重新保存并核对。
 
 统计增加明确的当前单位/发送时单位、目录/末级历史版本、任务/事件时间和撤回历史口径。大屏不再使用硬编码演示数；原Mock业务记录仍按来源标识，不能因为切换配置而改变性质。缓存属于短期查询投影，不迁移为领域事实。
+
+## 0.2.5 → 0.2.6
+
+补充CreateTagRule，允许先登记未启用规则再预览/发布，修正原PreviewRuleChange必须已有规则却缺建立入口的契约缺口。新增RuleProcessingCursor技术索引；规则、预览、批次、评估与贡献添加处理/关联投影，Position添加可选standardCode。新字段不猜测旧自由文本岗位的标准含义。
+
+TagEvaluation增加SKIPPED，表示对象资格或配置已不适用而跳过，不冒充规则结论。规则UNKNOWN暂停本来源并保留原因，其他来源和人工抑制不被更改。未能可靠识别的旧来源不当成当前规则所有，需先治理；本次未运行生产迁移。
+
+## 0.2.6 → 0.2.7
+
+新增MappingImpactPreview及三个证据关系，不改变已有关系基数。PublishClassificationMapping改为绑定预览ID、预期版本和确认摘要，原直接提交配置的定义签名不再有效；该动作尚无运行处理器，因此不提供旧签名兼容执行入口。历史映射版本及EvaluationUsesMapping证据保留，不伪造旧预览。
+
+新增DeactivateTagRule契约、TagRule/ClassificationMapping/MappingImpactPreview状态及相关贡献失效迁移。现有数据不因修改状态词表而自动停用；实际接通时需验证停用与在途批次隔离和中断恢复。

@@ -3,6 +3,36 @@ schemaVersion: 1
 status: "definition-only"
 models:
   -
+    object: "TagRule"
+    field: "status"
+    values: ["DRAFT", "ACTIVE", "INACTIVE"]
+    transitions:
+      - {from: "DRAFT", to: "ACTIVE", action: "PublishRuleVersion"}
+      - {from: "ACTIVE", to: "INACTIVE", action: "DeactivateTagRule"}
+      - {from: "ACTIVE", to: "INACTIVE", action: "SetTagAvailability"}
+      - {from: "INACTIVE", to: "ACTIVE", action: "PublishRuleVersion"}
+    notes: "CreateTagRule建立DRAFT；规则替换保持ACTIVE并换当前版本，停用不改旧版本内容；再启用须新的预览与确认。"
+  -
+    object: "MappingImpactPreview"
+    field: "state"
+    values: ["QUEUED", "RUNNING", "COMPLETED", "STALE", "FAILED", "CONSUMED"]
+    transitions:
+      - {from: "QUEUED", to: "RUNNING", action: "PreviewClassificationMapping"}
+      - {from: "RUNNING", to: "COMPLETED", action: "PreviewClassificationMapping"}
+      - {from: "RUNNING", to: "FAILED", action: "PreviewClassificationMapping"}
+      - {from: "RUNNING", to: "STALE", action: "PreviewClassificationMapping"}
+      - {from: "COMPLETED", to: "STALE", action: "PreviewClassificationMapping"}
+      - {from: "COMPLETED", to: "CONSUMED", action: "PublishClassificationMapping"}
+    notes: "预览仅保存提案和证据，不改变生效配置；发布前即使状态仍COMPLETED也须复验摘要；消费与映射发布原子提交。"
+  -
+    object: "ClassificationMapping"
+    field: "state"
+    values: ["ACTIVE", "INACTIVE"]
+    transitions:
+      - {from: "ACTIVE", to: "INACTIVE", action: "PublishClassificationMapping"}
+      - {from: "INACTIVE", to: "ACTIVE", action: "PublishClassificationMapping"}
+    notes: "首次发布创建ACTIVE；同状态修改也生成版本，已使用映射不得物理删除。停用、恢复均绑定预览提案。"
+  -
     object: "WithdrawalRecord"
     field: "state"
     values: ["REQUESTED", "RUNNING", "WITHDRAWN", "FAILED", "UNKNOWN"]
@@ -130,6 +160,7 @@ models:
       - "SUPPRESSED"
       - "EXPIRED"
     transitions:
+      - {from: "ACTIVE", to: "EXPIRED", action: "DeactivateTagRule"}
       -
         from: "ACTIVE"
         to: "SUPPRESSED"
@@ -177,6 +208,7 @@ models:
       - "ACTIVE"
       - "EXPIRED"
     transitions:
+      - {from: "ACTIVE", to: "EXPIRED", action: "DeactivateTagRule"}
       -
         from: "ACTIVE"
         to: "EXPIRED"
@@ -192,6 +224,7 @@ models:
     field: "state"
     values:
       - "MATCH"
+      - "SKIPPED"
       - "NO_MATCH"
       - "UNKNOWN"
       - "FAILED"
@@ -241,6 +274,7 @@ models:
         from: "RUNNING"
         to: "FAILED"
         action: "CompleteTagBatch"
+      - {from: "QUEUED", to: "RUNNING", action: "StartTagBatch"}
     notes: "作业生命周期交由执行层实现；批次完成不代表全部标签生效，人工抑制仍有效。"
   -
     object: "MatterParticipation"

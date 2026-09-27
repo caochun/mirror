@@ -6,6 +6,18 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 class PublicationConfiguration {
+    @Bean("ruleExecutor")
+    ThreadPoolTaskExecutor ruleExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(20);
+        executor.setThreadNamePrefix("tag-rules-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(10);
+        return executor;
+    }
+
     @Bean("withdrawalExecutor")
     ThreadPoolTaskExecutor withdrawalExecutor() {
         var executor = new ThreadPoolTaskExecutor();
