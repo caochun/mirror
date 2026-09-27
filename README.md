@@ -10,7 +10,9 @@
 - `business-verification/`：内存 Provider 的业务端到端验收测试。
 - `mirror-server/`：Spring Boot 应用入口、数据库账号/会话、受权限控制的业务 API。
 - `web/`：React + TypeScript + Tailwind 管理端、独立 H5 构建入口和 Playwright 测试。
-- `foundry/`：通用对象关系和状态历史底座，来自独立仓库。
+- `foundry/`：通用对象关系和状态历史底座，来自独立Java仓库。
+- `open-foundry/`：syzygyhack/open-foundry上游参考子模块，不参与Mirror构建。
+- `platform-review/`：Java重制与上游的代码覆盖对照及可重现审计结果。
 - `deployment/`：openGauss/国产关系库、鹿路通和 OpenFGA 的部署参数模板。
 - 根目录 DOCX/XLSX：原始业务材料和测试数据，已通过 `.gitignore` 忽略。
 
@@ -28,7 +30,7 @@ cd mirror/foundry
 mvn test
 ```
 
-Foundry 的版本通过 submodule 固定；更新平台版本时，在本仓库更新 submodule 指针并运行业务验证。
+Foundry及上游参考版本均通过submodule固定。当前参考上游v0.3.0；[平台覆盖审计](platform-review/foundry-vs-open-foundry.md)区分已有、部分实现、缺失及有意差异。Java版尚非完整等价重制；[首批治理修复](platform-review/governance-repair.md)已接通注册Action鉴权、字段策略及进程内幂等隔离，时间语义和持久幂等等仍待完成。更新平台版本时，在本仓库更新submodule指针并运行业务验证。
 
 ## 当前可运行版本
 

@@ -19,3 +19,5 @@ Foundry 位于 `foundry/` 子模块，负责通用对象关系、历史、事务
 
 - [domain-pack-review.md](domain-pack-review.md)：原始文档业务覆盖再验证、修订发现及进入实现的门槛。
 - [runtime-contracts.md](runtime-contracts.md)：动作契约与实际处理器、API、测试和兼容策略的登记。
+
+- [原文业务需求与Domain Pack逐项对照](business-requirements-comparison.md)：最新语义复核、具体定义缺口、短信条款纠错与业务分歧；优先于旧报告的完整性结论。

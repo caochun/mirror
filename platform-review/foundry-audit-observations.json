@@ -1,0 +1,33 @@
+{
+  "jdbc_h2" : {
+    "missing_required_name_accepted" : true,
+    "wrong_scalar_type_accepted" : true,
+    "duplicate_unique_value_accepted" : true,
+    "immutable_change_accepted" : true,
+    "earlier_valid_time_seen_with_current_recorded_time" : "after",
+    "asof_list_name" : "after"
+  },
+  "memory" : {
+    "missing_required_name_accepted" : true,
+    "wrong_scalar_type_accepted" : true,
+    "duplicate_unique_value_accepted" : true,
+    "immutable_change_accepted" : true,
+    "earlier_valid_time_seen_with_current_recorded_time" : "after",
+    "asof_list_name" : "after"
+  },
+  "application_action_succeeds_with_deny_all_authorizer" : true,
+  "application_read_returns_sensitive_value" : true,
+  "graphql_declared_property_errors" : [ "The field at path '/item/name' was declared as a non null type, but the code involved in retrieving data has wrongly returned a null value.  The graphql specification requires that the parent field be set to null, or if that is non nullable that it bubble up null to its parent and so on. The non-nullable type is 'String' within parent type 'Item'" ],
+  "graphql_declared_property_data" : {
+    "item" : null
+  },
+  "unscoped_idempotency_returns_other_tenant_result" : true,
+  "string_to_int_migration_class" : "COMPATIBLE",
+  "upstream_library_load" : "missing string field: linkId",
+  "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status" ],
+  "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : true,
+  "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes" ],
+  "java_action_metadata_components" : [ "name", "parameters" ],
+  "java_manifest_components" : [ "action", "version", "reversible", "preconditions", "effects" ],
+  "interface_primary_inheritance_errors" : [ "object Child must have exactly one primary property, found 0" ]
+}
