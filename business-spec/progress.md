@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry受控对象查询
+
+Foundry提交fb9da9c：修复先分页后验权的对象列表，接通字段过滤、排序、授权后分页/总数及REST/GraphQL Connection；隐藏字段不能参与查询。常规根reactor449项，其中Foundry339项，全部通过。新增19项memory/H2及契约测试，独立探针也确认分页越过隐藏记录且总数仅含可见对象，见[阶段报告](../platform-review/governed-object-queries.md)。
+
+旧GraphQL列表签名保留；聚合/搜索/反向分页、结构值筛选、数据库下推及跨读取快照仍待完成。Mirror仅更新平台引用及证据，运行库未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry类型化Action API与参数
 
 Foundry提交3717339：Schema感知枚举/标量及递归列表校验、具名GraphQL输入/结果、变更类型与错误说明，旧JSON模式显式保留。无依据的旧回执变更类型为UNKNOWN，回执目标与效果记录不一致时拒绝。常规根reactor430项，其中Foundry320项，全通过，见[阶段报告](../platform-review/typed-action-api.md)。

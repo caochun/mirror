@@ -158,6 +158,12 @@ public class ReferenceProbe {
         computed.put("jdbc_h2", computedProbe(new JdbcStorageProvider(computedData, DatabaseDialect.h2())));
         observations.put("computed_read_behavior", computed);
         observations.put("typed_action_graphql", typedActionProbe());
+        var queries = new LinkedHashMap<String, Object>();
+        queries.put("memory", governedQueryProbe(new InMemoryStorageProvider()));
+        var queryData = new JdbcDataSource();
+        queryData.setURL("jdbc:h2:mem:audit_queries;DB_CLOSE_DELAY=-1");
+        queries.put("jdbc_h2", governedQueryProbe(new JdbcStorageProvider(queryData, DatabaseDialect.h2())));
+        observations.put("governed_object_queries", queries);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -224,6 +230,35 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> governedQueryProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name: "query", version: "1.0.0")
+                type Entry @objectType { id: ID! @primary rank: Int! secret: String @sensitive }
+                """);
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) {
+            for (int index = 0; index < 125; index++) {
+                tx.createObject("Entry", "hidden-" + index, Map.of("rank", index, "secret", "hidden"));
+            }
+            tx.createObject("Entry", "visible-a", Map.of("rank", 2));
+            tx.createObject("Entry", "visible-b", Map.of("rank", 1));
+            tx.commit();
+        }
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> key.id().startsWith("visible-")),
+                new ActionExecutor(), schema, Map.of(), Map.of());
+        var result = app.queryObjects(CTX, PRINCIPAL, "Entry", new org.openfoundry.foundation.api.ObjectQuery(
+                Map.of("rank", Map.of("lte", 2)), Map.of("rank", "ASC"), new QueryOptions(1, 0, null, null, false)));
+        boolean hiddenRejected = false;
+        try {
+            app.queryObjects(CTX, PRINCIPAL, "Entry", new org.openfoundry.foundation.api.ObjectQuery(
+                    Map.of("secret", Map.of("exists", false)), Map.of(), QueryOptions.defaults()));
+        } catch (SecurityException expected) { hiddenRejected = true; }
+        return Map.of("visible_total", result.totalCount(), "first_visible_id", result.items().getFirst().id(),
+                "has_next_page", result.connection().pageInfo().hasNextPage(), "hidden_predicate_rejected", hiddenRejected,
+                "legacy_list_visible_ids", app.listObjects(CTX, PRINCIPAL, "Entry", new QueryOptions(2, 0, null, null, false))
+                        .stream().map(ObjectRecord::id).toList());
     }
 
     static Map<String, Object> typedActionProbe() {
