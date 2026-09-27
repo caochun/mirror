@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry权限目标映射与真实OpenFGA
+
+Foundry提交3473b4b：新增ONTOLOGY_TARGETS模式，区分动作主目标、参与者、额外已有修改目标和本动作创建的资源；关系按端点权限处理。旧严格模式保留，新模式使用服务模型验证及snake_case类型映射。常规根reactor378项，其中Foundry268项；另外9项真实OpenFGA 1.21.0集成全部通过，见[阶段报告](../platform-review/ontology-authorization.md)。
+
+原Library模型借还、撤权重放及租户隔离已经实际验证，测试store和临时服务已清理。OIDC、生产服务认证、权限资产自动装配和元组生命周期仍待继续，完整目标保持active。
+
 ## 2026-09-28：Foundry持久副作用、恢复与补偿
 
 Foundry提交3dad99f：业务effect与持久任务/补偿依据同事务，提交后执行事件或webhook；接通三种失败策略、版本/关联保护的本地补偿和HTTP续执行。独立JVM提交/回调/补偿边界中断恢复、原始Library借还及失败补偿验证通过。根reactor361项，其中Foundry251项，全部通过，详见[阶段报告](../platform-review/action-side-effects.md)。

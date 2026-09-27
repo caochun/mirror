@@ -170,8 +170,11 @@ public class ReferenceProbe {
         }
         var events = new ArrayList<org.openfoundry.foundation.events.CloudEvent>();
         var executor = new ActionExecutor().withSideEffects(new StandardSideEffectHandler(events::add));
-        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> true), executor,
-                library.ontology().schema(), library.actions(), Map.of());
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> switch (key.type()) {
+            case "Book" -> Set.of("viewer", "editor", "can_borrow", "can_return").contains(relation);
+            case "Member" -> Set.of("viewer", "editor").contains(relation);
+            default -> false;
+        }), executor, library.ontology().schema(), library.actions(), Map.of(), AuthorizationMode.ONTOLOGY_TARGETS);
         var principal = new SecurityPrincipal(CTX.actorId(), CTX.tenantId(), Set.of("librarian"));
         var borrow = library.actions().get("BorrowBook");
         var parameters = Map.<String, Object>of("book", "book", "member", "member");
@@ -179,7 +182,7 @@ public class ReferenceProbe {
         var replay = app.execute(borrow, CTX, principal, parameters, "borrow");
         String borrowedStatus = storage.getObject(CTX, "Book", "book").properties().get("status").toString();
         var returned = app.execute(library.actions().get("ReturnBook"), CTX, principal, Map.of("book", "book"), "return");
-        return Map.of("borrow_status", result.status(), "book_after_borrow", borrowedStatus,
+        return Map.of("authorization_mode", "ONTOLOGY_TARGETS", "borrow_status", result.status(), "book_after_borrow", borrowedStatus,
                 "event_count", events.size(), "event_data", events.getFirst().data(), "replay_same_result", result.equals(replay),
                 "return_status", returned.status(), "book_after_return", storage.getObject(CTX, "Book", "book").properties().get("status"),
                 "active_loans_after_return", storage.getLinks(CTX, new EntityKey("Book", "book"), "BorrowedBy", StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).size());

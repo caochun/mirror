@@ -1,5 +1,5 @@
 {
-  "memory" : {
+  "jdbc_h2" : {
     "missing_required_name_accepted" : false,
     "wrong_scalar_type_accepted" : false,
     "duplicate_unique_value_accepted" : false,
@@ -7,7 +7,7 @@
     "earlier_valid_time_seen_with_current_recorded_time" : "before",
     "asof_list_name" : "before"
   },
-  "jdbc_h2" : {
+  "memory" : {
     "missing_required_name_accepted" : false,
     "wrong_scalar_type_accepted" : false,
     "duplicate_unique_value_accepted" : false,
@@ -29,62 +29,64 @@
   "upstream_library_load" : "schema/actions accepted with core dependency",
   "upstream_library_workflow" : {
     "memory" : {
-      "book_after_borrow" : "ON_LOAN",
+      "active_loans_after_return" : 0,
+      "borrow_status" : "COMPLETED",
       "event_data" : {
         "bookId" : "book",
         "memberId" : "member"
       },
-      "replay_same_result" : true,
-      "return_status" : "COMPLETED",
-      "active_loans_after_return" : 0,
-      "book_after_return" : "AVAILABLE",
       "event_count" : 1,
-      "borrow_status" : "COMPLETED"
+      "return_status" : "COMPLETED",
+      "book_after_return" : "AVAILABLE",
+      "book_after_borrow" : "ON_LOAN",
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "replay_same_result" : true
     },
     "jdbc_h2" : {
-      "book_after_borrow" : "ON_LOAN",
+      "active_loans_after_return" : 0,
+      "borrow_status" : "COMPLETED",
       "event_data" : {
         "bookId" : "book",
         "memberId" : "member"
       },
-      "replay_same_result" : true,
-      "return_status" : "COMPLETED",
-      "active_loans_after_return" : 0,
-      "book_after_return" : "AVAILABLE",
       "event_count" : 1,
-      "borrow_status" : "COMPLETED"
+      "return_status" : "COMPLETED",
+      "book_after_return" : "AVAILABLE",
+      "book_after_borrow" : "ON_LOAN",
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "replay_same_result" : true
     }
   },
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
   "upstream_book_navigation_fields" : [ {
-    "target" : "Member",
-    "direction" : "OUTBOUND",
     "linkType" : "BorrowedBy",
     "history" : false,
-    "name" : "borrower"
+    "name" : "borrower",
+    "target" : "Member",
+    "direction" : "OUTBOUND"
   } ],
   "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : false,
   "upstream_borrow_side_effects" : [ {
-    "type" : "event",
     "name" : "emitBorrowedEvent",
     "failurePolicy" : "ROLLBACK_ALL",
-    "attempts" : 3
+    "attempts" : 3,
+    "type" : "event"
   } ],
   "upstream_return_manifest" : {
-    "action" : "ReturnBook",
     "failurePolicy" : "ROLLBACK_ALL",
     "linkType" : "BorrowedBy",
     "expect" : "ALL",
-    "from" : "book"
+    "from" : "book",
+    "action" : "ReturnBook"
   },
   "consumer_delivery_recovery" : {
     "memory" : {
-      "completed_duplicate_suppressed" : true,
-      "failed_delivery_retried" : true
+      "failed_delivery_retried" : true,
+      "completed_duplicate_suppressed" : true
     },
     "jdbc_h2" : {
-      "completed_duplicate_suppressed" : true,
-      "failed_delivery_retried" : true
+      "failed_delivery_retried" : true,
+      "completed_duplicate_suppressed" : true
     }
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
