@@ -176,6 +176,12 @@ public class ReferenceProbe {
         searchData.setURL("jdbc:h2:mem:audit_search;DB_CLOSE_DELAY=-1");
         searches.put("jdbc_h2", searchProbe(new JdbcStorageProvider(searchData, DatabaseDialect.h2())));
         observations.put("governed_search", searches);
+        var connections = new LinkedHashMap<String, Object>();
+        connections.put("memory", connectionProbe(new InMemoryStorageProvider()));
+        var connectionData = new JdbcDataSource();
+        connectionData.setURL("jdbc:h2:mem:audit_connections;DB_CLOSE_DELAY=-1");
+        connections.put("jdbc_h2", connectionProbe(new JdbcStorageProvider(connectionData, DatabaseDialect.h2())));
+        observations.put("connection_pagination", connections);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -242,6 +248,34 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> connectionProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name: "connection", version: "1.0.0")
+                type Item @objectType { id: ID! @primary }
+                """);
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) {
+            for (int index = 0; index < 7; index++) tx.createObject("Item", "a" + index, Map.of());
+            tx.createObject("Item", "hidden", Map.of());
+            tx.commit();
+        }
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> !key.id().equals("hidden")),
+                new ActionExecutor(), schema, Map.of(), Map.of());
+        String before = java.util.Base64.getEncoder().encodeToString("cursor:1".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var bounded = app.queryConnection(CTX, PRINCIPAL, "Item", new ObjectConnectionQuery(Map.of(), Map.of(), new ConnectionPage(null, null, 3, before, 0)));
+        var zero = app.queryConnection(CTX, PRINCIPAL, "Item", new ObjectConnectionQuery(Map.of(), Map.of(), new ConnectionPage(0, null, null, null, 0)));
+        var context = Map.<String, Object>of("request", new ApiRequestContext(CTX, PRINCIPAL));
+        var graph = GraphqlApiRuntime.create(schema, app);
+        var tail = graph.execute(ExecutionInput.newExecutionInput("{items(last:2){edges{node{id}} totalCount pageInfo{hasNextPage hasPreviousPage}}}")
+                .graphQLContext(context).build());
+        var legacy = GraphqlApiRuntime.create(schema, app, Map.of(), GraphqlApiRuntime.ActionMode.TYPED, GraphqlApiRuntime.QueryMode.LEGACY_LIST)
+                .execute(ExecutionInput.newExecutionInput("{items(first:1){id}}").graphQLContext(context).build());
+        return Map.of("bounded_before_ids", bounded.edges().stream().map(edge -> edge.node().id()).toList(),
+                "zero_edges", zero.edges().size(), "visible_total", zero.totalCount(),
+                "default_tail_errors", tail.getErrors().stream().map(error -> error.getMessage()).toList(), "default_tail_data", tail.getData(),
+                "legacy_errors", legacy.getErrors().stream().map(error -> error.getMessage()).toList(), "legacy_data", legacy.getData());
     }
 
     static Map<String, Object> searchProbe(StorageProvider storage) {

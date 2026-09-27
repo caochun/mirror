@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry默认Connection与双向分页
+
+Foundry提交17b7bcd：默认GraphQL复数字段采用上游Connection，显式保留LEGACY_LIST；接通first/after/last/before/零条及授权后双向分页，REST共用页模型。常规根reactor512项，其中Foundry402项，全通过，新增19项memory/H2及接口测试。独立探针确认末页、before边界、可见总数和旧数组兼容，见[阶段报告](../platform-review/connection-pagination.md)。
+
+默认GraphQL形状及HTTP默认页大小的迁移已记录。原生存储下推、跨读取快照、时间关系API、Consent/ObjectSet和其他上游范围继续；Mirror运行库与服务JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry受控文本搜索
 
 Foundry提交47c966a：接通TERMS/PHRASE两种固定上游搜索规则、可见对象/字段评分及高亮、过滤分页和REST/GraphQL入口；Java/REST支持双时间搜索。常规根reactor493项，其中Foundry383项，全部通过，新增21项memory/H2及接口测试。独立探针确认两种Provider可见命中数/评分一致，隐藏文本不进入评分或高亮，见[阶段报告](../platform-review/governed-search.md)。

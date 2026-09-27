@@ -28,12 +28,15 @@
   "string_to_int_migration_class" : "BREAKING",
   "upstream_library_load" : "composed schema/actions/assets with core dependency",
   "upstream_library_assets" : {
+    "permission_sources" : 1,
     "seed_files" : 1,
-    "field_policy_types" : [ "Member" ],
-    "permission_sources" : 1
+    "field_policy_types" : [ "Member" ]
   },
   "upstream_library_workflow" : {
     "memory" : {
+      "replay_same_result" : true,
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "book_after_borrow" : "ON_LOAN",
       "book_after_return" : "AVAILABLE",
       "return_status" : "COMPLETED",
       "event_count" : 1,
@@ -42,12 +45,12 @@
         "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
       },
       "borrow_status" : "COMPLETED",
-      "active_loans_after_return" : 0,
-      "replay_same_result" : true,
-      "authorization_mode" : "ONTOLOGY_TARGETS",
-      "book_after_borrow" : "ON_LOAN"
+      "active_loans_after_return" : 0
     },
     "jdbc_h2" : {
+      "replay_same_result" : true,
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "book_after_borrow" : "ON_LOAN",
       "book_after_return" : "AVAILABLE",
       "return_status" : "COMPLETED",
       "event_count" : 1,
@@ -56,19 +59,16 @@
         "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
       },
       "borrow_status" : "COMPLETED",
-      "active_loans_after_return" : 0,
-      "replay_same_result" : true,
-      "authorization_mode" : "ONTOLOGY_TARGETS",
-      "book_after_borrow" : "ON_LOAN"
+      "active_loans_after_return" : 0
     }
   },
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
   "upstream_book_navigation_fields" : [ {
+    "target" : "Member",
     "name" : "borrower",
     "history" : false,
     "linkType" : "BorrowedBy",
-    "direction" : "OUTBOUND",
-    "target" : "Member"
+    "direction" : "OUTBOUND"
   } ],
   "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : false,
   "upstream_borrow_side_effects" : [ {
@@ -86,33 +86,33 @@
   },
   "consumer_delivery_recovery" : {
     "memory" : {
-      "failed_delivery_retried" : true,
-      "completed_duplicate_suppressed" : true
+      "completed_duplicate_suppressed" : true,
+      "failed_delivery_retried" : true
     },
     "jdbc_h2" : {
-      "failed_delivery_retried" : true,
-      "completed_duplicate_suppressed" : true
+      "completed_duplicate_suppressed" : true,
+      "failed_delivery_retried" : true
     }
   },
   "upstream_ward_computed_fields" : [ {
+    "function" : "countLinks",
     "name" : "currentOccupancy",
-    "cache" : "LAZY",
-    "function" : "countLinks"
+    "cache" : "LAZY"
   } ],
   "computed_read_behavior" : {
     "memory" : {
+      "source_version" : 1,
       "after_delete" : 1,
       "hidden_endpoint_count" : 0,
       "initial" : 2,
-      "stored_attribute" : false,
-      "source_version" : 1
+      "stored_attribute" : false
     },
     "jdbc_h2" : {
+      "source_version" : 1,
       "after_delete" : 1,
       "hidden_endpoint_count" : 0,
       "initial" : 2,
-      "stored_attribute" : false,
-      "source_version" : 1
+      "stored_attribute" : false
     }
   },
   "typed_action_graphql" : {
@@ -133,22 +133,25 @@
   },
   "governed_object_queries" : {
     "memory" : {
+      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
       "has_next_page" : true,
       "hidden_predicate_rejected" : true,
       "first_visible_id" : "visible-b",
-      "visible_total" : 2,
-      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ]
+      "visible_total" : 2
     },
     "jdbc_h2" : {
+      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
       "has_next_page" : true,
       "hidden_predicate_rejected" : true,
       "first_visible_id" : "visible-b",
-      "visible_total" : 2,
-      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ]
+      "visible_total" : 2
     }
   },
   "governed_aggregates" : {
     "memory" : {
+      "first_group_keys" : {
+        "category" : "A"
+      },
       "visible_totals" : {
         "count_*" : 3,
         "sum_amount" : 4.0,
@@ -161,12 +164,12 @@
         "avg_amount" : 2.0
       },
       "hidden_metric_rejected" : true,
-      "total_visible_groups" : 2,
-      "first_group_keys" : {
-        "category" : "A"
-      }
+      "total_visible_groups" : 2
     },
     "jdbc_h2" : {
+      "first_group_keys" : {
+        "category" : "A"
+      },
       "visible_totals" : {
         "count_*" : 3,
         "sum_amount" : 4.0,
@@ -179,30 +182,89 @@
         "avg_amount" : 2.0
       },
       "hidden_metric_rejected" : true,
-      "total_visible_groups" : 2,
-      "first_group_keys" : {
-        "category" : "A"
-      }
+      "total_visible_groups" : 2
     }
   },
   "governed_search" : {
     "memory" : {
+      "highlights_exclude_secret" : true,
       "has_next_page" : true,
       "visible_total" : 2,
       "first_id" : "a",
       "hidden_field_rejected" : true,
       "phrase_scores" : [ 1.0, 1.0 ],
-      "first_term_score" : 3.0,
-      "highlights_exclude_secret" : true
+      "first_term_score" : 3.0
     },
     "jdbc_h2" : {
+      "highlights_exclude_secret" : true,
       "has_next_page" : true,
       "visible_total" : 2,
       "first_id" : "a",
       "hidden_field_rejected" : true,
       "phrase_scores" : [ 1.0, 1.0 ],
-      "first_term_score" : 3.0,
-      "highlights_exclude_secret" : true
+      "first_term_score" : 3.0
+    }
+  },
+  "connection_pagination" : {
+    "memory" : {
+      "legacy_data" : {
+        "items" : [ {
+          "id" : "a0"
+        } ]
+      },
+      "legacy_errors" : [ ],
+      "default_tail_data" : {
+        "items" : {
+          "edges" : [ {
+            "node" : {
+              "id" : "a5"
+            }
+          }, {
+            "node" : {
+              "id" : "a6"
+            }
+          } ],
+          "totalCount" : 7,
+          "pageInfo" : {
+            "hasNextPage" : false,
+            "hasPreviousPage" : true
+          }
+        }
+      },
+      "zero_edges" : 0,
+      "bounded_before_ids" : [ "a0" ],
+      "visible_total" : 7,
+      "default_tail_errors" : [ ]
+    },
+    "jdbc_h2" : {
+      "legacy_data" : {
+        "items" : [ {
+          "id" : "a0"
+        } ]
+      },
+      "legacy_errors" : [ ],
+      "default_tail_data" : {
+        "items" : {
+          "edges" : [ {
+            "node" : {
+              "id" : "a5"
+            }
+          }, {
+            "node" : {
+              "id" : "a6"
+            }
+          } ],
+          "totalCount" : 7,
+          "pageInfo" : {
+            "hasNextPage" : false,
+            "hasPreviousPage" : true
+          }
+        }
+      },
+      "zero_edges" : 0,
+      "bounded_before_ids" : [ "a0" ],
+      "visible_total" : 7,
+      "default_tail_errors" : [ ]
     }
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
