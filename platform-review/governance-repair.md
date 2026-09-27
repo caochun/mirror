@@ -1,6 +1,6 @@
 # Foundry通用治理首批修复
 
-日期：2026-09-27。Foundry修复提交：`f779240577ad56c66461be1338c2367b6edf8e38`。按照[上游覆盖审计](foundry-vs-open-foundry.md)推进，完整目标保留，未改变政务业务归属。
+日期：2026-09-27。本文为F1阶段记录，后续时间语义进展见[时间修复报告](temporal-repair.md)。Foundry修复提交：`f779240577ad56c66461be1338c2367b6edf8e38`。按照[上游覆盖审计](foundry-vs-open-foundry.md)推进，完整目标保留，未改变政务业务归属。
 
 ## 已实现
 

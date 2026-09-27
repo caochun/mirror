@@ -4,16 +4,16 @@
     "wrong_scalar_type_accepted" : true,
     "duplicate_unique_value_accepted" : true,
     "immutable_change_accepted" : true,
-    "earlier_valid_time_seen_with_current_recorded_time" : "after",
-    "asof_list_name" : "after"
+    "earlier_valid_time_seen_with_current_recorded_time" : "before",
+    "asof_list_name" : "before"
   },
   "jdbc_h2" : {
     "missing_required_name_accepted" : true,
     "wrong_scalar_type_accepted" : true,
     "duplicate_unique_value_accepted" : true,
     "immutable_change_accepted" : true,
-    "earlier_valid_time_seen_with_current_recorded_time" : "after",
-    "asof_list_name" : "after"
+    "earlier_valid_time_seen_with_current_recorded_time" : "before",
+    "asof_list_name" : "before"
   },
   "application_action_succeeds_with_deny_all_authorizer" : false,
   "application_read_returns_sensitive_value" : false,
