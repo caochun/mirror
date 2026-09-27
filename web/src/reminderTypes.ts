@@ -43,6 +43,8 @@ export type ReminderDetail = {
   entries: SelectionEntry[];
   rounds: { id: string; roundNumber: number; state: string; submittedBy: string; decidedBy: string; comment: string }[];
   reviewComment: string;
+  sourceContentVersionId: string;
+  images: { index: number; id: string; digest: string; confirmationKey: string }[];
 };
 export const reminderStates: Record<string, string> = {
   DRAFT: '草稿',

@@ -20,9 +20,15 @@
 
 `ReminderService`新增SaveReminderDraft、UpdateRecipientSelection、ConfirmRecipientSelection、ConfirmReminderContent、SubmitReminderReview、DecideReminderReview、WithdrawReminderReview、CancelScheduledReminder与内部ExpireReminderReview路径。保存/确认HTTP命令组合了对应的业务子动作，执行仍在同一Foundry事务内。
 
-它们目前覆盖文字/列表/可信链接，媒体尚未开放，不能把ConfirmReminderContent视为逐图确认已交付。发送审批只创建QUEUED作业，DispatchReminder仍未登记，也未执行真实渠道调用。到期作业由服务端内部上下文触发，没有面向用户的系统权限绕过入口。
+它们覆盖文字/列表/可信链接和受控图片；ConfirmReminderContent已校验当前全部图片确认并保存逐图证据。发送审批只创建QUEUED作业，DispatchReminder仍未登记，也未执行真实渠道调用。到期作业由服务端内部上下文触发，没有面向用户的系统权限绕过入口。
 
 名单再次计算保留排除意图，确认检查输入摘要，审核结果只作用于本轮冻结版本。旧草稿遗留接收记录保留审计关联；后续发送及统计必须从批准版本的VersionTargetsRecipient取名单，不能扫描任务历次草稿的接收记录并集。
+
+## 媒体与内容示例处理器
+
+RegisterMediaAsset由MediaService接入：文件验证/规范化、私有不可变保存、Pack元数据与回执/审计/事件写入。鉴权图片GET只返回有权使用的媒体，不能靠枚举ID读取。上传落盘先于业务提交，失败可能留私有孤立文件；尚无自动垃圾回收，不宣称文件与数据库构成同一资源事务。
+
+SaveContentExample、SetContentAvailability由ContentLibraryService接入；只有CONTENT_CONFIGURE可写，REMINDER_WRITE可选择启用版本。版本、推荐标签、受控媒体及任务来源关系均保存。示例编辑与任务副本独立，旧引用不能变成新内容。DeleteUnusedContent尚未接通，界面不提供虚假的删除入口。
 
 ## 人员标签兼容策略
 

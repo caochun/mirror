@@ -10,6 +10,10 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 
 @RestControllerAdvice
 class ApiErrors {
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    Map<String, String> uploadTooLarge() { return Map.of("message", "图片超过允许大小，每张不超过2MB"); }
+
     @ExceptionHandler(BusinessConflict.class) @ResponseStatus(HttpStatus.CONFLICT)
     Map<String, String> conflict(BusinessConflict exception) { return Map.of("message", exception.getMessage()); }
     @ExceptionHandler(AuthenticationException.class) @ResponseStatus(HttpStatus.UNAUTHORIZED)

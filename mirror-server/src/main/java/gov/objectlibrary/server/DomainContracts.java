@@ -24,7 +24,8 @@ public class DomainContracts {
     private static final Set<String> CONNECTED_ACTIONS = Set.of(
             "AddPersonTag", "RemovePersonTag", "RestorePersonTag", "SaveReminderDraft",
             "UpdateRecipientSelection", "ConfirmRecipientSelection", "ConfirmReminderContent", "SubmitReminderReview",
-            "DecideReminderReview", "WithdrawReminderReview", "CancelScheduledReminder", "ExpireReminderReview");
+            "DecideReminderReview", "WithdrawReminderReview", "CancelScheduledReminder", "ExpireReminderReview",
+            "RegisterMediaAsset", "SaveContentExample", "SetContentAvailability");
 
     private final Map<String, Map<String, Object>> actions = new LinkedHashMap<>();
     private final Map<String, Map<String, Object>> states = new LinkedHashMap<>();

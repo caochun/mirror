@@ -11,7 +11,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     if (!response.ok) throw new ApiError(response.status, '无法校验会话，请刷新重试');
     const csrf = await response.json() as { headerName: string; token: string };
     headers.set(csrf.headerName, csrf.token);
-    headers.set('Content-Type', 'application/json');
+    if (!(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   }
   const response = await fetch(`/api${path}`, { ...options, headers, credentials: 'same-origin' });
   if (!response.ok) {

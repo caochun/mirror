@@ -222,6 +222,7 @@ type RiskEvent @objectType {
 }
 
 type ReminderContent @objectType {
+  currentVersionId: String
   id: ID! @primary
   title: String!
   category: String! @indexed
@@ -229,6 +230,9 @@ type ReminderContent @objectType {
 }
 
 type ContentVersion @objectType {
+  categorySnapshot: String
+  contentDigest: String
+  mediaManifestDigest: String
   id: ID! @primary
   contentId: String! @indexed
   version: String!
@@ -239,6 +243,7 @@ type ContentVersion @objectType {
 }
 
 type MediaAsset @objectType {
+  organizationId: String
   id: ID! @primary
   mediaType: String!
   storageKey: String!

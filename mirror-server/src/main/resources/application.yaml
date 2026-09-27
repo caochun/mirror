@@ -27,6 +27,7 @@ mirror:
   pack: ${MIRROR_DOMAIN_PACK:./domain-pack}
   bootstrap-password: ${MIRROR_BOOTSTRAP_PASSWORD:}
   demo: ${MIRROR_DEMO:false}
+  media-directory: ${MIRROR_MEDIA_DIRECTORY:./.runtime/media}
 logging:
   level:
     org.springframework.web: INFO

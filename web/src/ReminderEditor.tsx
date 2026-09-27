@@ -7,11 +7,14 @@ import type { ReminderDetail, SelectionEntry, SelectionFilter } from './reminder
 import { included } from './reminderTypes';
 import { ErrorBox, Heading } from './ui';
 import { RichTextEditor } from './RichTextEditor';
+import type { ContentExample } from './ContentLibrary';
 
 export function ReminderEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [examples, setExamples] = useState<ContentExample[]>([]);
+  const [sourceContentVersionId, setSourceContentVersionId] = useState('');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [filter, setFilter] = useState<SelectionFilter>({
@@ -34,10 +37,14 @@ export function ReminderEditor() {
   const [version, setVersion] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [ready, setReady] = useState(false);
   const [command, setCommand] = useState<{ body: string; key: string } | null>(null);
 
   useEffect(() => {
+    api<ContentExample[]>('/content-examples')
+      .then(setExamples)
+      .catch((e) => setError(e.message));
     Promise.all([api<Organization[]>('/organizations'), api<Tag[]>('/tags')])
       .then(([o, t]) => {
         setOrganizations(o);
@@ -51,6 +58,7 @@ export function ReminderEditor() {
           setTitle(d.task.title);
           setCategory(d.task.category);
           setBody(d.bodyHtml);
+          setSourceContentVersionId(d.sourceContentVersionId ?? '');
           setVersion(d.task.version);
           setFilter(d.filter);
           setEntries(d.entries);
@@ -107,6 +115,7 @@ export function ReminderEditor() {
         plannedAt: sendMode === 'SCHEDULED' ? new Date(plannedAt).toISOString() : null,
         filter,
         restoreIds,
+        sourceContentVersionId: sourceContentVersionId || null,
       });
       const key = command?.body === request ? command.key : crypto.randomUUID();
       setCommand({ body: request, key });
@@ -137,6 +146,7 @@ export function ReminderEditor() {
           <button
             key={label}
             className={`rounded-lg border p-3 text-sm ${step === index ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white'}`}
+            disabled={uploading}
             onClick={() => setStep(index)}
           >
             {index + 1}. {label}
@@ -233,6 +243,38 @@ export function ReminderEditor() {
       {step === 1 && (
         <section className="panel space-y-5 p-6">
           <label className="block text-sm">
+            引用启用的内容示例
+            <select
+              className="ml-3"
+              value={sourceContentVersionId}
+              onChange={(event) => {
+                const example = examples.find((item) => item.contentVersionId === event.target.value);
+                if (example) {
+                  setTitle(example.title);
+                  setBody(example.bodyHtml);
+                  setCategory(example.category);
+                }
+                setSourceContentVersionId(event.target.value);
+              }}
+            >
+              <option value="">直接编辑本次任务内容</option>
+              {examples
+                .filter((item) => item.state === 'ENABLED')
+                .sort(
+                  (a, b) =>
+                    Number(b.tagIds.some((id) => filter.tagIds.includes(id))) -
+                    Number(a.tagIds.some((id) => filter.tagIds.includes(id))),
+                )
+                .map((item) => (
+                  <option key={item.id} value={item.contentVersionId}>
+                    {item.tagIds.some((id) => filter.tagIds.includes(id)) ? '推荐 · ' : ''}
+                    {item.title}
+                  </option>
+                ))}
+            </select>
+          </label>
+          {sourceContentVersionId && <p className="muted">已复制为本任务独立草稿，继续修改不会回写内容示例。</p>}
+          <label className="block text-sm">
             提醒标题
             <input className="mt-2 w-full" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
@@ -247,10 +289,10 @@ export function ReminderEditor() {
           </label>
           <div>
             <p className="mb-2 text-sm">提醒正文</p>
-            <RichTextEditor value={body} onChange={setBody} />
+            <RichTextEditor value={body} onChange={setBody} onUploadingChange={setUploading} />
           </div>
           <p className="muted">
-            支持格式化文字、列表及已配置的可信HTTPS链接。图片和示例库将随媒体功能接入；当前不上传图片。
+            支持格式化文字、列表及已配置的可信HTTPS链接。图片可上传或粘贴，提交前须在最终预览逐张确认。
           </p>
         </section>
       )}
@@ -293,7 +335,7 @@ export function ReminderEditor() {
             服务端会重新计算资格和权限、清洗正文。保存后查看最终预览并确认，再提交本单位独立审核员。
           </p>
           <p className="mt-4 text-sm">标题：{title || '未填写'}</p>
-          <button className="primary mt-5" disabled={busy || !title.trim()} onClick={save}>
+          <button className="primary mt-5" disabled={busy || uploading || !title.trim()} onClick={save}>
             保存草稿并核对
           </button>
         </section>
@@ -343,10 +385,10 @@ export function ReminderEditor() {
         {entries.length === 0 && <p className="muted p-5">请设置条件或指定人员，然后预览名单。</p>}
       </section>
       <div className="mt-5 flex justify-end gap-3">
-        <button className="secondary" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>
+        <button className="secondary" disabled={step === 0 || uploading} onClick={() => setStep((s) => s - 1)}>
           上一步
         </button>
-        <button className="primary" disabled={step === 3} onClick={() => setStep((s) => s + 1)}>
+        <button className="primary" disabled={step === 3 || uploading} onClick={() => setStep((s) => s + 1)}>
           下一步
         </button>
       </div>

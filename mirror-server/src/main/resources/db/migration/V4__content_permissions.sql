@@ -1,0 +1,1 @@
+INSERT INTO mirror_role_permissions VALUES ('SUPER_ADMIN', 'CONTENT_CONFIGURE');

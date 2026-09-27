@@ -29,13 +29,14 @@ public class ReminderService {
     private final DomainContracts contracts;
     private final ReminderContentPolicy content;
     private final ReminderSelection selections;
+    private final ContentLibraryService examples;
     private final ObjectMapper json;
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
     public ReminderService(StorageProvider storage, DirectoryService directory, Accounts accounts,
                            BusinessCommands commands, DomainContracts contracts, ReminderContentPolicy content,
-                           ReminderSelection selections, ObjectMapper json, JdbcTemplate jdbc, Clock clock) {
+                           ReminderSelection selections, ContentLibraryService examples, ObjectMapper json, JdbcTemplate jdbc, Clock clock) {
         this.storage = storage;
         this.directory = directory;
         this.accounts = accounts;
@@ -43,6 +44,7 @@ public class ReminderService {
         this.contracts = contracts;
         this.content = content;
         this.selections = selections;
+        this.examples = examples;
         this.json = json;
         this.jdbc = jdbc;
         this.clock = clock;
@@ -69,8 +71,9 @@ public class ReminderService {
         if (!text(version, "recipientsJson").isEmpty() && !"DRAFT".equals(text(version, "state"))) {
             entries = decodeEntries(text(version, "recipientsJson"));
         }
-        return new Detail(view(actor, task), text(version, "bodySnapshot"), text(version, "contentDigest"),
-                decodeFilter(text(selection, "criteriaJson")), entries, rounds, text(task, "reviewComment"));
+        return new Detail(view(actor, task), content.renderStored(text(version, "bodySnapshot")), text(version, "contentDigest"),
+                decodeFilter(text(selection, "criteriaJson")), entries, rounds, text(task, "reviewComment"),
+                content.storedImages(actor, text(version, "bodySnapshot")), text(version, "sourceContentVersionId"));
     }
 
     public ReminderSelection.Result preview(Accounts.Actor actor, ReminderSelection.Filter filter) {
@@ -97,10 +100,18 @@ public class ReminderService {
                 }
             }
             requireFuture(input.plannedAt());
-            String body = content.clean(input.bodyHtml());
+            var inspected = content.inspect(actor, input.bodyHtml());
+            String body = inspected.html();
+            String sourceVersionId = input.sourceContentVersionId();
+            if (sourceVersionId != null && !sourceVersionId.isBlank()) {
+                boolean retained = previous != null && sourceVersionId.equals(text(
+                        required(actor, "ReminderTaskVersion", text(previous, "pendingVersionId")), "sourceContentVersionId"));
+                if (!retained) examples.requireSelectableVersion(actor, sourceVersionId);
+            }
             var parameters = values("taskId", id, "expectedVersion", input.expectedVersion(), "title", input.title(),
                     "body", Map.of("html", body), "category", input.category(), "sendMode", input.plannedAt() == null ? "IMMEDIATE" : "SCHEDULED",
-                    "plannedAt", input.plannedAt() == null ? null : input.plannedAt().toString(), "readingWindow", input.readingWindow());
+                    "plannedAt", input.plannedAt() == null ? null : input.plannedAt().toString(), "readingWindow", input.readingWindow(),
+                    "contentVersionId", sourceVersionId == null || sourceVersionId.isBlank() ? null : sourceVersionId);
             contracts.validateInputs(actor, action, parameters);
             var oldSelection = previous == null ? null : required(actor, "RecipientSelection", text(previous, "selectionId"));
             // Exclusions survive criteria edits; restoring them is a separate, explicit request field.
@@ -137,12 +148,20 @@ public class ReminderService {
                 task = tx.updateObject("ReminderTask", id, taskValues, previous.version());
             }
             String contentDigest = BusinessCommands.hash(encode(List.of(input.title().strip(), body, input.category(), input.readingWindow(),
-                    input.plannedAt() == null ? "IMMEDIATE" : input.plannedAt().toString())));
+                    input.plannedAt() == null ? "IMMEDIATE" : input.plannedAt().toString(), inspected.mediaDigest())));
             var version = tx.createObject("ReminderTaskVersion", versionId, values("taskId", id, "version", String.valueOf(sequence),
                     "state", "DRAFT", "titleSnapshot", input.title().strip(), "bodySnapshot", body, "readingWindow", input.readingWindow(),
                     "categorySnapshot", input.category(), "contentDigest", contentDigest, "versionKind", "INITIAL",
+                    "mediaManifestDigest", inspected.mediaDigest(), "sourceContentVersionId", sourceVersionId,
                     "plannedAt", input.plannedAt() == null ? null : input.plannedAt().toString(), "sendMode", taskValues.get("sendMode")));
             tx.createLink("TaskHasVersion", "link-" + versionId, task.key(), version.key(), Map.of());
+            if (sourceVersionId != null && !sourceVersionId.isBlank()) {
+                tx.createLink("TaskVersionFromContent", "example-" + versionId, version.key(),
+                        new EntityKey("ContentVersion", sourceVersionId), Map.of());
+            }
+            for (String mediaId : inspected.images().stream().map(ReminderContentPolicy.ImageReference::id).distinct().toList()) {
+                tx.createLink("TaskVersionUsesMedia", versionId + "-" + mediaId, version.key(), new EntityKey("MediaAsset", mediaId), Map.of());
+            }
             var selectionValues = values("state", "DRAFT", "criteriaJson", encode(filter), "entriesJson", encode(resolved.entries()),
                     "organizationRootsJson", encode(filter.organizationIds()), "tagVersionIdsJson", encode(tagVersions(actor, filter.tagIds())),
                     "tagOperator", filter.tagOperator(), "criteriaDigest", digest, "revision", sequence,
@@ -175,10 +194,16 @@ public class ReminderService {
             if (!text(version, "contentDigest").equals(input.contentDigest()) || !input.contentAcknowledged()) {
                 throw new BusinessConflict("请预览并确认当前最终内容");
             }
+            var inspected = content.inspect(actor, text(version, "bodySnapshot"));
+            var expectedImages = inspected.images().stream().map(ReminderContentPolicy.ImageReference::confirmationKey).toList();
+            var confirmedImages = input.confirmedMediaDigests() == null ? List.<String>of() : input.confirmedMediaDigests();
+            if (confirmedImages.size() != expectedImages.size() || !new java.util.HashSet<>(confirmedImages).equals(new java.util.HashSet<>(expectedImages))) {
+                throw new BusinessConflict("请逐张核对当前版本的全部图片；替换图片后须重新确认");
+            }
             contracts.authorize(actor, "ConfirmReminderContent");
             contracts.validateInputs(actor, "ConfirmReminderContent", values("versionId", version.id(),
                     "expectedVersion", version.version(), "contentDigest", input.contentDigest(),
-                    "selectionDigest", input.selectionDigest(), "confirmedMediaDigests", List.of(),
+                    "selectionDigest", input.selectionDigest(), "confirmedMediaDigests", confirmedImages,
                     "duplicateAcknowledged", input.duplicateAcknowledged()));
             int duplicates = duplicateRecipients(actor, taskId, text(version, "contentDigest"), resolved.included());
             if (duplicates > 0 && !input.duplicateAcknowledged()) throw new BusinessConflict("发现重复提醒对象，请核对后明确确认");
@@ -186,9 +211,17 @@ public class ReminderService {
                     "confirmedAt", clock.instant().toString(), "confirmedBy", actor.username()), selection.version());
             String checkId = "check-" + UUID.randomUUID();
             var check = tx.createObject("ContentSafetyCheck", checkId, values("state", "CONFIRMED", "contentDigest", input.contentDigest(),
-                    "selectionDigest", input.selectionDigest(), "mediaDigest", BusinessCommands.hash("[]"), "linksJson", encode(org.jsoup.Jsoup.parseBodyFragment(text(version, "bodySnapshot")).select("a[href]").eachAttr("href")),
+                    "selectionDigest", input.selectionDigest(), "mediaDigest", inspected.mediaDigest(), "linksJson", encode(org.jsoup.Jsoup.parseBodyFragment(text(version, "bodySnapshot")).select("a[href]").eachAttr("href")),
                     "duplicateRecipientCount", duplicates, "confirmedBy", actor.username(), "confirmedAt", clock.instant().toString()));
             tx.createLink("SafetyCheckForVersion", "version-" + checkId, check.key(), version.key(), Map.of());
+            for (var image : inspected.images()) {
+                String confirmationId = checkId + "-image-" + image.index();
+                var confirmation = tx.createObject("MediaConfirmation", confirmationId, values("mediaDigest", image.digest(),
+                        "confirmedBy", actor.username(), "confirmedAt", clock.instant().toString(),
+                        "assertion", "不含身份证号、内部标签、预警原文和台账信息"));
+                tx.createLink("MediaConfirmationForCheck", "check-" + confirmationId, confirmation.key(), check.key(), Map.of());
+                tx.createLink("MediaConfirmationForAsset", "asset-" + confirmationId, confirmation.key(), new EntityKey("MediaAsset", image.id()), Map.of());
+            }
             var changed = tx.updateObject(task.type(), task.id(), Map.of("contentCheckId", checkId), task.version());
             return values("id", taskId, "version", changed.version(), "state", "DRAFT", "contentCheckId", checkId,
                     "duplicateRecipientCount", duplicates, "actionsApplied", List.of(action, "ConfirmReminderContent"));
@@ -212,7 +245,8 @@ public class ReminderService {
             var check = required(actor, "ContentSafetyCheck", text(task, "contentCheckId"));
             if (!text(check, "contentDigest").equals(text(version, "contentDigest"))
                     || !text(check, "selectionDigest").equals(digest(resolved))) throw new BusinessConflict("内容或名单确认已失效");
-            content.clean(text(version, "bodySnapshot"));
+            var inspected = content.inspect(actor, text(version, "bodySnapshot"));
+            if (!text(check, "mediaDigest").equals(inspected.mediaDigest())) throw new BusinessConflict("图片确认已失效");
             contracts.validateInputs(actor, action, values("taskId", taskId, "expectedVersion", expectedVersion,
                     "selectionDigest", digest(resolved), "contentCheckId", check.id()));
             int roundNumber = number(task, "reviewRound") + 1;
@@ -548,10 +582,10 @@ public class ReminderService {
     }
 
     public record Draft(long expectedVersion, String title, String bodyHtml, String category, String readingWindow,
-                        Instant plannedAt, ReminderSelection.Filter filter, List<String> restoreIds) {}
+                        Instant plannedAt, ReminderSelection.Filter filter, List<String> restoreIds, String sourceContentVersionId) {}
     public record Confirmation(long expectedVersion, String selectionDigest, int recipientCount,
                                boolean singleRecipientAcknowledged, String contentDigest,
-                               boolean contentAcknowledged, boolean duplicateAcknowledged) {}
+                               boolean contentAcknowledged, boolean duplicateAcknowledged, List<String> confirmedMediaDigests) {}
     public record Decision(long expectedVersion, String decision, String comment) {}
     public record TaskView(String id, long version, String state, String title, String organizationId, String createdBy,
                            int reviewRound, String sendMode, String plannedAt, String readingWindow, String category, int recipientCount,
@@ -559,5 +593,6 @@ public class ReminderService {
     public record ReviewView(String id, long version, String state, int roundNumber, String submittedBy,
                              String decidedBy, String comment, String snapshotDigest) {}
     public record Detail(TaskView task, String bodyHtml, String contentDigest, ReminderSelection.Filter filter,
-                         List<ReminderSelection.Entry> entries, List<ReviewView> rounds, String reviewComment) {}
+                         List<ReminderSelection.Entry> entries, List<ReviewView> rounds, String reviewComment,
+                         List<ReminderContentPolicy.ImageReference> images, String sourceContentVersionId) {}
 }

@@ -1,6 +1,6 @@
 # 应用启动与部署边界
 
-目前可运行的是应用骨架、人员目录、标签人工操作，以及提醒草稿/选人/独立审核。自动规则、AI复核、媒体、鹿路通发送和正式H5仍未接通，不能作为完整生产系统部署。
+目前可运行的是应用骨架、人员目录、标签人工操作、内容示例/受控媒体，以及提醒草稿/选人/独立审核。自动规则、AI复核、鹿路通发送和正式H5仍未接通，不能作为完整生产系统部署。
 
 ## 本地运行
 
@@ -19,6 +19,7 @@
 | MIRROR_DOMAIN_PACK | 仓库根下 `./domain-pack` |
 | MIRROR_BOOTSTRAP_PASSWORD | 首次创建账号使用，留空不创建 |
 | MIRROR_DEMO | false；显式true初始化虚构演示资料 |
+| MIRROR_MEDIA_DIRECTORY | .runtime/media；与数据库一同备份的私有不可变图片目录 |
 | MIRROR_SECURE_COOKIE | 本地HTTP为false；HTTPS部署必须true |
 | MIRROR_API_TARGET | Vite开发代理目标，默认http://127.0.0.1:8080 |
 
@@ -41,7 +42,9 @@ java -jar mirror-server/target/mirror-server-0.1.0-SNAPSHOT.jar \
 
 ## 已有验证与剩余工作
 
-审核到期调度默认每30秒检查一次，可用`mirror.scheduling-enabled=false`关闭，`mirror.review-expiry-interval-ms`调整间隔。发送作业目前只持久化排队，不执行外部发送。`mirror.trusted-link-hosts`配置允许的HTTPS正文链接域名（逗号分隔）；未配置时不允许外部正文链接。图片存储和逐图确认尚未接通。
+审核到期调度默认每30秒检查一次，可用`mirror.scheduling-enabled=false`关闭，`mirror.review-expiry-interval-ms`调整间隔。发送作业目前只持久化排队，不执行外部发送。`mirror.trusted-link-hosts`配置允许的HTTPS正文链接域名（逗号分隔）；未配置时不允许外部正文链接。
+
+图片使用本地私有目录，JPG/PNG每张<=2MB，解码像素<=2000万，正文最多6张；规范化编码移除上传文件附带的非图像内容。不可变媒体文件在数据库事务提交前落盘；业务失败可能留下不可通过API访问的孤立文件，清理机制尚待实现。不要人工删除被快照引用的文件，也不要通过Nginx/static暴露该目录。当前单节点目录模式；多节点需共享受控存储或实现等价对象存储适配。H5本人读取接口仍待接入，管理端鉴权不能替代接收端身份校验。
 
 后端HTTP测试覆盖认证、CSRF、停用会话、下级组织范围、兄弟单位拒绝、审核员拒绝、跨租户隔离和超过100条的分页。文件库测试跨两次应用启动验证账号、人员和历史保存。Playwright直接连接测试后端，不以浏览器存储或角色模拟替代认证。
 

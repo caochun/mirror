@@ -106,6 +106,7 @@ export function ReminderTaskDetail() {
   const [comment, setComment] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
   const [duplicateAcknowledged, setDuplicateAcknowledged] = useState(false);
+  const [confirmedImages, setConfirmedImages] = useState<string[]>([]);
   const [pendingCommand, setPendingCommand] = useState<{ request: string; key: string } | null>(null);
   function load() {
     setError('');
@@ -113,8 +114,9 @@ export function ReminderTaskDetail() {
       .then(([d, p]) => {
         setDetail(d);
         setPermissions(p);
-        setAcknowledged(false);
-        setDuplicateAcknowledged(false);
+        setAcknowledged(d.task.confirmed);
+        setDuplicateAcknowledged(d.task.confirmed);
+        setConfirmedImages(d.task.confirmed ? d.images.map((image) => image.confirmationKey) : []);
       })
       .catch((e) => setError(e.message));
   }
@@ -242,9 +244,37 @@ export function ReminderTaskDetail() {
                     />
                     <span>若存在重复提醒，我已核实并确认继续。</span>
                   </label>
+                  {detail.images.map((image) => (
+                    <label
+                      className="mt-4 block rounded-lg border border-slate-200 p-3 text-sm"
+                      key={image.confirmationKey}
+                    >
+                      <img
+                        src={`/api/media/${image.id}`}
+                        alt={`待确认配图 ${image.index + 1}`}
+                        className="mb-3 max-h-32 max-w-full object-contain"
+                      />
+                      <span className="flex gap-2">
+                        <input
+                          type="checkbox"
+                          checked={confirmedImages.includes(image.confirmationKey)}
+                          onChange={() =>
+                            setConfirmedImages((current) =>
+                              current.includes(image.confirmationKey)
+                                ? current.filter((key) => key !== image.confirmationKey)
+                                : [...current, image.confirmationKey],
+                            )
+                          }
+                        />
+                        我已确认第 {image.index + 1} 张图片不含身份证号、内部标签、预警原文和台账信息。
+                      </span>
+                    </label>
+                  ))}
                   <button
                     className="secondary mt-4 w-full"
-                    disabled={busy || !acknowledged || targets.length === 0}
+                    disabled={
+                      busy || !acknowledged || targets.length === 0 || confirmedImages.length !== detail.images.length
+                    }
                     onClick={() =>
                       command('confirm', {
                         expectedVersion: task.version,
@@ -254,6 +284,7 @@ export function ReminderTaskDetail() {
                         contentAcknowledged: acknowledged,
                         singleRecipientAcknowledged: acknowledged,
                         duplicateAcknowledged,
+                        confirmedMediaDigests: confirmedImages,
                       })
                     }
                   >
@@ -261,7 +292,9 @@ export function ReminderTaskDetail() {
                   </button>
                   <button
                     className="primary mt-3 w-full"
-                    disabled={busy || !task.confirmed}
+                    disabled={
+                      busy || !task.confirmed || !acknowledged || confirmedImages.length !== detail.images.length
+                    }
                     onClick={() => setDecision('SUBMIT')}
                   >
                     提交审核
