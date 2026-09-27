@@ -188,3 +188,33 @@ scenarios:
       - "M1和已用示例不可物理删除"
       - "M2必须重新逐张确认，旧确认不复用"
       - "停用示例不覆盖历史任务正文"
+  -
+    id: "S16"
+    name: "再次添加等于人工恢复"
+    given: "当前标签SUPPRESSED且规则持续命中"
+    actions:
+      - "AddPersonTag"
+      - "ApplyRuleEvaluation"
+    expect:
+      - "只有显式人工添加可解除抑制，来源贡献和原删除历史保留"
+      - "后续规则评估不得把恢复的人工贡献结束"
+  -
+    id: "S17"
+    name: "未知重试与迟到成功"
+    given: "接收记录UNKNOWN，发起重试后收到前一次有效成功回执"
+    actions:
+      - "RetryFailedRecipients"
+      - "RecordDeliveryReceipt"
+    expect:
+      - "UNKNOWN可重新提交，回执仍须匹配登记的尝试"
+      - "可信首次成功可使FAILED或UNKNOWN进入DELIVERED，后续迟到失败不能覆盖成功"
+  -
+    id: "S18"
+    name: "历史审计不绕过权限"
+    given: "审核员知道他人任务ID，单位管理员知道兄弟单位人员ID"
+    actions:
+      - "ReadOperationAudit"
+    expect:
+      - "审核员仅本人审核事件"
+      - "单位管理员不能利用历史对象ID读取跨范围事件"
+      - "敏感值不因审计查看权限而自动解密"

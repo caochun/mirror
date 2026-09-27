@@ -24,11 +24,29 @@ public class BusinessCommands {
 
     public Map<String,Object> execute(Accounts.Actor actor, String action, String key, Object request,
                                       Runnable authorize, Function<Transaction,Map<String,Object>> body) {
+        return executeWithEvent(actor, action, key, request, authorize, body, "mirror." + action);
+    }
+
+    public Map<String, Object> executeDefined(Accounts.Actor actor, String action, String key, Object request,
+                                              Runnable authorize, Function<Transaction, Map<String, Object>> body,
+                                              String eventType) {
+        return executeWithEvent(actor, action, key, request, authorize, body, eventType);
+    }
+
+    private Map<String, Object> executeWithEvent(Accounts.Actor actor, String action, String key, Object request,
+                                                Runnable authorize, Function<Transaction, Map<String, Object>> body,
+                                                String eventType) {
         if (key==null || !key.matches("[a-zA-Z0-9_-]{8,100}")) throw new IllegalArgumentException("Invalid command key");
         authorize.run();
         String receiptId=hash(actor.username()+"/"+key);
         String fingerprint=hash(action+"/"+encode(request));
-        var previous=receipt(actor,receiptId,fingerprint);
+        String legacyAction = switch (action) {
+            case "AddPersonTag" -> "PersonTagADD";
+            case "RemovePersonTag" -> "PersonTagREMOVE";
+            default -> null;
+        };
+        String legacyFingerprint = legacyAction == null ? null : hash(legacyAction + "/" + encode(request));
+        var previous=receipt(actor,receiptId,fingerprint,legacyFingerprint);
         if(previous!=null) return previous;
         try(var tx=storage.beginTransaction(actor.context())) {
             // Shared per-tenant optimistic guard. A conflicting writer must reload and retry;
@@ -46,11 +64,11 @@ public class BusinessCommands {
             var detail=Map.<String,Object>of("action",action,"organizationId",actor.organizationId(),"result",result);
             tx.appendAudit(new AuditEntry("audit-"+eventId,Instant.now(),actor.tenantId(),actor.username(),
                     "business",null,null,action,tx.transactionId(),"success",detail));
-            tx.enqueueOutbox(new OutboxEntry("event-"+eventId,actor.tenantId(),"mirror."+action,action,
+            tx.enqueueOutbox(new OutboxEntry("event-"+eventId,actor.tenantId(),eventType,action,
                     Instant.now(),tx.transactionId(),detail));
             tx.commit();return response;
         } catch (IllegalStateException exception) {
-            var completed=receipt(actor,receiptId,fingerprint);
+            var completed=receipt(actor,receiptId,fingerprint,legacyFingerprint);
             if(completed!=null) return completed;
             // Map genuine optimistic/duplicate conflicts; surface other storage failures as server errors.
             String message=exception.getMessage();
@@ -62,10 +80,13 @@ public class BusinessCommands {
             throw exception;
         }
     }
-    private Map<String,Object> receipt(Accounts.Actor actor,String id,String fingerprint) {
+    private Map<String,Object> receipt(Accounts.Actor actor,String id,String fingerprint,String legacyFingerprint) {
         var record=storage.getObject(actor.context(),"BusinessCommandReceipt",id);
         if(record==null) return null;
-        if(!fingerprint.equals(record.properties().get("requestHash"))) throw new BusinessConflict("同一请求标识不能用于不同操作");
+        Object storedHash = record.properties().get("requestHash");
+        if (!fingerprint.equals(storedHash) && (legacyFingerprint == null || !legacyFingerprint.equals(storedHash))) {
+            throw new BusinessConflict("同一请求标识不能用于不同操作");
+        }
         return decode((String)record.properties().get("responseJson"));
     }
     private Map<String,Object> decode(String value) {

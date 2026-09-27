@@ -24,6 +24,29 @@ class BusinessContractDefinitionTest {
     private static final Set<String> SCALARS = Set.of("ID", "String", "Int", "Boolean", "DateTime", "Date", "JSON");
 
     @Test
+    void criticalStateTransitionsMatchTheDocumentedBusinessSemantics() throws IOException {
+        var models = records(yaml("contracts/states.yaml"), "models");
+        var tag = models.stream().filter(m -> m.get("object").equals("PersonTagAssignment")).findFirst().orElseThrow();
+        var tagTransitions = records(tag, "transitions");
+        assertTrue(tagTransitions.contains(Map.of("from", "SUPPRESSED", "to", "ACTIVE", "action", "AddPersonTag")));
+        assertFalse(tagTransitions.stream().anyMatch(t -> t.get("from").equals("SUPPRESSED")
+                && t.get("action").equals("ApplyRuleEvaluation")), "A rule cannot remove human suppression");
+
+        var delivery = models.stream().filter(m -> m.get("object").equals("RecipientRecord")
+                && m.get("field").equals("deliveryState")).findFirst().orElseThrow();
+        var transitions = records(delivery, "transitions");
+        assertTrue(transitions.contains(Map.of("from", "UNKNOWN", "to", "SUBMITTED", "action", "RetryFailedRecipients")));
+        assertTrue(transitions.contains(Map.of("from", "FAILED", "to", "DELIVERED", "action", "RecordDeliveryReceipt")));
+        assertFalse(transitions.stream().anyMatch(t -> t.get("from").equals("DELIVERED")
+                && t.get("to").equals("FAILED")), "Late failures cannot erase a confirmed delivery");
+
+        var audit = records(yaml("contracts/actions.yaml"), "actions").stream()
+                .filter(a -> a.get("name").equals("ReadOperationAudit")).findFirst().orElseThrow();
+        assertEquals("AUDIT_READ", audit.get("permission"));
+        assertTrue(strings(audit.get("rules")).containsAll(List.of("AUTH", "PRIVACY")));
+    }
+
+    @Test
     void everyContractHasMatchingTypedSignatureAndKnownObjectsRulesAndInputs() throws IOException {
         var pack = new DomainPackLoader().load(BusinessPackVerificationTest.packPath());
         var manifest = yaml("pack.yaml");

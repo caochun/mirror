@@ -36,6 +36,9 @@ test('administrator configures tag, unit operator adds removes restores and sees
   await page.getByRole('button', { name: '查看 测试成长标签 历史', exact: true }).click();
   await expect(page.getByRole('heading', { name: '标签变更历史', exact: true })).toBeVisible();
   await expect(page.getByText('测试成长标签 · 人工删除', { exact: true })).toBeVisible();
+  const contributions = page.getByRole('region', { name: '标签来源依据' });
+  await expect(contributions.getByRole('listitem')).toHaveCount(2);
+  await expect(contributions.getByText('人工赋标', { exact: true })).toHaveCount(2);
   await page.reload();
   await expect(page.getByText('生效中', { exact: true })).toBeVisible();
 });

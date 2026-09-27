@@ -455,3 +455,9 @@ type ExpireAssistantAction @actionType {
   cardId: AssistantActionCard! @param
   evaluatedAt: DateTime! @param
 }
+
+type ReadOperationAudit @actionType {
+  filters: JSON! @param
+  page: Int! @param
+  size: Int! @param
+}

@@ -100,6 +100,10 @@ models:
         from: "ACTIVE"
         to: "EXPIRED"
         action: "SetTagAvailability"
+      -
+        from: "SUPPRESSED"
+        to: "ACTIVE"
+        action: "AddPersonTag"
     notes: "只有无抑制且存在有效贡献时ACTIVE；旧REMOVED迁移为SUPPRESSED。规则、AI和来源启用不能解除抑制。"
   -
     object: "TagContribution"
@@ -391,6 +395,10 @@ models:
         from: "WITHDRAW_FAILED"
         to: "WITHDRAWING"
         action: "RetryWithdrawal"
+      -
+        from: "SENDING"
+        to: "WITHDRAWING"
+        action: "RequestReminderWithdrawal"
     notes: "发布内容版本与发送汇总正交；修订不将已送达主任务改回DRAFT。公开最新内容由currentPublishedVersionId确定，待审修订由pendingVersionId确定。"
   -
     object: "ReminderTaskVersion"
@@ -469,6 +477,18 @@ models:
         from: "FAILED"
         to: "SUBMITTED"
         action: "RetryFailedRecipients"
+      -
+        from: "UNKNOWN"
+        to: "SUBMITTED"
+        action: "RetryFailedRecipients"
+      -
+        from: "FAILED"
+        to: "DELIVERED"
+        action: "RecordDeliveryReceipt"
+      -
+        from: "UNKNOWN"
+        to: "FAILED"
+        action: "RecordDeliveryReceipt"
     notes: "DELIVERED为成功事实，不被迟到失败降级；sentAt旧字段映射firstDeliveredAt，不在修订时重置。"
   -
     object: "RecipientRecord"

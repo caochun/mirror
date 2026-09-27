@@ -26,6 +26,7 @@ class TagWorkflowTest {
     @Autowired StorageProvider storage;
     @Autowired TagService tags;
     @Autowired Accounts accounts;
+    @Autowired DomainContracts contracts;
     private static final RequestContext CONTEXT=RequestContext.system("mirror","test");
     private String key() {return UUID.randomUUID().toString();}
     private MockHttpSession login(String user) throws Exception {
@@ -64,11 +65,13 @@ class TagWorkflowTest {
         assign(unit,tag,key(),assignment("ADD",2,List.of("demo-person-001"))).andExpect(status().isOk());
         var item=storage.getObject(CONTEXT,"PersonTagAssignment",id);
         assertEquals(false,item.properties().get("manualSuppressed"));assertNull(item.properties().get("effectiveTo"));
+        assertEquals(2, storage.getLinks(CONTEXT, item.key(), "AssignmentHasContribution",
+                StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).size());
         mvc.perform(get("/api/people/demo-person-001/tags/"+tag+"/history").session(unit))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3))
-                .andExpect(jsonPath("$[1].state").value("REMOVED"));
-        assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM of_audit_records WHERE action_type='PersonTagADD'",Integer.class)>0);
-        assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM of_outbox_events WHERE type='mirror.PersonTagADD'",Integer.class)>0);
+                .andExpect(jsonPath("$[1].state").value("SUPPRESSED"));
+        assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM of_audit_records WHERE action_type='AddPersonTag'",Integer.class)>0);
+        assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM of_outbox_events WHERE type='gov.object-library.AddPersonTag'",Integer.class)>0);
     }
     @Test void functionAndOrganizationChecksApplyToWholeBatchBeforeMutation() throws Exception {
         var admin=login("admin");var unit=login("unit");var reviewer=login("reviewer");String tag=create(admin,"");
@@ -129,5 +132,92 @@ class TagWorkflowTest {
             assertEquals(first.get(10,TimeUnit.SECONDS),second.get(10,TimeUnit.SECONDS));
         }
         assertEquals(1,storage.getEntityHistory(CONTEXT,new EntityKey("PersonTagAssignment",TagService.assignmentId("demo-person-003",tag))).size());
+        assertEquals(1, storage.getLinks(CONTEXT,
+                new EntityKey("PersonTagAssignment", TagService.assignmentId("demo-person-003", tag)),
+                "AssignmentHasContribution", StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).size());
+    }
+
+    @Test
+    void rejectsUnknownUnconnectedAndInvalidContractInputs() throws Exception {
+        var actor = accounts.actor("unit");
+        assertThrows(IllegalArgumentException.class, () -> contracts.authorize(actor, "ArbitraryWrite"));
+        assertThrows(BusinessConflict.class, () -> contracts.authorize(actor, "DispatchReminder"));
+        assertThrows(IllegalArgumentException.class, () -> contracts.validateInputs(actor, "AddPersonTag",
+                Map.of("personId", "demo-person-001")));
+        assertThrows(BusinessConflict.class, () -> contracts.requireTransition("PersonTagAssignment", "state",
+                "SUPPRESSED", "EXPIRED", "RemovePersonTag"));
+    }
+
+    @Test
+    void legacyRuleSourceSurvivesRemovalAndManualRestoration() throws Exception {
+        var admin = login("admin");
+        var unit = login("unit");
+        String tag = create(admin, "");
+        String id = TagService.assignmentId("demo-person-004", tag);
+        try (var tx = storage.beginTransaction(CONTEXT)) {
+            var assignment = tx.createObject("PersonTagAssignment", id, Map.of(
+                    "personId", "demo-person-004", "tagDefinitionId", tag, "tagVersion", tag + "-v1",
+                    "tagNameSnapshot", "测试标签", "state", "ACTIVE", "source", "RULE", "manualSuppressed", false,
+                    "sourceOrganizationId", "demo-a", "effectiveFrom", "2026-09-01T00:00:00Z"));
+            tx.createLink("PersonHasTag", "legacy-p-" + tag, new EntityKey("Person", "demo-person-004"),
+                    assignment.key(), Map.of());
+            tx.createLink("TagAssignmentUsesDefinition", "legacy-t-" + tag, assignment.key(),
+                    new EntityKey("TagDefinition", tag), Map.of());
+            tx.commit();
+        }
+        assign(unit, tag, key(), assignment("REMOVE", 1, List.of("demo-person-004")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.contract").value("RemovePersonTag"));
+        var legacy = storage.getObject(CONTEXT, "TagContribution", "legacy-" + id);
+        assertEquals("RULE", legacy.properties().get("source"));
+        assertEquals("ACTIVE", legacy.properties().get("state"));
+        assertEquals("2026-09-01T00:00:00Z", legacy.properties().get("effectiveFrom"));
+        assertEquals("SUPPRESSED", storage.getObject(CONTEXT, "PersonTagAssignment", id).properties().get("state"));
+
+        assign(unit, tag, key(), assignment("RESTORE", 2, List.of("demo-person-004")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.contract").value("RestorePersonTag"));
+        assertEquals("RULE", storage.getObject(CONTEXT, "PersonTagAssignment", id).properties().get("source"));
+        assertEquals(1, storage.getEntityHistory(CONTEXT, legacy.key()).size());
+        mvc.perform(get("/api/people/demo-person-004/tags/" + tag + "/contributions").session(unit))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+        mvc.perform(get("/api/people/demo-person-004/tags/" + tag + "/contributions").session(login("reviewer")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void oldCommandReceiptRemainsReplayableAfterContractRenaming() throws Exception {
+        String tag = create(login("admin"), "");
+        var actor = accounts.actor("unit");
+        String commandId = key();
+        var input = new TagService.AssignmentCommand(List.of("demo-person-005"),
+                Map.of("demo-person-005", 0L), "ADD", "", 1);
+        // This is the exact old protocol digest, not a receipt for a different payload.
+        String fingerprint = BusinessCommands.hash("PersonTagADD/" + json.copy()
+                .enable(com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                .writeValueAsString(List.of(tag, input)));
+        try (var tx = storage.beginTransaction(CONTEXT)) {
+            tx.createObject("BusinessCommandReceipt", BusinessCommands.hash(actor.username() + "/" + commandId),
+                    Map.of("action", "PersonTagADD", "actorId", actor.username(), "requestHash", fingerprint,
+                            "responseJson", "{\"legacyResult\":true}"));
+            tx.commit();
+        }
+        assertEquals(Map.of("legacyResult", true), tags.assign(actor, tag, input, commandId));
+        assertNull(storage.getObject(CONTEXT, "PersonTagAssignment", TagService.assignmentId("demo-person-005", tag)));
+        var changed = new TagService.AssignmentCommand(input.personIds(), input.expectedVersions(), "ADD", "changed", 1);
+        assertThrows(BusinessConflict.class, () -> tags.assign(actor, tag, changed, commandId));
+    }
+
+    @Test
+    void cannotAssignAStaleOrUnpublishedConfigurationVersion() throws Exception {
+        var admin = login("admin");
+        var unit = login("unit");
+        String tag = create(admin, "");
+        var version = storage.getObject(CONTEXT, "TagVersion", tag + "-v1");
+        try (var tx = storage.beginTransaction(CONTEXT)) {
+            tx.updateObject(version.type(), version.id(), Map.of("status", "DRAFT"), version.version());
+            tx.commit();
+        }
+        assign(unit, tag, key(), assignment("ADD", 0, List.of("demo-person-006")))
+                .andExpect(status().isConflict());
+        assertNull(storage.getObject(CONTEXT, "PersonTagAssignment", TagService.assignmentId("demo-person-006", tag)));
     }
 }

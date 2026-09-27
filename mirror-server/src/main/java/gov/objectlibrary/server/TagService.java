@@ -11,8 +11,15 @@ public class TagService {
     private final DirectoryService directory;
     private final Accounts accounts;
     private final BusinessCommands commands;
-    public TagService(StorageProvider storage,DirectoryService directory,Accounts accounts,BusinessCommands commands) {
-        this.storage=storage;this.directory=directory;this.accounts=accounts;this.commands=commands;
+    private final PersonTagCommands personTags;
+
+    public TagService(StorageProvider storage, DirectoryService directory, Accounts accounts,
+                      BusinessCommands commands, PersonTagCommands personTags) {
+        this.storage = storage;
+        this.directory = directory;
+        this.accounts = accounts;
+        this.commands = commands;
+        this.personTags = personTags;
     }
     public List<TagView> tags(Accounts.Actor actor) {
         accounts.requirePermission(actor,"PERSON_READ");
@@ -83,56 +90,10 @@ public class TagService {
                         String.valueOf(h.state().get("source")),String.valueOf(h.state().get("operatorId")),
                         String.valueOf(h.state().getOrDefault("operatorOrganizationId",h.state().getOrDefault("sourceOrganizationId",""))),h.recordedAt().toString(),String.valueOf(h.state().getOrDefault("note","")))).toList();
     }
-    public Map<String,Object> assign(Accounts.Actor actor,String tagId,AssignmentCommand input,String key) {
-        Runnable authorize=()->{
-            accounts.requirePermission(actor,"PERSON_TAG_WRITE");
-            for(String person:input.personIds()) directory.person(actor,person);
-        };
-        return commands.execute(actor,"PersonTag"+input.operation(),key,List.of(tagId,input),authorize,tx->{
-            var tag=require(actor,"TagDefinition",tagId);checkVersion(tag,input.tagVersion());
-            if(!"ACTIVE".equals(text(tag,"status"))) throw new BusinessConflict("标签已停用，请刷新目录");
-            if(directory.all(actor,"TagDefinition").stream().anyMatch(t->tagId.equals(text(t,"parentId"))))
-                throw new BusinessConflict("只有末级标签可以赋给人员");
-            if(new HashSet<>(input.personIds()).size()!=input.personIds().size()
-                    || !input.expectedVersions().keySet().equals(new HashSet<>(input.personIds()))) throw new IllegalArgumentException("Invalid person versions");
-            List<Map<String,Object>> results=new ArrayList<>();
-            for(String personId:input.personIds()) {
-                var person=require(actor,"Person",personId);
-                if(!"ACTIVE".equals(text(person,"status"))) throw new BusinessConflict("名单包含已停用人员");
-                var orgLinks=directory.links(actor,person.key(),"PersonBelongsToOrganization",StorageProvider.Direction.OUTBOUND);
-                if(orgLinks.size()!=1 || !"ACTIVE".equals(text(require(actor,"Organization",orgLinks.getFirst().to().id()),"status")))
-                    throw new BusinessConflict("人员当前单位未唯一确定或已停用");
-                if(directory.links(actor,person.key(),"EligibilityForPerson",StorageProvider.Direction.INBOUND).stream()
-                        .map(l->require(actor,"ObjectEligibility",l.from().id())).anyMatch(e->text(e,"state").startsWith("NON_OBJECT")))
-                    throw new BusinessConflict("非对象账号不能赋标");
-                String id=assignmentId(personId,tagId);
-                var existing=storage.getObject(actor.context(),"PersonTagAssignment",id);
-                long expected=input.expectedVersions().get(personId);
-                if((existing==null?0:existing.version())!=expected) throw new BusinessConflict("人员标签已变化，请刷新后重试");
-                if(existing==null && input.operation().equals("REMOVE")) throw new BusinessConflict("人员尚未具有该标签");
-                boolean remove=input.operation().equals("REMOVE");
-                if(existing!=null && text(existing,"state").equals(remove?"REMOVED":"ACTIVE")) {
-                    results.add(Map.of("personId",personId,"assignmentId",id,"version",expected,"state",text(existing,"state"),"unchanged",true));
-                    continue;
-                }
-                String now=Instant.now().toString();
-                var properties=new HashMap<String,Object>();
-                properties.putAll(Map.of("state",remove?"REMOVED":"ACTIVE","manualSuppressed",remove,
-                        "tagVersion",text(tag,"currentVersionId"),"tagNameSnapshot",text(tag,"name"),"note",input.note(),
-                        "operatorId",actor.username(),"operatorOrganizationId",actor.organizationId()));
-                properties.put("effectiveTo",remove?now:null);
-                if(!remove) properties.put("effectiveFrom",now);
-                if(existing==null) {
-                    properties.putAll(Map.of("personId",personId,"tagDefinitionId",tagId,"source","MANUAL","sourceOrganizationId",actor.organizationId()));
-                    tx.createObject("PersonTagAssignment",id,properties);
-                    tx.createLink("PersonHasTag","person-tag-"+id,person.key(),new EntityKey("PersonTagAssignment",id),Map.of("linkedAt",now));
-                    tx.createLink("TagAssignmentUsesDefinition","definition-"+id,new EntityKey("PersonTagAssignment",id),tag.key(),Map.of());
-                } else tx.updateObject(existing.type(),id,properties,existing.version());
-                results.add(Map.of("personId",personId,"assignmentId",id,"version",expected+1,"state",remove?"REMOVED":"ACTIVE"));
-            }
-            return Map.of("tagId",tagId,"operation",input.operation(),"results",results);
-        });
+    public Map<String, Object> assign(Accounts.Actor actor, String tagId, AssignmentCommand input, String key) {
+        return personTags.execute(actor, tagId, input, key);
     }
+
     private AssignmentView assignmentView(Accounts.Actor actor,ObjectRecord a) {
         var tag=storage.getObject(actor.context(),"TagDefinition",text(a,"tagDefinitionId"));
         return new AssignmentView(a.id(),text(a,"tagDefinitionId"),tag==null?text(a,"tagNameSnapshot"):text(tag,"name"),

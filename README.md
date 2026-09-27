@@ -18,7 +18,7 @@
 
 基础 Domain Pack 只描述对象、关系和生命周期。标签计算、风险判断、廉洁提醒、鹿路通送达和具体监督流程在本业务仓库扩展，Foundry 不包含这些政务业务语义。
 
-业务定义已升级为 [Domain Pack 0.2.0](domain-pack/README.md)，补充动作契约、来源依据、专项事项与版本追溯。动作契约目前为定义状态，现有业务原型和大屏Mock不等于这些契约的生产实现。可单独运行 `mvn -pl business-verification -am test` 验证定义；数据库迁移边界见 [MIGRATION.md](domain-pack/MIGRATION.md)。
+业务定义已复核为 [Domain Pack 0.2.1](domain-pack/README.md)，补充动作契约、来源依据、专项事项与版本追溯。人工标签处理器已开始接入；[运行契约登记](business-spec/runtime-contracts.md)区分定义与实现。可单独运行 `mvn -pl business-verification -am test` 验证定义；数据库迁移边界见 [MIGRATION.md](domain-pack/MIGRATION.md)。
 
 ## 获取和验证 Foundry
 
@@ -34,7 +34,7 @@ Foundry 的版本通过 submodule 固定；更新平台版本时，在本仓库�
 
 已接通账号登录、组织权限、人员查询、档案基础信息、标签目录及单人人工添加/删除/恢复与历史。自动规则、AI复核、提醒审核和接收端阅读仍在开发；H5目前只有独立构建入口，不产生阅读回执。完整进度见 [业务任务清单](business-spec/tasks.md)。
 
-当前主展示目标是核心价值大屏，访问 `http://127.0.0.1:8080/dashboard` 可直接查看 Mock 对象、组织、标签画像、提醒闭环和数据质量。大屏用于验证业务价值和指标叙事，不代表生产统计。
+当前目标是基于复核后的Domain Pack完成完整系统，包括Dashboard；实施进度见[任务清单](business-spec/tasks.md)。`http://127.0.0.1:8080/dashboard`目前仍是Mock价值展示，不代表生产统计，后续需替换为带权限的业务聚合与下钻。
 
 本地需要 JDK 21+、Maven、Node.js 22.12+（建议当前 LTS）。从仓库根目录运行：
 

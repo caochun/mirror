@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiError } from './api';
 import { Heading, ErrorBox, Modal } from './ui';
+import { TagContributions } from './TagContributions';
 
 export type Tag = { id: string; code: string; name: string; parentId: string; dimension: string; level: number; status: string; description: string; version: number; leaf: boolean };
 type Assignment = { id: string; tagId: string; name: string; nameSnapshot: string; state: string; source: string; manualSuppressed: boolean; effectiveFrom: string; effectiveTo: string; tagVersion: string; note: string; version: number };
 type TagChange = { version: number; name: string; state: string; source: string; actorId: string; organizationId: string; recordedAt: string; note: string };
-const stateNames: Record<string, string> = { ACTIVE: '生效中', REMOVED: '人工删除', EXPIRED: '已失效' };
+const stateNames: Record<string, string> = { ACTIVE: '生效中', REMOVED: '人工删除（旧记录）', SUPPRESSED: '人工删除', EXPIRED: '已失效' };
 
 // Keep a command key while retrying an unchanged request; changing inputs creates a new command.
 function useCommand() {
@@ -67,6 +68,7 @@ export function PersonTags({ personId, active }: { personId: string; active: boo
   const [tags, setTags] = useState<Tag[]>([]); const [assignments, setAssignments] = useState<Assignment[]>([]); const [permissions, setPermissions] = useState<string[]>([]);
   const [selected, setSelected] = useState(''); const [error, setError] = useState(''); const [notice, setNotice] = useState(''); const [revision, setRevision] = useState(0); const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<{ tag: Tag; operation: string; version: number } | null>(null); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
+  const [historyTagId, setHistoryTagId] = useState('');
   const [history, setHistory] = useState<TagChange[] | null>(null); const key = useCommand();
   useEffect(() => {
     setLoading(true); setError('');
@@ -84,7 +86,7 @@ export function PersonTags({ personId, active }: { personId: string; active: boo
       setPending(null); setNotice('人员标签已更新，变更已记录。'); setRevision(r => r + 1);
     } catch (e) { setError((e as Error).message); if (e instanceof ApiError && e.status === 409) setPending(null); } finally { setBusy(false); }
   }
-  async function showHistory(tagId: string) { try { setHistory(await api<TagChange[]>(`/people/${personId}/tags/${tagId}/history`)); } catch (e) { setError((e as Error).message); } }
+  async function showHistory(tagId: string) { setHistoryTagId(tagId); try { setHistory(await api<TagChange[]>(`/people/${personId}/tags/${tagId}/history`)); } catch (e) { setError((e as Error).message); } }
   return <section className="panel mt-6 p-6"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">人员标签</h2><button className="secondary" onClick={() => setRevision(r => r + 1)}>刷新标签</button></div>
     {error && <div className="mt-4"><ErrorBox message={error} /></div>}{notice && <p role="status" className="mt-3 text-sm text-emerald-700">{notice}</p>}
     {writable && <form className="mt-5 flex flex-wrap gap-3" onSubmit={e => { e.preventDefault(); const tag = tags.find(t => t.id === selected); if (tag) propose(tag, 'ADD', assignments.find(a => a.tagId === tag.id)?.version ?? 0); }}>
@@ -94,7 +96,7 @@ export function PersonTags({ personId, active }: { personId: string; active: boo
       const tag = tags.find(t => t.id === a.tagId);
       return <article className="flex flex-wrap items-center justify-between gap-4 py-4" key={a.id}><div><p className="text-sm font-medium">{a.name}<span className={`ml-3 rounded px-2 py-1 text-xs ${a.state === 'ACTIVE' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>{stateNames[a.state] ?? a.state}</span></p><p className="muted mt-2">来源：{a.source === 'MANUAL' ? '人工' : a.source} · 生效时间：{a.effectiveFrom ? new Date(a.effectiveFrom).toLocaleString('zh-CN') : '—'}</p>{a.manualSuppressed && <p className="mt-1 text-xs text-amber-700">已人工删除，规则重算不得自动恢复</p>}</div><div className="flex gap-4 text-sm"><button className="text-blue-700" onClick={() => showHistory(a.tagId)}>查看 {a.name} 历史</button>{writable && tag?.status === 'ACTIVE' && <button className="text-blue-700" onClick={() => propose(tag, a.state === 'ACTIVE' ? 'REMOVE' : 'ADD', a.version)}>{a.state === 'ACTIVE' ? '删除' : '恢复'} {a.name}</button>}</div></article>;
     })}</div>}
-    {history && <div className="mt-5 rounded-lg bg-slate-50 p-5"><div className="mb-4 flex justify-between"><h3 className="font-medium">标签变更历史</h3><button className="text-sm text-blue-700" onClick={() => setHistory(null)}>关闭历史</button></div><ol className="space-y-3">{history.map(h => <li key={h.version} className="text-sm"><span className="font-medium">{h.name} · {stateNames[h.state] ?? h.state}</span><span className="ml-3 text-slate-500">{h.actorId} · {new Date(h.recordedAt).toLocaleString('zh-CN')}</span>{h.note && <p className="muted">{h.note}</p>}</li>)}</ol></div>}
+    {history && <div className="mt-5 rounded-lg bg-slate-50 p-5"><div className="mb-4 flex justify-between"><h3 className="font-medium">标签变更历史</h3><button className="text-sm text-blue-700" onClick={() => setHistory(null)}>关闭历史</button></div><ol className="space-y-3">{history.map(h => <li key={h.version} className="text-sm"><span className="font-medium">{h.name} · {stateNames[h.state] ?? h.state}</span><span className="ml-3 text-slate-500">{h.actorId} · {new Date(h.recordedAt).toLocaleString('zh-CN')}</span>{h.note && <p className="muted">{h.note}</p>}</li>)}</ol><TagContributions personId={personId} tagId={historyTagId} /></div>}
     {pending && <form onSubmit={commit} role="dialog" aria-label="确认人员标签变更" className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-5"><h3 className="font-medium">确认{pending.operation === 'REMOVE' ? '删除' : '添加或恢复'}「{pending.tag.name}」</h3><p className="muted mt-2">{pending.operation === 'REMOVE' ? '删除后规则重算不得自动恢复，原来源和历史继续保留。' : '保存后直接生效，本次操作会记录操作人和单位。'}</p><label className="mt-3 block text-sm">备注（可选）<input className="mt-2 w-full" maxLength={1000} value={note} onChange={e => setNote(e.target.value)} /></label>{error && <p role="alert" className="mt-3 text-red-700">{error}</p>}<div className="mt-4 flex gap-3"><button type="button" className="secondary" disabled={busy} onClick={() => setPending(null)}>取消</button><button className="primary" disabled={busy}>确认变更</button></div></form>}
   </section>;
 }

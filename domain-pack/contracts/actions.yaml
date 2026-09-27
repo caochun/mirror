@@ -2231,3 +2231,37 @@ actions:
       recordedAt: "DateTime"
     event: "gov.object-library.ExpireAssistantAction"
     failure: "拒绝时不写部分业务事实；批量按批次结果逐项记录失败，未成功项可显式重试"
+  -
+    name: "ReadOperationAudit"
+    source: "AUTH_AUDIT"
+    status: "definition-only"
+    scope: "core"
+    actor: "authorized-operator"
+    permission: "AUDIT_READ"
+    objects:
+      - "UserAccount"
+      - "AuthorityGrant"
+      - "Organization"
+    inputs:
+      filters: "JSON"
+      page: "Int"
+      size: "Int"
+    rules:
+      - "AUTH"
+      - "PRIVACY"
+      - "AUDIT"
+      - "REFERENCES"
+    preconditions:
+      - "有独立审计查看权限；权限按当前账号重新校验"
+      - "超级管理员可全市；单位/片区限授权范围，审核员仅本人审核记录"
+    effects:
+      - "按时间、操作者、操作单位、业务对象和动作查询审计"
+      - "返回前后状态、来源版本、结果和发生时间；敏感字段脱敏，不泄露跨范围对象"
+      - "读取不改写原审计事件"
+    idempotency: "read-only"
+    output:
+      items: "JSON"
+      total: "Int"
+      asOf: "DateTime"
+    event: "gov.object-library.ReadOperationAudit"
+    failure: "无权拒绝，不能因知道对象ID而跨组织读取历史"
