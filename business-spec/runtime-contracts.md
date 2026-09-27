@@ -1,6 +1,8 @@
 # Pack 契约到运行实现的登记
 
-当前定义基线：0.2.1。这里区分“定义存在”和“处理器已接入”，不是生产完成清单。
+当前定义基线：0.2.2。这里区分“定义存在”和“处理器已接入”，不是生产完成清单。
+
+0.2.2新增的SynchronizeOrganizationFacts、SynchronizeAccountAuthority目前仅有业务签名、规则和验收规格，未登记处理器。新增专项/回执状态迁移须逐一接入，下文记录已完成的发送子集。
 
 ## 已接入的首批处理器
 
@@ -20,7 +22,7 @@
 
 `ReminderService`新增SaveReminderDraft、UpdateRecipientSelection、ConfirmRecipientSelection、ConfirmReminderContent、SubmitReminderReview、DecideReminderReview、WithdrawReminderReview、CancelScheduledReminder与内部ExpireReminderReview路径。保存/确认HTTP命令组合了对应的业务子动作，执行仍在同一Foundry事务内。
 
-它们覆盖文字/列表/可信链接和受控图片；ConfirmReminderContent已校验当前全部图片确认并保存逐图证据。发送审批只创建QUEUED作业，DispatchReminder仍未登记，也未执行真实渠道调用。到期作业由服务端内部上下文触发，没有面向用户的系统权限绕过入口。
+它们覆盖文字/列表/可信链接和受控图片；ConfirmReminderContent已校验当前全部图片确认并保存逐图证据。发送审批创建QUEUED作业，DispatchReminder已由下述worker登记；真实渠道尚未接通。到期作业由服务端内部上下文触发，没有面向用户的系统权限绕过入口。
 
 名单再次计算保留排除意图，确认检查输入摘要，审核结果只作用于本轮冻结版本。旧草稿遗留接收记录保留审计关联；后续发送及统计必须从批准版本的VersionTargetsRecipient取名单，不能扫描任务历次草稿的接收记录并集。
 
@@ -51,3 +53,15 @@ npm --prefix web run test:e2e
 ```
 
 ReminderWorkflowTest原型已替换为符合Pack的实际流程测试，当前`mvn package`全量通过。上面的定向命令仍可用于标签迭代；完整目标还需发送/H5/规则等其余业务验收，不以当前测试数量代表全部完成。
+
+## 持久发送和Mock渠道
+
+DispatchReminder、RecordDeliveryReceipt和RetryFailedRecipients由DeliveryService接入。调度器领取到期作业，核对对应版本的独立审核及摘要，以当前批准版本的VersionTargetsRecipient为名单。单次最多500项，事务持久化尝试后再调用渠道；租约恢复重放相同请求标识，Mock渠道以数据库请求账本返回最初结果与时刻。
+
+真实人员身份不会因使用Mock自动成功；仅`mock:`演示身份返回模拟送达。默认delivery-mode=disabled，不创建虚假成功。示例Mock立即回执，但业务接口允许FAILED/UNKNOWN及可信迟到回执；旧尝试失败不能覆盖新尝试结果，迟到成功可修正任务汇总，首次送达时间只允许用更早可信证据修正，绝不延长截止。
+
+内部动作有独立白名单，不允许账号调用；重试每次重新检查功能权限、当前创建单位和任务归属。结果查询需要REMINDER_READ及OVERDUE_READ（阅读/逾期查看），审核员只有审核快照权限，不能查看逐人阅读结果。Mock手动执行仅在demo=true且mode=mock时开放，并需REMINDER_WRITE；页面明确模拟状态。
+
+新增投影字段：作业leaseOwner/leaseUntil/recipientIdsJson、接收记录channelMode/latestAttemptId、尝试taskVersionId/channelMode/受保护identityReference、回执channelMode。它们与已有对象关系一致；没有把发送状态写成阅读状态。HTTP提供任务delivery、retry和受控mock-dispatch，React显示逐人送达/阅读/首次成功/截止及失败重试。
+
+H5仍未接通，当前UNREAD不会由发送自动转为READ。正式渠道幂等/回执签名、修订/撤回、接收身份和50k查询性能仍须后续实现与验证。

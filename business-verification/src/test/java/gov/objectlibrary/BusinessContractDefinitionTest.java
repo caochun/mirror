@@ -24,6 +24,43 @@ class BusinessContractDefinitionTest {
     private static final Set<String> SCALARS = Set.of("ID", "String", "Int", "Boolean", "DateTime", "Date", "JSON");
 
     @Test
+    void participationExitAndLateReceiptsHaveLegalTransitionsWithoutErasingSuccess() throws IOException {
+        var models = records(yaml("contracts/states.yaml"), "models");
+        assertTransition(models, "MatterParticipation", "state", "ACTIVE", "ENDED", "EndMatterParticipation");
+        assertTransition(models, "TagContribution", "state", "ACTIVE", "EXPIRED", "EndMatterParticipation");
+        assertTransition(models, "PersonTagAssignment", "state", "ACTIVE", "EXPIRED", "EndMatterParticipation");
+        assertTransition(models, "ReminderTaskVersion", "state", "DRAFT", "FROZEN", "SubmitReminderRevision");
+        assertTransition(models, "ReminderTask", "state", "ALL_FAILED", "PARTIAL_FAILED", "RecordDeliveryReceipt");
+        assertTransition(models, "ReminderTask", "state", "PARTIAL_FAILED", "ALL_SUCCESS", "RecordDeliveryReceipt");
+        assertTransition(models, "RecipientRecord", "withdrawalState", "UNKNOWN", "WITHDRAWN", "RecordWithdrawalResult");
+        assertTransition(models, "RecipientRecord", "withdrawalState", "FAILED", "WITHDRAWN", "RecordWithdrawalResult");
+
+        for (var model : models) {
+            for (var transition : records(model, "transitions")) {
+                if (model.get("object").equals("PersonTagAssignment") && transition.get("from").equals("SUPPRESSED")) {
+                    assertTrue(Set.of("AddPersonTag", "RestorePersonTag").contains(transition.get("action")),
+                            "Only explicit human restoration may remove suppression");
+                }
+                if (model.get("object").equals("RecipientRecord") && model.get("field").equals("withdrawalState")) {
+                    assertNotEquals("WITHDRAWN", transition.get("from"), "A late failure cannot undo withdrawal");
+                }
+                if (model.get("object").equals("ReminderTask") && transition.get("action").equals("RecordDeliveryReceipt")) {
+                    assertFalse(Set.of("WITHDRAWING", "WITHDRAWN", "PARTIAL_WITHDRAWN", "WITHDRAW_FAILED")
+                            .contains(transition.get("from")), "Delivery callbacks cannot reset a withdrawal workflow");
+                }
+            }
+        }
+    }
+
+    private static void assertTransition(List<Map<String, Object>> models, String object, String field,
+                                         String from, String to, String action) {
+        var model = models.stream().filter(m -> object.equals(m.get("object")) && field.equals(m.get("field")))
+                .findFirst().orElseThrow();
+        assertTrue(records(model, "transitions").contains(Map.of("from", from, "to", to, "action", action)),
+                object + "." + field + ": " + action);
+    }
+
+    @Test
     void criticalStateTransitionsMatchTheDocumentedBusinessSemantics() throws IOException {
         var models = records(yaml("contracts/states.yaml"), "models");
         var tag = models.stream().filter(m -> m.get("object").equals("PersonTagAssignment")).findFirst().orElseThrow();
@@ -127,6 +164,11 @@ class BusinessContractDefinitionTest {
         uniqueNames(metrics, "code");
         for (var metric : metrics) {
             assertTrue(objects.containsKey(metric.get("object")));
+            if (metric.containsKey("sourceObjects")) {
+                for (String object : strings(metric.get("sourceObjects"))) {
+                    assertTrue(objects.containsKey(object), object);
+                }
+            }
             for (String field : List.of("grain", "definition", "numerator", "denominator", "organizationBasis"))
                 assertFalse(((String) metric.get(field)).isBlank());
         }
@@ -160,6 +202,18 @@ class BusinessContractDefinitionTest {
             for (String action : strings(requirement.get("actions"))) assertTrue(actions.contains(action), action);
             for (String rule : strings(requirement.get("rules"))) assertTrue(rules.contains(rule), rule);
             assertEquals("business-definition", requirement.get("coverage"));
+        }
+        Set<String> coveredActions = coverage.stream().flatMap(r -> strings(r.get("actions")).stream())
+                .collect(Collectors.toSet());
+        assertEquals(actions, coveredActions, "Every business action needs a source requirement mapping");
+        for (var action : records(yaml("contracts/actions.yaml"), "actions")) {
+            for (String source : ((String) action.get("source")).split(" ")) {
+                String id = expected.contains(source) ? "UR_F_ZWDXK_" + source : source;
+                assertTrue(ids.contains(id), action.get("name") + ": unknown requirement " + source);
+                var requirement = coverage.stream().filter(r -> id.equals(r.get("id"))).findFirst().orElseThrow();
+                assertTrue(strings(requirement.get("actions")).contains(action.get("name")),
+                        action.get("name") + ": source must link back to the action in " + id);
+            }
         }
         assertFalse(records(yaml("contracts/rules.yaml"), "conflicts").isEmpty());
     }

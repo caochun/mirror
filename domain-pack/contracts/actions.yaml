@@ -10,6 +10,90 @@ commonInput:
 commonContext: "tenant/actor/currentOrganization/functional grants are authenticated server context, never trusted request fields; event callbacks use trusted source context"
 actions:
   -
+    name: "SynchronizeOrganizationFacts"
+    source: "DXK_SJGL PLAN_GOVERNANCE"
+    status: "definition-only"
+    scope: "core"
+    actor: "authority-connector"
+    permission: "SOURCE_SYNC"
+    objects:
+      - "Organization"
+      - "DataAssociationIssue"
+    inputs:
+      organizationId: "ID"
+      sourceEventId: "String"
+      sourceVersion: "String"
+      effectiveAt: "DateTime"
+      observedAt: "DateTime"
+      facts: "JSON"
+    rules:
+      - "SOURCE"
+      - "ORGANIZATION_AUTHORITY"
+      - "IDENTITY"
+      - "HISTORY"
+      - "AUDIT"
+      - "REFERENCES"
+    preconditions:
+      - "已认证组织权威来源，来源字段和版本可验证；不接受普通管理员伪造同步事件"
+      - "parentId必须显式提供；null表示根，其余为同租户组织，不能自指或形成环"
+    effects:
+      - "独立创建或更新组织，即使组织尚无人员；保留稳定ID、来源版本和观察时间"
+      - "原子结束旧OrganizationParent并建立新关系，记录业务生效时间和记录时间"
+      - "缺父组织、循环或多父冲突时只记录组织级异常，不安装错误树、不扩大授权范围；来源修复后重新校验"
+      - "有效组织变化使当前权限范围和单位性质继承重新计算，安排受影响规则重算"
+      - "人员当前组织ID不被树调整偷偷改写；历史任务归属、名单与组织快照保持原值"
+    idempotency: "tenant+authenticatedSource+sourceEventId; same event with different facts rejected"
+    output:
+      affectedIds: "ID[]"
+      result: "JSON"
+      recordedAt: "DateTime"
+    event: "gov.object-library.SynchronizeOrganizationFacts"
+    failure: "无可信来源则拒绝；无效组织关系保留诊断，不提交部分树变更；允许修复后用新来源版本重试"
+  -
+    name: "SynchronizeAccountAuthority"
+    source: "PLAN_GOVERNANCE AUTH_AUDIT"
+    status: "definition-only"
+    scope: "core"
+    actor: "authority-connector"
+    permission: "AUTHORITY_SYNC"
+    objects:
+      - "UserAccount"
+      - "AuthorityGrant"
+      - "Organization"
+      - "Person"
+    inputs:
+      accountId: "ID"
+      sourceEventId: "String"
+      sourceVersion: "String"
+      effectiveAt: "DateTime"
+      observedAt: "DateTime"
+      facts: "JSON"
+      grants: "JSON"
+    rules:
+      - "AUTH"
+      - "ORGANIZATION_AUTHORITY"
+      - "SOURCE"
+      - "HISTORY"
+      - "PRIVACY"
+      - "AUDIT"
+      - "REFERENCES"
+    preconditions:
+      - "权限来自已认证授权提供方；功能代码、范围种类与组织根经过服务端白名单校验"
+      - "facts和grants是该来源对该账号的完整快照，版本不可回退；不同来源不得覆盖彼此授权"
+      - "账号可独立于人员存在；关联personId时必须是同租户且经来源确认的人员"
+    effects:
+      - "同步账号状态、唯一当前组织和可选人员关联，不存密码或外部身份票据"
+      - "原子结束该来源已撤销/变更的AuthorityGrant及范围关系，记录新的有效授权与来源版本"
+      - "账号停用、授权撤销或单位变更后，下一次操作按最新事实验权，不能沿用旧会话权限"
+      - "审核独立性和当前本级范围仍逐次校验；历史创建/审核身份及操作单位不改写"
+    idempotency: "tenant+authenticatedSource+sourceEventId; same event with different facts rejected"
+    output:
+      affectedIds: "ID[]"
+      result: "JSON"
+      recordedAt: "DateTime"
+    event: "gov.object-library.SynchronizeAccountAuthority"
+    failure: "拒绝越权、过期来源版本或无效范围；整份账号授权快照原子应用，不能部分扩权"
+  -
     name: "SynchronizePersonFacts"
     source: "DXK_SJGL"
     status: "definition-only"
@@ -993,6 +1077,7 @@ actions:
     actor: "authorized-operator"
     permission: "MATTER_WRITE"
     objects:
+      - "SupervisionMatter"
       - "MatterStage"
       - "MatterParticipation"
       - "TagContribution"
@@ -1013,6 +1098,7 @@ actions:
       - "阶段尚未结束且有权限"
     effects:
       - "结束阶段与对应阶段贡献"
+      - "仅当参与覆盖的所有阶段结束时结束该参与；仍有其他有效阶段的参与继续保留"
       - "重新计算逻辑标签有效性，其他事项/长期/人工贡献保留"
       - "事项全部结束时结束事项，保留全过程"
     idempotency: "tenant+actor+commandId"
@@ -1530,6 +1616,7 @@ actions:
     actor: "channel-adapter"
     permission: "DELIVERY_RECEIPT"
     objects:
+      - "ReminderTask"
       - "DeliveryReceipt"
       - "DeliveryAttempt"
       - "RecipientRecord"
@@ -1553,6 +1640,7 @@ actions:
       - "保存回执及尝试结果，成功首次设置firstDeliveredAt/deadlineAt"
       - "重复/乱序回执不覆盖已确认首次成功"
       - "回执与已读不一致另记异常"
+      - "可信迟到成功重算任务送达汇总；发送未结束不提前完成，撤回中的主状态不回退"
     idempotency: "tenant+channel+externalEventId"
     output:
       affectedIds: "ID[]"
@@ -2126,10 +2214,10 @@ actions:
       - "AUDIT"
       - "REFERENCES"
     preconditions:
-      - "阶段属于该事项且尚未结束"
+      - "阶段属于该事项且为PLANNED，事项尚未结束"
       - "变更时间有权威依据"
     effects:
-      - "建立PLANNED或激活ACTIVE阶段，记录业务时间"
+      - "激活既有PLANNED阶段为ACTIVE，记录业务时间；首次开始时激活事项，不另建无定义阶段"
       - "不自动发送提醒，不自动结束允许并行的其他阶段"
     idempotency: "tenant+actor+commandId"
     output:

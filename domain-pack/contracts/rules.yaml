@@ -3,6 +3,15 @@ schemaVersion: 1
 status: "definition-only"
 rules:
   -
+    id: "ORGANIZATION_AUTHORITY"
+    source: "需求书2.2、3.1.1、3.1.4；试点方案三（一）1、四"
+    objects:
+      - "Organization"
+      - "UserAccount"
+      - "AuthorityGrant"
+      - "DataAssociationIssue"
+    definition: "组织和账号授权独立于人员同步。组织树同租户、无环、至多一个当前父组织，根显式声明；缺父或多父形成组织级异常，不依靠猜测扩权。组织变更影响当前下级范围和性质继承，不改历史任务的创建单位、接收单位快照，也不代替人员调动。授权按可信来源完整快照更新，仅结束该来源的旧授权；CUSTOM_ORGS须有明确根，CURRENT_ORG_AND_DESCENDANTS须有有效当前组织，ALL需可信全市授权。账号停用、授权失效和单位变化在下一次操作重新验证，未解决的范围异常拒绝依赖该范围的操作；已有会话不能保留撤销权限。账号不必有Person，业务Pack不存密码，不假定现成明镜账号体系。"
+  -
     id: "AUTH"
     source: "2.2；试点方案三（一）1、四"
     objects:
@@ -102,7 +111,7 @@ rules:
       - "MatterParticipation"
       - "RiskEvent"
       - "TagContribution"
-    definition: "专项不限工程项目，可为资金、整改、换届、节庆、采购等事务。参与/经办/分管角色有有效期，人员同时参与多个事项或阶段。专项贡献必须指向具体事项阶段或参与关系及来源风险依据。事项/阶段结束只终止对应贡献，不影响其他事项和长期标签。风险线索来源与观察时间保留，不据标签给人员作违纪定性，不建设案件办理系统。"
+    definition: "专项不限工程项目，可为资金、整改、换届、节庆、采购等事务。参与/经办/分管角色有有效期，人员同时参与多个事项或阶段。专项贡献必须指向具体事项阶段或参与关系及来源风险依据。退出参与结束该参与的全部阶段贡献；单阶段结束只结束该阶段贡献，不提前结束仍覆盖其他阶段的参与。最后一个有效贡献结束且无人工抑制时逻辑标签EXPIRED，仍有其他有效贡献时保持ACTIVE，SUPPRESSED不被解除。角色变更以结束原参与并建立新参与表达，有效期结束不可早于开始；全部阶段结束才结束事项。风险线索来源与观察时间保留，不据标签给人员作违纪定性，不建设案件办理系统。"
   -
     id: "CONTENT"
     source: "3.3.1—3.3.4"
@@ -173,7 +182,7 @@ rules:
       - "DeliveryAttempt"
       - "DeliveryReceipt"
       - "IntegrationIssue"
-    definition: "内部用稳定人员/接收ID，唯一触达渠道鹿路通，外部身份字段与签名不硬编码进本体。一次尝试对应外部请求，已提交不等于送达；区分成功、明确失败、未知。回执按渠道+外部事件ID去重并关联尝试。迟到失败不能覆盖已有成功；不一致单独记异常。只重试失败/未知，成功不重复。对外发送由已提交outbox/作业执行，不在数据库事务内调用远端。"
+    definition: "内部用稳定人员/接收ID，唯一触达渠道鹿路通，外部身份字段与签名不硬编码进本体。一次尝试对应外部请求，已提交不等于送达；区分成功、明确失败、未知。回执按渠道+外部事件ID去重并关联尝试。迟到失败不能覆盖已有成功；不一致单独记异常。可信迟到成功修正接收结果及已结束任务的送达汇总；仍在发送的任务不因单条回执提前结束。任务已进入撤回流程时，迟到送达仅更新事实，不把任务退回发送状态。只重试失败/未知，成功不重复。对外发送由已提交outbox/作业执行，不在数据库事务内调用远端。"
   -
     id: "READ"
     source: "3.5.3、3.5.6"
@@ -198,7 +207,7 @@ rules:
       - "RecipientRecord"
       - "ReminderTask"
       - "IntegrationIssue"
-    definition: "有权管理员可直接撤回，原因必填，无需审核。保留逐人请求/响应/操作者/组织/时间；请求中不等于成功，区分全部/部分/失败。只重试失败/未知，不重复成功撤回。保留发送、阅读、审核历史，生效撤回在本人内容访问中关闭正文。"
+    definition: "有权管理员可直接撤回，原因必填，无需审核。保留逐人请求/响应/操作者/组织/时间；请求中不等于成功，区分全部/部分/失败。只重试失败/未知，不重复成功撤回。可信迟到成功可修正失败/未知及任务汇总，迟到失败不可覆盖已成功撤回。保留发送、阅读、审核历史，生效撤回在本人内容访问中关闭正文。"
   -
     id: "PRIVACY"
     source: "2.2、3.5.2、3.5.6、4、6"
@@ -244,7 +253,7 @@ rules:
       - "TagVersion"
       - "TagCandidate"
       - "AuthorityGrant"
-    definition: "对象引用必须同租户。ReviewForVersion的版本必须属于ReviewForTask的任务；所有RecipientForPerson和TaskHasRecipient组成稳定接收键，VersionTargetsRecipient必须在该任务冻结名单中。版本阅读只能连接同任务的版本和接收记录。TagContribution使用版本必须属于PersonTagAssignment的标签；候选/规则版本/评估指向同一目标标签及人员。SelectionEntry唯一于名单+人员。关系与字符串ID投影不允许独立写入；历史快照字段例外但需声明asOf和来源。"
+    definition: "对象引用必须同租户。ReviewForVersion的版本必须属于ReviewForTask的任务；所有RecipientForPerson和TaskHasRecipient组成稳定接收键，VersionTargetsRecipient必须在该任务冻结名单中。版本阅读只能连接同任务的版本和接收记录。TagContribution使用版本必须属于PersonTagAssignment的标签；候选/规则版本/评估指向同一目标标签及人员。专项贡献的人员须等于参与人员，阶段须同时属于参与事项与参与阶段；参与所用Assignment须属于该人员；风险阶段须属于风险事项。SelectionEntry唯一于名单+人员。关系与字符串ID投影不允许独立写入；历史快照字段例外但需声明asOf和来源。"
 uniqueKeys:
   -
     object: "PersonTagAssignment"

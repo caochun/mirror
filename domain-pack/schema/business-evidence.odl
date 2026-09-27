@@ -18,6 +18,10 @@ type AuthorityGrant @objectType {
   scopeKind: String!
   validFrom: DateTime!
   validTo: DateTime
+  sourceSystem: String
+  sourceRecordId: String
+  sourceVersion: String
+  sourceObservedAt: DateTime
 }
 
 type ClassificationMapping @objectType {
@@ -227,6 +231,10 @@ type ProfileForPerson @linkType(from: "PersonProfile", to: "Person", cardinality
 }
 
 type IssueForProfile @linkType(from: "DataAssociationIssue", to: "PersonProfile", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type IssueForOrganization @linkType(from: "DataAssociationIssue", to: "Organization", cardinality: MANY_TO_ONE) {
   id: ID! @primary
 }
 

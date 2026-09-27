@@ -1,6 +1,25 @@
 # Definition-only action signatures. Not in runtime schema list until handlers exist.
 # Compile together with the object schemas and verify against actions.yaml.
 
+type SynchronizeOrganizationFacts @actionType {
+  organizationId: ID! @param
+  sourceEventId: String! @param
+  sourceVersion: String! @param
+  effectiveAt: DateTime! @param
+  observedAt: DateTime! @param
+  facts: JSON! @param
+}
+
+type SynchronizeAccountAuthority @actionType {
+  accountId: ID! @param
+  sourceEventId: String! @param
+  sourceVersion: String! @param
+  effectiveAt: DateTime! @param
+  observedAt: DateTime! @param
+  facts: JSON! @param
+  grants: JSON! @param
+}
+
 type SynchronizePersonFacts @actionType {
   personId: ID! @param
   sourceEventId: String! @param

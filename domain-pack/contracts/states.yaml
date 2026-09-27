@@ -3,6 +3,31 @@ schemaVersion: 1
 status: "definition-only"
 models:
   -
+    object: "Organization"
+    field: "status"
+    values: ["ACTIVE", "INACTIVE"]
+    transitions:
+      - {from: "ACTIVE", to: "INACTIVE", action: "ApplySourceLifecycle"}
+      - {from: "INACTIVE", to: "ACTIVE", action: "ApplySourceLifecycle"}
+      - {from: "ACTIVE", to: "INACTIVE", action: "SynchronizeOrganizationFacts"}
+      - {from: "INACTIVE", to: "ACTIVE", action: "SynchronizeOrganizationFacts"}
+    notes: "独立组织来源更新或生命周期事件，不删除组织/关系历史；停用影响当前资格和授权。"
+  -
+    object: "UserAccount"
+    field: "state"
+    values: ["ACTIVE", "INACTIVE"]
+    transitions:
+      - {from: "ACTIVE", to: "INACTIVE", action: "SynchronizeAccountAuthority"}
+      - {from: "INACTIVE", to: "ACTIVE", action: "SynchronizeAccountAuthority"}
+    notes: "登录主体停用不等于人员停用；账号重新启用仍须检查当前有效授权。"
+  -
+    object: "AuthorityGrant"
+    field: "state"
+    values: ["ACTIVE", "REVOKED"]
+    transitions:
+      - {from: "ACTIVE", to: "REVOKED", action: "SynchronizeAccountAuthority"}
+    notes: "撤销后再授予创建新授权事实；validFrom/validTo参与每次验权，时间过期不等待状态作业才生效。"
+  -
     object: "Person"
     field: "status"
     values:
@@ -104,6 +129,9 @@ models:
         from: "SUPPRESSED"
         to: "ACTIVE"
         action: "AddPersonTag"
+      - {from: "ACTIVE", to: "EXPIRED", action: "EndMatterParticipation"}
+      - {from: "EXPIRED", to: "ACTIVE", action: "AssignStageTag"}
+      - {from: "EXPIRED", to: "ACTIVE", action: "ReviewTagCandidate"}
     notes: "只有无抑制且存在有效贡献时ACTIVE；旧REMOVED迁移为SUPPRESSED。规则、AI和来源启用不能解除抑制。"
   -
     object: "TagContribution"
@@ -120,6 +148,7 @@ models:
         from: "ACTIVE"
         to: "EXPIRED"
         action: "EndMatterStage"
+      - {from: "ACTIVE", to: "EXPIRED", action: "EndMatterParticipation"}
     notes: "来源贡献独立于逻辑标签，规则再次命中可建新的来源发生记录；历史贡献不改写。"
   -
     object: "TagEvaluation"
@@ -176,6 +205,14 @@ models:
         to: "FAILED"
         action: "CompleteTagBatch"
     notes: "作业生命周期交由执行层实现；批次完成不代表全部标签生效，人工抑制仍有效。"
+  -
+    object: "MatterParticipation"
+    field: "state"
+    values: ["ACTIVE", "ENDED"]
+    transitions:
+      - {from: "ACTIVE", to: "ENDED", action: "EndMatterParticipation"}
+      - {from: "ACTIVE", to: "ENDED", action: "EndMatterStage"}
+    notes: "参与退出结束其贡献；EndMatterStage只有在参与覆盖的所有阶段结束时才结束参与，不影响同人其他参与。"
   -
     object: "SupervisionMatter"
     field: "state"
@@ -399,6 +436,12 @@ models:
         from: "SENDING"
         to: "WITHDRAWING"
         action: "RequestReminderWithdrawal"
+      - {from: "ALL_FAILED", to: "PARTIAL_FAILED", action: "RecordDeliveryReceipt"}
+      - {from: "ALL_FAILED", to: "ALL_SUCCESS", action: "RecordDeliveryReceipt"}
+      - {from: "PARTIAL_FAILED", to: "ALL_SUCCESS", action: "RecordDeliveryReceipt"}
+      - {from: "WITHDRAW_FAILED", to: "PARTIAL_WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "WITHDRAW_FAILED", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "PARTIAL_WITHDRAWN", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
     notes: "发布内容版本与发送汇总正交；修订不将已送达主任务改回DRAFT。公开最新内容由currentPublishedVersionId确定，待审修订由pendingVersionId确定。"
   -
     object: "ReminderTaskVersion"
@@ -414,6 +457,7 @@ models:
         from: "DRAFT"
         to: "FROZEN"
         action: "SubmitReminderReview"
+      - {from: "DRAFT", to: "FROZEN", action: "SubmitReminderRevision"}
       -
         from: "FROZEN"
         to: "APPROVED"
@@ -520,6 +564,9 @@ models:
         from: "FAILED"
         to: "REQUESTED"
         action: "RetryWithdrawal"
+      - {from: "FAILED", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "UNKNOWN", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "UNKNOWN", to: "FAILED", action: "RecordWithdrawalResult"}
       -
         from: "UNKNOWN"
         to: "REQUESTED"

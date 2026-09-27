@@ -24,11 +24,59 @@ class BusinessPackVerificationTest {
     void loadsBusinessDefinitionWithoutExposingIncompleteExecutableActions() {
         var pack = new DomainPackLoader().load(packPath());
         assertEquals("government-object-library", pack.manifest().name());
-        assertEquals("0.2.1", pack.manifest().version());
+        assertEquals("0.2.2", pack.manifest().version());
         assertEquals(pack.manifest().version(), pack.ontology().schema().version());
         assertTrue(pack.actions().isEmpty(), "Definition-only business commands must not become callable stubs");
         assertTrue(pack.ontology().schema().actionTypes().isEmpty());
         assertTrue(pack.ontology().objectTypes().containsKey("Person"));
+    }
+
+    @Test
+    void organizationChangesAndAccountGrantsExistWithoutPersonnelAndKeepHistory() {
+        var pack = new DomainPackLoader().load(packPath());
+        var storage = new InMemoryStorageProvider();
+        var context = RequestContext.system("tenant", "authority-fixture");
+        storage.applySchema(context, pack.ontology().schema());
+        var child = new EntityKey("Organization", "C");
+        var parentA = new EntityKey("Organization", "A");
+        var parentB = new EntityKey("Organization", "B");
+        try (var tx = storage.beginTransaction(context)) {
+            for (String id : new String[]{"A", "B", "C"}) {
+                tx.createObject("Organization", id, Map.of("name", id, "status", "ACTIVE"));
+            }
+            tx.createLink("OrganizationParent", "C-A", child, parentA, Map.of());
+            var issue = tx.createObject("DataAssociationIssue", "org-issue", Map.of("status", "OPEN"));
+            tx.createLink("IssueForOrganization", "issue-C", issue.key(), child, Map.of());
+            var account = tx.createObject("UserAccount", "operator", Map.of("username", "operator", "state", "ACTIVE"));
+            tx.createLink("AccountCurrentOrganization", "operator-A", account.key(), parentA, Map.of());
+            for (String id : new String[]{"source-one", "source-two"}) {
+                var grant = tx.createObject("AuthorityGrant", id, Map.of("permission", "PERSON_READ",
+                        "scopeKind", "CUSTOM_ORGS", "state", "ACTIVE", "sourceSystem", id));
+                tx.createLink("GrantForAccount", id, grant.key(), account.key(), Map.of());
+                tx.createLink("GrantScopeRoot", id + "-A", grant.key(), parentA, Map.of());
+                tx.createLink("GrantScopeRoot", id + "-B", grant.key(), parentB, Map.of());
+            }
+            tx.commit();
+        }
+        try (var tx = storage.beginTransaction(context)) {
+            assertThrows(IllegalStateException.class, () -> tx.createLink("OrganizationParent", "invalid",
+                    child, parentB, Map.of()), "One organization cannot have two current parents");
+        }
+        try (var tx = storage.beginTransaction(context)) {
+            tx.deleteLink("OrganizationParent", "C-A", 1);
+            tx.createLink("OrganizationParent", "C-B", child, parentB, Map.of());
+            tx.updateObject("AuthorityGrant", "source-one", Map.of("state", "REVOKED"), 1);
+            tx.commit();
+        }
+        assertTrue(storage.queryObjects(context, "Person", QueryOptions.defaults()).isEmpty());
+        var currentParents = storage.getLinks(context, child, "OrganizationParent",
+                StorageProvider.Direction.OUTBOUND, QueryOptions.defaults());
+        assertEquals(1, currentParents.size());
+        assertEquals(parentB, currentParents.getFirst().to());
+        assertEquals(2, storage.getEntityHistory(context, new EntityKey("OrganizationParent", "C-A")).size());
+        assertNotNull(storage.getLinkAtVersion(context, "OrganizationParent", "C-A", 1));
+        assertEquals("ACTIVE", storage.getObject(context, "AuthorityGrant", "source-two").properties().get("state"));
+        assertEquals(2, storage.getEntityHistory(context, new EntityKey("AuthorityGrant", "source-one")).size());
     }
 
     @Test

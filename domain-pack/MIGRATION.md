@@ -17,3 +17,15 @@
 迁移后应验证：关系端点/唯一键一致、旧时间和外部ID可追溯、人工抑制未丢失、原接收总数不因版本膨胀、原截止时间不延长、未授权操作者不能通过新对象关系获取旧数据。
 
 提醒处理器接入时新增了可选的selectionId、draftSequence、contentCheckId、activeReviewId、criteriaJson、entriesJson等查找投影，以及ReviewRound的taskId/versionId/organizationId投影。它们与对应关系、冻结版本保持一致；未审草稿可以新建版本，但旧冻结版本不覆盖。旧任务缺少这些依据时返回需要核实迁移，不把旧原型自动包装成已审核任务。历次驳回/撤回轮次的接收记录可保留，发送与目标人数应使用当前有效审核/发布版本的VersionTargetsRecipient成员，而不是历史接收记录并集。
+
+## 0.2.1 → 0.2.2
+
+- 新增IssueForOrganization关系，允许尚无人员的组织独立记录来源异常；不更改现有关系基数。
+- Person、Organization、UserAccount、AuthorityGrant补充可选来源版本/观察时间等字段。旧记录允许空，必须从来源核实后补齐，不用迁移时间冒充业务观察时间。
+- 新增SynchronizeOrganizationFacts与SynchronizeAccountAuthority业务契约，不注册为Foundry YAML可执行动作，也不自动替换当前账号数据库。
+- 新增组织/授权/专项参与状态词表，完善参与退出、修订冻结及迟到回执迁移。处理器仍需实现对应前置条件，不能把状态文件更新视为已有数据状态已转换。
+- tagPending保留PERSON_TAG粒度并显式返回affectedPeople人数。消费方须标清单位，不能将问题项计数显示为人数。
+
+这是增量定义修订，没有执行运行库迁移；原0.1.0升级仍须遵循上文历史/接收记录语义迁移要求。
+
+发送处理器接入后新增可选作业租约、重试名单、渠道模式和最新尝试ID投影，以及尝试的版本/受保护身份引用。旧原型缺少可信独立审核快照的发送作业不会被新worker执行；不能从旧sentAt猜测送达。V5新增Mock请求账本和功能权限，运行环境应始终区分模拟记录与真实送达。

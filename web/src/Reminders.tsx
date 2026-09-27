@@ -5,6 +5,7 @@ import { useSession } from './App';
 import { Heading, ErrorBox, Modal } from './ui';
 import { included, readingWindows, reminderStates } from './reminderTypes';
 import type { ReminderTask, ReminderDetail } from './reminderTypes';
+import { ReminderDelivery } from './ReminderDelivery';
 
 export function ReminderList() {
   const { actor } = useSession();
@@ -198,11 +199,11 @@ export function ReminderTaskDetail() {
           {task.reviewRound > 0 && (
             <p className="muted mb-4">第 {task.reviewRound} 轮审核 · 待审核内容和名单为冻结快照。</p>
           )}
-          {task.state === 'APPROVED_WAITING' && (
-            <p className="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
-              审核已通过，发送作业已排队。渠道执行尚未接通，当前不表示已送达。
-            </p>
-          )}
+          {task.state === 'APPROVED_WAITING' && <p className="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
+            审核已通过，发送作业已排队。{task.sendMode === 'SCHEDULED' ? '等待计划时间。' : '等待发送执行。'}
+          </p>}
+          {task.reviewRound > 0 && permissions.includes('OVERDUE_READ') && <ReminderDelivery task={task} canWrite={canWrite}
+            canRetry={permissions.includes('REMINDER_RETRY') && actor.organizationId === task.organizationId} refresh={load} />}
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
             <section className="panel p-6">
               <h2 className="mb-4 font-semibold">最终内容预览</h2>

@@ -218,3 +218,60 @@ scenarios:
       - "审核员仅本人审核事件"
       - "单位管理员不能利用历史对象ID读取跨范围事件"
       - "敏感值不因审计查看权限而自动解密"
+  -
+    id: "S19"
+    name: "无人组织也可调整层级"
+    given: "组织C尚无人员，原父组织A；已有任务保留A的组织快照"
+    actions:
+      - "SynchronizeOrganizationFacts"
+      - "QueryBusinessMetrics"
+    expect:
+      - "无需创建虚构人员即可同步C，将C的当前父组织变为B"
+      - "父关系旧值可按业务时间与记录时间追溯，历史任务快照不变"
+      - "当前下级授权范围和单位性质继承重算；自指、环和缺父不产生扩权"
+      - "组织异常可以在没有Person时通过IssueForOrganization保存"
+  -
+    id: "S20"
+    name: "来源撤销权限即时生效"
+    given: "管理员会话仍有效，授权来源撤销其标签写权限；审核员调到另一单位"
+    actions:
+      - "SynchronizeAccountAuthority"
+      - "AddPersonTag"
+      - "DecideReminderReview"
+    expect:
+      - "撤销后下一次写操作拒绝，重放旧命令也须重新验权"
+      - "审核员不能继续审核原单位待审任务，原审核历史仍保留原操作单位"
+      - "空授权快照结束该来源全部旧授权，不删除其他来源授权"
+      - "停用登录账号与人员资格分别维护，不存密码、不自动把技术账号变为提醒对象"
+  -
+    id: "S21"
+    name: "退出参与与跨阶段贡献隔离"
+    given: "P在事项A两个阶段有参与贡献，在B另有参与；同事Q仍参与A"
+    actions:
+      - "EndMatterParticipation"
+      - "EndMatterStage"
+    expect:
+      - "P退出A只结束P在该参与下的贡献，不影响Q或P在B的贡献"
+      - "仅结束一个阶段不提前结束仍覆盖其他阶段的参与"
+      - "无剩余有效贡献时逻辑标签EXPIRED，有其他贡献仍ACTIVE，人工SUPPRESSED保持不变"
+      - "贡献人员与参与人员、事项与阶段不一致时拒绝写入"
+  -
+    id: "S22"
+    name: "迟到回执修正汇总而不倒退撤回"
+    given: "发送已结束且任务ALL_FAILED，随后收到可信首次成功；另一任务已进入撤回"
+    actions:
+      - "RecordDeliveryReceipt"
+      - "RecordWithdrawalResult"
+    expect:
+      - "按实际逐人结果将ALL_FAILED修正为PARTIAL_FAILED或ALL_SUCCESS"
+      - "迟到送达不把WITHDRAWING或WITHDRAWN任务改回发送状态"
+      - "撤回失败或未知可被可信迟到成功修正，已撤回不被迟到失败降级"
+  -
+    id: "S23"
+    name: "标签问题条数不冒充人数"
+    given: "P有两个不同标签的无法计算问题，其中一个有两次失败批次；Q有一个问题"
+    actions:
+      - "QueryBusinessMetrics"
+    expect:
+      - "当前无法计算为3个人员标签项、2名涉及人员，不按历史批次累计为4项或4人"
+      - "问题解决后从当前待处理计数移除，历史事件仍可审计"

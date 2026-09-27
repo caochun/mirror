@@ -68,8 +68,15 @@ metrics:
     code: "tagPending"
     grain: "PERSON_TAG"
     object: "TagCandidate"
-    definition: "待复核、无法判断、调用失败、无法计算、人工抑制分别统计，不能合并为整人同步异常"
-    numerator: "records by category/state"
+    sourceObjects:
+      - "TagCandidate"
+      - "TagProcessingIssue"
+      - "PersonTagAssignment"
+    definition: "待复核、无法判断、调用失败、无法计算、人工抑制分别统计当前人员+标签项，并同时返回各类涉及的去重人数；同人多标签或多批次异常不能冒充多人。类别人数可重叠，历史已解决问题不计当前待处理。不能合并为整人同步异常。"
+    numerator: "distinct current person-tag pairs by category/state; affectedPeople = distinct person IDs per category"
+    counts:
+      items: "PERSON_TAG"
+      affectedPeople: "PERSON"
     denominator: "none"
     organizationBasis: "current organization"
   -

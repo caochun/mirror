@@ -1,4 +1,4 @@
-extend schema @namespace(name: "gov.object-library", version: "0.2.1")
+extend schema @namespace(name: "gov.object-library", version: "0.2.2")
 
 type Person @objectType {
   id: ID! @primary
@@ -17,6 +17,7 @@ type Person @objectType {
   sourceSystem: String
   sourceRecordId: String
   sourceObservedAt: DateTime
+  sourceVersion: String
 }
 
 type Organization @objectType {
@@ -29,6 +30,8 @@ type Organization @objectType {
   sourceRecordId: String
   managedUnit: Boolean
   responsibilityKind: String
+  sourceVersion: String
+  sourceObservedAt: DateTime
 }
 
 type Position @objectType {
@@ -87,6 +90,10 @@ type UserAccount @objectType {
   state: String! @indexed
   personId: String @indexed
   changedAt: DateTime!
+  sourceSystem: String
+  sourceRecordId: String
+  sourceVersion: String
+  sourceObservedAt: DateTime
 }
 
 type TagDefinition @objectType {
@@ -316,6 +323,9 @@ type ReminderSendJob @objectType {
   state: String! @indexed
   dueAt: DateTime!
   createdAt: DateTime!
+  leaseOwner: String
+  leaseUntil: DateTime
+  recipientIdsJson: String
 }
 
 type RecipientRecord @objectType {
@@ -335,6 +345,8 @@ type RecipientRecord @objectType {
   withdrawalState: String
   selectionSource: String
   eligibilitySnapshotJson: String
+  channelMode: String
+  latestAttemptId: String
 }
 
 type DeliveryAttempt @objectType {
@@ -347,6 +359,9 @@ type DeliveryAttempt @objectType {
   submittedAt: DateTime
   externalRequestId: String
   resultObservedAt: DateTime
+  taskVersionId: String
+  channelMode: String
+  identityReference: String @sensitive
 }
 
 type DeliveryReceipt @objectType {
@@ -359,6 +374,7 @@ type DeliveryReceipt @objectType {
   occurredAt: DateTime
   attemptId: String
   errorCode: String
+  channelMode: String
 }
 
 type ReadReceipt @objectType {

@@ -33,7 +33,7 @@ async function confirmAndSubmit(page: Page) {
   await expect(page.getByText('第 1 轮审核 · 待审核内容和名单为冻结快照。', { exact: true })).toBeVisible();
 }
 
-test('unit creator freezes a task and another authenticated reviewer approves it', async ({ page }, testInfo) => {
+test('unit creator freezes a task, an independent reviewer approves it, and Mock delivery preserves the roster', async ({ page }, testInfo) => {
   const title = '浏览器独立审核提醒';
   await login(page, 'unit');
   await createDraft(page, title);
@@ -52,6 +52,22 @@ test('unit creator freezes a task and another authenticated reviewer approves it
   await page.reload();
   await expect(page.getByText(/审核已通过，发送作业已排队/)).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('review-approved.png'), fullPage: true });
+  const taskUrl = page.url();
+  await expect(page.getByRole('button', { name: '执行 Mock 发送', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '退出', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '登录明镜' })).toBeVisible();
+  await login(page, 'unit');
+  await page.goto(taskUrl);
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: '执行 Mock 发送', exact: true }).click();
+  const delivery = page.getByRole('region', { name: '送达与阅读结果' });
+  await expect(delivery.getByText('Mock 演示渠道', { exact: false })).toBeVisible();
+  await expect(delivery.getByText(/目标 16 人 · 已送达 16 人/)).toBeVisible();
+  await expect(delivery.getByRole('cell', { name: '未读', exact: true })).toHaveCount(16);
+  await expect(delivery.getByRole('button', { name: '执行 Mock 发送', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(delivery.getByText(/目标 16 人 · 已送达 16 人/)).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('mock-delivery-results.png'), fullPage: true });
 });
 
 test('draft edits invalidate confirmation and explicit exclusion survives a saved edit', async ({ page }) => {

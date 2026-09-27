@@ -25,7 +25,13 @@ public class DomainContracts {
             "AddPersonTag", "RemovePersonTag", "RestorePersonTag", "SaveReminderDraft",
             "UpdateRecipientSelection", "ConfirmRecipientSelection", "ConfirmReminderContent", "SubmitReminderReview",
             "DecideReminderReview", "WithdrawReminderReview", "CancelScheduledReminder", "ExpireReminderReview",
-            "RegisterMediaAsset", "SaveContentExample", "SetContentAvailability");
+            "RegisterMediaAsset", "SaveContentExample", "SetContentAvailability",
+            "DispatchReminder", "RecordDeliveryReceipt", "RetryFailedRecipients");
+
+    private static final Map<String, String> SYSTEM_ACTIONS = Map.of(
+            "ExpireReminderReview", "scheduler",
+            "DispatchReminder", "delivery-worker",
+            "RecordDeliveryReceipt", "channel-adapter");
 
     private final Map<String, Map<String, Object>> actions = new LinkedHashMap<>();
     private final Map<String, Map<String, Object>> states = new LinkedHashMap<>();
@@ -61,8 +67,8 @@ public class DomainContracts {
 
     void authorizeSystem(String action) {
         var definition = requireConnected(action);
-        if (!action.equals("ExpireReminderReview") || !text(definition.get("actor")).equals("scheduler")) {
-            throw new org.springframework.security.access.AccessDeniedException("Not an internal scheduler action");
+        if (!text(definition.get("actor")).equals(SYSTEM_ACTIONS.get(action))) {
+            throw new org.springframework.security.access.AccessDeniedException("Not an internal service action");
         }
     }
 
@@ -76,6 +82,9 @@ public class DomainContracts {
 
     public void authorize(Accounts.Actor actor, String action) {
         var definition = requireConnected(action);
+        if (SYSTEM_ACTIONS.containsKey(action)) {
+            throw new org.springframework.security.access.AccessDeniedException("Internal actions cannot be invoked by an account");
+        }
         // Reload the principal so a retained Java Actor cannot bypass a disabled account or changed role.
         var current = accounts.actor(actor.username());
         if (!current.equals(actor)) {

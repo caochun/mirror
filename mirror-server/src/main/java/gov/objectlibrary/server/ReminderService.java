@@ -498,6 +498,17 @@ public class ReminderService {
         return task;
     }
 
+    ObjectRecord getTaskForOperator(Accounts.Actor actor, String id, boolean write) {
+        if (!accounts.actor(actor.username()).equals(actor)) throw new AccessDeniedException("账号上下文已变化");
+        accounts.requirePermission(actor, "REMINDER_READ");
+        var task = visibleTask(actor, id);
+        if (write) {
+            requireActiveOrganization(actor);
+            requireWrite(actor, task);
+        }
+        return task;
+    }
+
     private void requireWrite(Accounts.Actor actor, ObjectRecord task) {
         if (!actor.organizationId().equals(text(task, "organizationId"))) throw new AccessDeniedException("请在任务创建单位上下文操作");
     }

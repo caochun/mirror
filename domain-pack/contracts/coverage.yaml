@@ -8,6 +8,7 @@ requirements:
     section: "3.1.1"
     actions:
       - "SynchronizePersonFacts"
+      - "SynchronizeOrganizationFacts"
       - "ResolveAssociationIssue"
       - "SetObjectEligibility"
     rules:
@@ -664,12 +665,15 @@ requirements:
   -
     id: "PLAN_GOVERNANCE"
     title: "党委主责、纪委专责、职能部门主职"
-    section: "试点方案四"
+    section: "试点方案三（一）1、四；需求书2.2、3.1.1"
     actions:
+      - "SynchronizeOrganizationFacts"
+      - "SynchronizeAccountAuthority"
       - "RegisterSupervisionMatter"
       - "QueryBusinessMetrics"
     rules:
       - "AUTH"
+      - "ORGANIZATION_AUTHORITY"
       - "MATTER"
       - "METRICS"
     coverage: "business-definition"
@@ -679,6 +683,7 @@ requirements:
     title: "独立权限查看操作审计及本人审核记录"
     section: "2.2.1第12项、2.2.4权限矩阵、6数据管理"
     actions:
+      - "SynchronizeAccountAuthority"
       - "ReadOperationAudit"
     rules:
       - "AUTH"
