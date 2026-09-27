@@ -148,6 +148,15 @@ public class ReferenceProbe {
                     "completed_duplicate_suppressed", afterRetry == 2 && calls.get() == afterRetry));
         }
         observations.put("consumer_delivery_recovery", deliveryRecovery);
+        var ward = new OdlParser().parse(Files.readString(Path.of(args[0]).resolve("domain-packs/nhs-acute/schema/ward.odl")));
+        observations.put("upstream_ward_computed_fields", ward.objectTypes().getFirst().computedFields().stream()
+                .map(field -> Map.of("name", field.name(), "function", field.function(), "cache", field.cache().name())).toList());
+        var computed = new LinkedHashMap<String, Object>();
+        computed.put("memory", computedProbe(new InMemoryStorageProvider()));
+        var computedData = new JdbcDataSource();
+        computedData.setURL("jdbc:h2:mem:audit_computed;DB_CLOSE_DELAY=-1");
+        computed.put("jdbc_h2", computedProbe(new JdbcStorageProvider(computedData, DatabaseDialect.h2())));
+        observations.put("computed_read_behavior", computed);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -187,6 +196,33 @@ public class ReferenceProbe {
                 "event_count", events.size(), "event_data", events.getFirst().data(), "replay_same_result", result.equals(replay),
                 "return_status", returned.status(), "book_after_return", storage.getObject(CTX, "Book", book.id()).properties().get("status"),
                 "active_loans_after_return", storage.getLinks(CTX, book, "BorrowedBy", StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).size());
+    }
+
+    static Map<String, Object> computedProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name: "computed", version: "1.0.0")
+                type Node @objectType { id: ID! @primary count: Int @computed(fn: "countLinks", args: {type: "Edge"}) }
+                type Edge @linkType(from: "Node", to: "Node", cardinality: MANY_TO_MANY) { id: ID! @primary }
+                """);
+        storage.applySchema(CTX, schema);
+        var source = new EntityKey("Node", "b");
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Node", "a", Map.of());
+            tx.createObject("Node", "b", Map.of());
+            tx.createLink("Edge", "one", new EntityKey("Node", "a"), source, Map.of());
+            tx.createLink("Edge", "two", new EntityKey("Node", "a"), source, Map.of());
+            tx.commit();
+        }
+        var visible = new java.util.concurrent.atomic.AtomicBoolean(true);
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> !key.id().equals("a") || visible.get()),
+                new ActionExecutor(), schema, Map.of(), Map.of());
+        Object initial = app.readComputedField(CTX, PRINCIPAL, source, "count");
+        try (var tx = storage.beginTransaction(CTX)) { tx.deleteLink("Edge", "one", 1); tx.commit(); }
+        Object after = app.readComputedField(CTX, PRINCIPAL, source, "count");
+        visible.set(false);
+        return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
+                "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
+                "source_version", storage.getObject(CTX, "Node", "b").version());
     }
 
     static void create(StorageProvider storage, String id, Map<String, Object> values) {

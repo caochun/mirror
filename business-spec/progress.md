@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry LAZY计算字段
+
+Foundry提交9b1dcc1：计算声明、继承、摘要和依赖不再丢失，接通countLinks、对象/列表/GraphQL/REST读取及可见关系计数。原始历史不补造派生值，双时间查询保持端点与关系的同一口径。常规根reactor413项，其中Foundry303项，全通过，详见[阶段报告](../platform-review/computed-fields.md)。
+
+固定上游未实现的EAGER/TTL未冒充支持。查询下推、Action计算依赖和其余核心缺口继续推进；Mirror只更新平台引用和验证记录，完整目标保持active。
+
 ## 2026-09-28：Foundry组合Pack、资产与事务种子
 
 Foundry提交e3104da：loadBundle统一编译依赖可见的声明，加载字段权限、FGA源文件、种子和连接器声明；显式事务种子初始化可重放，保留后续业务修改。ApplicationService.fromBundle接通字段策略，虚拟关系不被存储字段策略误隐藏。常规根reactor396项，其中Foundry286项；另外9项真实OpenFGA测试全部通过，见[阶段报告](../platform-review/pack-bundles.md)。

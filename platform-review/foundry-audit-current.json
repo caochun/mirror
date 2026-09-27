@@ -28,60 +28,60 @@
   "string_to_int_migration_class" : "BREAKING",
   "upstream_library_load" : "composed schema/actions/assets with core dependency",
   "upstream_library_assets" : {
-    "permission_sources" : 1,
     "seed_files" : 1,
+    "permission_sources" : 1,
     "field_policy_types" : [ "Member" ]
   },
   "upstream_library_workflow" : {
     "memory" : {
-      "active_loans_after_return" : 0,
-      "replay_same_result" : true,
-      "authorization_mode" : "ONTOLOGY_TARGETS",
-      "book_after_borrow" : "ON_LOAN",
-      "book_after_return" : "AVAILABLE",
-      "return_status" : "COMPLETED",
-      "event_count" : 1,
+      "borrow_status" : "COMPLETED",
       "event_data" : {
         "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
         "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
       },
-      "borrow_status" : "COMPLETED"
+      "event_count" : 1,
+      "return_status" : "COMPLETED",
+      "book_after_return" : "AVAILABLE",
+      "book_after_borrow" : "ON_LOAN",
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "replay_same_result" : true,
+      "active_loans_after_return" : 0
     },
     "jdbc_h2" : {
-      "active_loans_after_return" : 0,
-      "replay_same_result" : true,
-      "authorization_mode" : "ONTOLOGY_TARGETS",
-      "book_after_borrow" : "ON_LOAN",
-      "book_after_return" : "AVAILABLE",
-      "return_status" : "COMPLETED",
-      "event_count" : 1,
+      "borrow_status" : "COMPLETED",
       "event_data" : {
         "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
         "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
       },
-      "borrow_status" : "COMPLETED"
+      "event_count" : 1,
+      "return_status" : "COMPLETED",
+      "book_after_return" : "AVAILABLE",
+      "book_after_borrow" : "ON_LOAN",
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "replay_same_result" : true,
+      "active_loans_after_return" : 0
     }
   },
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
   "upstream_book_navigation_fields" : [ {
-    "linkType" : "BorrowedBy",
-    "direction" : "OUTBOUND",
-    "target" : "Member",
     "name" : "borrower",
+    "target" : "Member",
+    "direction" : "OUTBOUND",
+    "linkType" : "BorrowedBy",
     "history" : false
   } ],
   "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : false,
   "upstream_borrow_side_effects" : [ {
-    "name" : "emitBorrowedEvent",
-    "type" : "event",
     "attempts" : 3,
+    "type" : "event",
+    "name" : "emitBorrowedEvent",
     "failurePolicy" : "ROLLBACK_ALL"
   } ],
   "upstream_return_manifest" : {
-    "linkType" : "BorrowedBy",
-    "failurePolicy" : "ROLLBACK_ALL",
-    "action" : "ReturnBook",
     "from" : "book",
+    "action" : "ReturnBook",
+    "failurePolicy" : "ROLLBACK_ALL",
+    "linkType" : "BorrowedBy",
     "expect" : "ALL"
   },
   "consumer_delivery_recovery" : {
@@ -92,6 +92,27 @@
     "jdbc_h2" : {
       "completed_duplicate_suppressed" : true,
       "failed_delivery_retried" : true
+    }
+  },
+  "upstream_ward_computed_fields" : [ {
+    "function" : "countLinks",
+    "cache" : "LAZY",
+    "name" : "currentOccupancy"
+  } ],
+  "computed_read_behavior" : {
+    "memory" : {
+      "after_delete" : 1,
+      "source_version" : 1,
+      "stored_attribute" : false,
+      "initial" : 2,
+      "hidden_endpoint_count" : 0
+    },
+    "jdbc_h2" : {
+      "after_delete" : 1,
+      "source_version" : 1,
+      "stored_attribute" : false,
+      "initial" : 2,
+      "hidden_endpoint_count" : 0
     }
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
