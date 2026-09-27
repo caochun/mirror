@@ -2354,3 +2354,40 @@ actions:
       asOf: "DateTime"
     event: "gov.object-library.ReadOperationAudit"
     failure: "无权拒绝，不能因知道对象ID而跨组织读取历史"
+  -
+    name: "SaveReminderRevision"
+    source: "TSRW_XDCH"
+    status: "definition-only"
+    scope: "core"
+    actor: "authorized-operator"
+    permission: "REMINDER_REVISE"
+    objects:
+      - "ReminderTask"
+      - "ReminderTaskVersion"
+      - "ContentSafetyCheck"
+    inputs:
+      taskId: "ReminderTask"
+      expectedVersion: "Int"
+      title: "String"
+      body: "JSON"
+    rules:
+      - "AUTH"
+      - "CONTENT"
+      - "MEDIA"
+      - "REVISION"
+      - "AUDIT"
+      - "REFERENCES"
+    preconditions:
+      - "已有发布版且有任务修订权限；没有待审核或待发布修订"
+      - "只可修改标题、正文及其中的受控图片/链接，不接受名单、分类、阅读期限或发送安排变更"
+    effects:
+      - "生成新的修订草稿，保留基准发布版本及同一冻结名单/时限"
+      - "使旧内容确认失效；主任务送达状态和当前发布指针不变"
+      - "保存后须预览、逐图确认并提交独立审核，不直接发送或发布"
+    idempotency: "tenant+actor+commandId"
+    output:
+      affectedIds: "ID[]"
+      result: "JSON"
+      recordedAt: "DateTime"
+    event: "gov.object-library.SaveReminderRevision"
+    failure: "失败不写部分草稿；不通过普通保存草稿动作改写已发送任务"

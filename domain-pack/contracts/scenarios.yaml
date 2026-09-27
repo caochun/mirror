@@ -275,3 +275,18 @@ scenarios:
     expect:
       - "当前无法计算为3个人员标签项、2名涉及人员，不按历史批次累计为4项或4人"
       - "问题解决后从当前待处理计数移除，历史事件仍可审计"
+  -
+    id: "S24"
+    name: "修订发布恢复与旧发送作业隔离"
+    given: "任务已发布，另有尚未完成的原发送作业；修订已通过独立审核后服务中断"
+    actions:
+      - "SaveReminderRevision"
+      - "ConfirmReminderContent"
+      - "SubmitReminderRevision"
+      - "DecideReminderReview"
+      - "PublishReminderRevision"
+      - "DispatchReminder"
+    expect:
+      - "修订只改变revisionState，原任务发送汇总与发布指针在审核前保持不变"
+      - "重启根据持久批准记录发布一次，不新增接收人、不重置原截止、不重发成功者"
+      - "旧发送作业恢复仍用其审核快照，但不得把当前发布指针改回已被替代的版本"

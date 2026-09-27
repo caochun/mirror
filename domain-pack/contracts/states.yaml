@@ -3,6 +3,20 @@ schemaVersion: 1
 status: "definition-only"
 models:
   -
+    object: "ReminderTask"
+    field: "revisionState"
+    values: ["NONE", "DRAFT", "PENDING_REVIEW", "REJECTED", "WITHDRAWN", "APPROVED"]
+    transitions:
+      - {from: "NONE", to: "DRAFT", action: "SaveReminderRevision"}
+      - {from: "REJECTED", to: "DRAFT", action: "SaveReminderRevision"}
+      - {from: "WITHDRAWN", to: "DRAFT", action: "SaveReminderRevision"}
+      - {from: "DRAFT", to: "PENDING_REVIEW", action: "SubmitReminderRevision"}
+      - {from: "PENDING_REVIEW", to: "REJECTED", action: "DecideReminderReview"}
+      - {from: "PENDING_REVIEW", to: "WITHDRAWN", action: "WithdrawReminderReview"}
+      - {from: "PENDING_REVIEW", to: "APPROVED", action: "DecideReminderReview"}
+      - {from: "APPROVED", to: "NONE", action: "PublishReminderRevision"}
+    notes: "修订流程与主任务送达汇总正交；NONE或缺省表示无活动修订，旧发布版持续可读直到新版本原子发布。"
+  -
     object: "Organization"
     field: "status"
     values: ["ACTIVE", "INACTIVE"]

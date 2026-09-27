@@ -60,7 +60,7 @@ public class ReminderService {
     public Detail detail(Accounts.Actor actor, String id) {
         accounts.requirePermission(actor, "REMINDER_READ");
         var task = visibleTask(actor, id);
-        var version = required(actor, "ReminderTaskVersion", text(task, "pendingVersionId"));
+        var version = required(actor, "ReminderTaskVersion", displayVersionId(task));
         var selection = required(actor, "RecipientSelection", text(task, "selectionId"));
         var rounds = directory.links(actor, task.key(), "ReviewForTask", StorageProvider.Direction.INBOUND).stream()
                 .map(l -> required(actor, "ReviewRound", l.from().id()))
@@ -73,7 +73,8 @@ public class ReminderService {
         }
         return new Detail(view(actor, task), content.renderStored(text(version, "bodySnapshot")), text(version, "contentDigest"),
                 decodeFilter(text(selection, "criteriaJson")), entries, rounds, text(task, "reviewComment"),
-                content.storedImages(actor, text(version, "bodySnapshot")), text(version, "sourceContentVersionId"));
+                content.storedImages(actor, text(version, "bodySnapshot")), text(version, "sourceContentVersionId"),
+                text(version, "titleSnapshot"), version.id());
     }
 
     public ReminderSelection.Result preview(Accounts.Actor actor, ReminderSelection.Filter filter) {
@@ -412,7 +413,7 @@ public class ReminderService {
         return expired;
     }
 
-    private EntityKey principalReference(Accounts.Actor actor, Transaction tx) {
+    EntityKey principalReference(Accounts.Actor actor, Transaction tx) {
         var account = storage.getObject(actor.context(), "UserAccount", actor.username());
         if (account == null) {
             return tx.createObject("UserAccount", actor.username(), values("username", actor.username(),
@@ -462,7 +463,7 @@ public class ReminderService {
         return ids.stream().map(id -> text(required(actor, "TagDefinition", id), "currentVersionId")).sorted().toList();
     }
 
-    private boolean hasReviewer(Accounts.Actor actor, ObjectRecord task) {
+    boolean hasReviewer(Accounts.Actor actor, ObjectRecord task) {
         Integer count = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM mirror_accounts a WHERE a.tenant_id = ? AND a.organization_id = ?
                   AND a.enabled = TRUE AND a.username <> ? AND a.username <> ?
@@ -474,7 +475,7 @@ public class ReminderService {
 
     private TaskView view(Accounts.Actor actor, ObjectRecord task) {
         var selection = storage.getObject(actor.context(), "RecipientSelection", text(task, "selectionId"));
-        var version = storage.getObject(actor.context(), "ReminderTaskVersion", text(task, "pendingVersionId"));
+        var version = storage.getObject(actor.context(), "ReminderTaskVersion", displayVersionId(task));
         int count = selection == null ? 0 : (int) decodeEntries(text(selection, "entriesJson")).stream().filter(ReminderSelection.Entry::included).count();
         boolean expired = "PENDING_REVIEW".equals(text(task, "state")) && instant(task, "plannedAt") != null
                 && !instant(task, "plannedAt").isAfter(clock.instant());
@@ -482,7 +483,19 @@ public class ReminderService {
                 text(task, "organizationId"), text(task, "createdBy"), number(task, "reviewRound"), text(task, "sendMode"),
                 text(task, "plannedAt"), text(task, "readingWindow"), version == null ? "" : text(version, "categorySnapshot"), count,
                 selection == null ? "" : text(selection, "criteriaDigest"), version == null ? "" : text(version, "contentDigest"),
-                !text(task, "contentCheckId").isEmpty());
+                !text(task, "contentCheckId").isEmpty(), revisionState(task), text(task, "currentPublishedVersionId"),
+                text(task, "submittedBy"));
+    }
+
+    private static String displayVersionId(ObjectRecord task) {
+        if (!text(task, "currentPublishedVersionId").isEmpty() && Set.of("NONE", "WITHDRAWN").contains(revisionState(task))) {
+            return text(task, "currentPublishedVersionId");
+        }
+        return text(task, "pendingVersionId");
+    }
+
+    static String revisionState(ObjectRecord task) {
+        return text(task, "revisionState").isEmpty() ? "NONE" : text(task, "revisionState");
     }
 
     private boolean visible(Accounts.Actor actor, ObjectRecord task) {
@@ -600,10 +613,10 @@ public class ReminderService {
     public record Decision(long expectedVersion, String decision, String comment) {}
     public record TaskView(String id, long version, String state, String title, String organizationId, String createdBy,
                            int reviewRound, String sendMode, String plannedAt, String readingWindow, String category, int recipientCount,
-                           String selectionDigest, String contentDigest, boolean confirmed) {}
+                           String selectionDigest, String contentDigest, boolean confirmed, String revisionState, String publishedVersionId, String submittedBy) {}
     public record ReviewView(String id, long version, String state, int roundNumber, String submittedBy,
                              String decidedBy, String comment, String snapshotDigest) {}
     public record Detail(TaskView task, String bodyHtml, String contentDigest, ReminderSelection.Filter filter,
                          List<ReminderSelection.Entry> entries, List<ReviewView> rounds, String reviewComment,
-                         List<ReminderContentPolicy.ImageReference> images, String sourceContentVersionId) {}
+                         List<ReminderContentPolicy.ImageReference> images, String sourceContentVersionId, String previewTitle, String previewVersionId) {}
 }

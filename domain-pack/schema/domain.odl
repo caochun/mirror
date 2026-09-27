@@ -1,4 +1,4 @@
-extend schema @namespace(name: "gov.object-library", version: "0.2.2")
+extend schema @namespace(name: "gov.object-library", version: "0.2.3")
 
 type Person @objectType {
   id: ID! @primary
@@ -286,6 +286,7 @@ type ReminderTask @objectType {
   contentCheckId: String
   activeReviewId: String
   cancelReason: String
+  revisionState: String
   currentPublishedVersionId: String
   pendingVersionId: String
   categorySnapshot: String
@@ -305,6 +306,7 @@ type ReminderTaskVersion @objectType {
   sendMode: String
   plannedAt: DateTime
   submittedAt: DateTime
+  basePublishedVersionId: String
   versionKind: String
   sourceContentVersionId: String
   linksSnapshotJson: String

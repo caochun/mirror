@@ -480,3 +480,10 @@ type ReadOperationAudit @actionType {
   page: Int! @param
   size: Int! @param
 }
+
+type SaveReminderRevision @actionType {
+  taskId: ReminderTask! @param
+  expectedVersion: Int! @param
+  title: String! @param
+  body: JSON! @param
+}

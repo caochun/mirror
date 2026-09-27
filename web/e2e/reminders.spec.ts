@@ -89,6 +89,45 @@ test('unit creator freezes a task, an independent reviewer approves it, and Mock
   await expect(page.getByRole('row').filter({ hasText: title })).toHaveCount(0);
   await page.getByRole('combobox', { name: '状态', exact: true }).selectOption('OVERDUE');
   await expect(page.getByText('当前条件下没有未读提醒。', { exact: true })).toBeVisible();
+  await page.goto(taskUrl);
+  const taskId = taskUrl.split('/').at(-1)!;
+  const originalDelivery = await (await page.request.get(`/api/reminders/${taskId}/delivery`)).json();
+  await page.getByRole('link', { name: '修订内容', exact: true }).click();
+  await page.getByLabel('修订标题', { exact: true }).fill('浏览器修订后的提醒');
+  await page.getByRole('textbox', { name: '提醒正文', exact: true }).fill('这是经过再次审核的新版本，请核对最新内容。');
+  await page.getByRole('button', { name: '保存修订并核对', exact: true }).click();
+  await page.getByRole('checkbox', { name: /我已核对本次修订/ }).check();
+  await page.getByRole('button', { name: '确认修订内容', exact: true }).click();
+  await expect(page.getByRole('button', { name: '提交修订审核', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: '提交修订审核', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '确认操作', exact: true }).click();
+  await expect(page.getByText(/修订待审核 · 审核发布前/)).toBeVisible();
+  await page.getByRole('button', { name: '退出', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '登录明镜' })).toBeVisible();
+  await login(page, 'reviewer');
+  await page.getByRole('link', { name: '审核工作台', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
+  await expect(page.getByRole('heading', { name: '浏览器修订后的提醒', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '审核通过', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '确认操作', exact: true }).click();
+  await expect(page.getByText(/修订待审核 · 审核发布前/)).toHaveCount(0);
+  await page.getByRole('button', { name: '退出', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '登录明镜' })).toBeVisible();
+  await login(page, 'unit');
+  await page.goto(taskUrl);
+  await expect(page.getByRole('heading', { name: '浏览器修订后的提醒', exact: true })).toBeVisible();
+  await expect(delivery.getByText(/最新版本已读 0 人/)).toBeVisible();
+  const revisedDelivery = await (await page.request.get(`/api/reminders/${taskId}/delivery`)).json();
+  expect(revisedDelivery.recipients.map((r: { id: string; deadlineAt: string }) => [r.id, r.deadlineAt]))
+    .toEqual(originalDelivery.recipients.map((r: { id: string; deadlineAt: string }) => [r.id, r.deadlineAt]));
+  const revisedPopup = page.waitForEvent('popup');
+  await delivery.getByRole('button', { name: '演示人员01 的本人阅读演示', exact: true }).click();
+  const revisedReceiver = await revisedPopup;
+  await expect(revisedReceiver.getByRole('heading', { name: '浏览器修订后的提醒', exact: true })).toBeVisible();
+  await expect(revisedReceiver.getByText(/已记录本版本首次阅读/)).toBeVisible();
+  await revisedReceiver.setViewportSize({ width: 390, height: 844 });
+  await revisedReceiver.screenshot({ path: testInfo.outputPath('revision-receiver.png'), fullPage: true });
+  await revisedReceiver.close();
 });
 
 test('draft edits invalidate confirmation and explicit exclusion survives a saved edit', async ({ page }) => {

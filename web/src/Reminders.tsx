@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from './api';
 import { useSession } from './App';
 import { Heading, ErrorBox, Modal } from './ui';
-import { included, readingWindows, reminderStates } from './reminderTypes';
+import { included, readingWindows, reminderStates, revisionStates } from './reminderTypes';
 import type { ReminderTask, ReminderDetail } from './reminderTypes';
 import { ReminderDelivery } from './ReminderDelivery';
 
@@ -67,7 +67,7 @@ export function ReminderList() {
             </thead>
             <tbody>
               {tasks
-                .filter((t) => !state || t.state === state)
+                .filter((t) => !state || t.state === state || (state === 'PENDING_REVIEW' && t.revisionState === 'PENDING_REVIEW'))
                 .map((t) => (
                   <tr key={t.id} className="border-t border-slate-100">
                     <td className="p-4">
@@ -79,7 +79,7 @@ export function ReminderList() {
                       {t.organizationId} / {t.createdBy}
                     </td>
                     <td className="p-4">{t.recipientCount} 人</td>
-                    <td className="p-4">{reminderStates[t.state] ?? t.state}</td>
+                    <td className="p-4">{reminderStates[t.state] ?? t.state}{t.revisionState !== 'NONE' && ` · ${revisionStates[t.revisionState] ?? ''}`}</td>
                     <td className="p-4">
                       {t.sendMode === 'IMMEDIATE' ? '审核通过后立即' : new Date(t.plannedAt).toLocaleString('zh-CN')}
                     </td>
@@ -87,7 +87,7 @@ export function ReminderList() {
                 ))}
             </tbody>
           </table>
-          {tasks.filter((t) => !state || t.state === state).length === 0 && (
+          {tasks.filter((t) => !state || t.state === state || (state === 'PENDING_REVIEW' && t.revisionState === 'PENDING_REVIEW')).length === 0 && (
             <p className="muted p-8 text-center">当前范围和状态下暂无任务。</p>
           )}
         </section>
@@ -122,6 +122,11 @@ export function ReminderTaskDetail() {
       .catch((e) => setError(e.message));
   }
   useEffect(load, [id]);
+  useEffect(() => {
+    if (detail?.task.revisionState !== 'APPROVED') return;
+    const timer = window.setInterval(load, 1500);
+    return () => window.clearInterval(timer);
+  }, [detail?.task.revisionState, id]);
   async function command(path: string, body: object) {
     setBusy(true);
     setError('');
@@ -144,10 +149,12 @@ export function ReminderTaskDetail() {
   }
   const task = detail?.task;
   const canWrite = permissions.includes('REMINDER_WRITE') && actor.organizationId === task?.organizationId;
+  const revision = task?.revisionState ?? 'NONE';
+  const canRevise = permissions.includes('REMINDER_REVISE') && actor.organizationId === task?.organizationId;
   const canReview =
     permissions.includes('REMINDER_REVIEW') &&
     actor.organizationId === task?.organizationId &&
-    actor.username !== task?.createdBy;
+    actor.username !== task?.createdBy && actor.username !== task?.submittedBy;
   const targets = detail?.entries.filter(included) ?? [];
   const units = new Map<string, number>();
   for (const entry of targets) units.set(entry.organizationName, (units.get(entry.organizationName) ?? 0) + 1);
@@ -169,7 +176,14 @@ export function ReminderTaskDetail() {
             title={task.title}
             subtitle={`${reminderStates[task.state]} · 创建单位 ${task.organizationId} · 创建人 ${task.createdBy}`}
           />
+          {revision !== 'NONE' && <p className="mb-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
+            {revisionStates[revision]} · 审核发布前，接收人继续查看原发布版。原名单和截止时间不变。
+          </p>}
           <div className="mb-5 flex flex-wrap gap-3">
+            {canRevise && task.publishedVersionId && !['PENDING_REVIEW', 'APPROVED'].includes(revision) && !['WITHDRAWN', 'WITHDRAWING'].includes(task.state) &&
+              <Link className="secondary" to={`/reminders/${id}/revision`}>{revision === 'DRAFT' || revision === 'REJECTED' ? '编辑修订' : '修订内容'}</Link>}
+            {canRevise && revision === 'PENDING_REVIEW' && <button className="secondary" disabled={busy}
+              onClick={() => setDecision('WITHDRAW_REVIEW')}>撤回修订审核</button>}
             {canWrite && ['DRAFT', 'REJECTED', 'REVIEW_EXPIRED'].includes(task.state) && (
               <Link className="secondary" to={`/reminders/${id}/edit`}>
                 编辑草稿
@@ -185,7 +199,7 @@ export function ReminderTaskDetail() {
                 取消定时任务
               </button>
             )}
-            {canReview && task.state === 'PENDING_REVIEW' && (
+            {canReview && (task.state === 'PENDING_REVIEW' || revision === 'PENDING_REVIEW') && (
               <>
                 <button className="primary" onClick={() => setDecision('APPROVE')}>
                   审核通过
@@ -207,6 +221,7 @@ export function ReminderTaskDetail() {
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
             <section className="panel p-6">
               <h2 className="mb-4 font-semibold">最终内容预览</h2>
+              {revision !== 'NONE' && <h3 className="mb-4 text-lg font-semibold">{detail.previewTitle}</h3>}
               <div className="reminder-body" dangerouslySetInnerHTML={{ __html: detail.bodyHtml }} />
               <p className="muted mt-6 border-t border-slate-100 pt-4">本提醒仅向本人展示，请勿截图外传。</p>
             </section>
@@ -229,6 +244,19 @@ export function ReminderTaskDetail() {
                   ? '审核通过后立即发送'
                   : `计划发送：${new Date(task.plannedAt).toLocaleString('zh-CN')}`}
               </p>
+              {canRevise && revision === 'DRAFT' && <div className="mt-5 space-y-4 border-t border-slate-100 pt-4">
+                <label className="flex gap-2 text-sm"><input type="checkbox" checked={acknowledged}
+                  onChange={event => setAcknowledged(event.target.checked)} />我已核对本次修订，知悉原名单和截止时间不变</label>
+                {detail.images.map(image => <label key={image.confirmationKey} className="flex gap-2 text-sm">
+                  <input type="checkbox" checked={confirmedImages.includes(image.confirmationKey)} onChange={event => setConfirmedImages(previous =>
+                    event.target.checked ? [...previous, image.confirmationKey] : previous.filter(key => key !== image.confirmationKey))} />
+                  我已确认修订第 {image.index + 1} 张图片不含身份证号、内部标签、预警原文和台账信息
+                </label>)}
+                <button className="secondary" disabled={busy || !acknowledged || confirmedImages.length !== detail.images.length}
+                  onClick={() => command('revision/confirm', { expectedVersion: task.version, contentDigest: detail.contentDigest,
+                    contentAcknowledged: acknowledged, confirmedMediaDigests: confirmedImages })}>确认修订内容</button>
+                <button className="primary" disabled={busy || !task.confirmed} onClick={() => setDecision('SUBMIT_REVISION')}>提交修订审核</button>
+              </div>}
               {canWrite && task.state === 'DRAFT' && (
                 <div className="mt-5 border-t border-slate-100 pt-4">
                   <label className="flex items-start gap-2 text-sm">
@@ -360,7 +388,7 @@ export function ReminderTaskDetail() {
                     ? '确认审核通过'
                     : decision === 'REJECT'
                       ? '驳回并填写意见'
-                      : decision === 'SUBMIT'
+                      : decision === 'SUBMIT' || decision === 'SUBMIT_REVISION'
                         ? '确认提交本单位独立审核'
                         : decision === 'CANCEL'
                           ? '取消定时任务'
@@ -386,12 +414,13 @@ export function ReminderTaskDetail() {
                     className="primary"
                     disabled={busy || (['REJECT', 'CANCEL'].includes(decision) && !comment.trim())}
                     onClick={() => {
-                      if (decision === 'SUBMIT') void command('submit', { expectedVersion: task.version });
+                      if (decision === 'SUBMIT_REVISION') void command('revision/submit', { expectedVersion: task.version });
+                      else if (decision === 'SUBMIT') void command('submit', { expectedVersion: task.version });
                       else if (decision === 'WITHDRAW_REVIEW')
-                        void command('withdraw-review', { expectedVersion: task.version });
+                        void command(revision === 'PENDING_REVIEW' ? 'revision/withdraw-review' : 'withdraw-review', { expectedVersion: task.version });
                       else if (decision === 'CANCEL')
                         void command('cancel', { expectedVersion: task.version, reason: comment });
-                      else void command('review', { expectedVersion: task.version, decision, comment });
+                      else void command(revision === 'PENDING_REVIEW' ? 'revision/review' : 'review', { expectedVersion: task.version, decision, comment });
                     }}
                   >
                     确认操作

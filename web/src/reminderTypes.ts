@@ -34,6 +34,9 @@ export type ReminderTask = {
   selectionDigest: string;
   contentDigest: string;
   confirmed: boolean;
+  revisionState: string;
+  publishedVersionId: string;
+  submittedBy: string;
 };
 export type ReminderDetail = {
   task: ReminderTask;
@@ -44,6 +47,8 @@ export type ReminderDetail = {
   rounds: { id: string; roundNumber: number; state: string; submittedBy: string; decidedBy: string; comment: string }[];
   reviewComment: string;
   sourceContentVersionId: string;
+  previewTitle: string;
+  previewVersionId: string;
   images: { index: number; id: string; digest: string; confirmationKey: string }[];
 };
 export const reminderStates: Record<string, string> = {
@@ -67,4 +72,8 @@ export const readingWindows: Record<string, string> = {
   '2d': '48小时',
   '3d': '72小时',
   '1w': '168小时',
+};
+
+export const revisionStates: Record<string, string> = {
+  NONE: '', DRAFT: '修订草稿', PENDING_REVIEW: '修订待审核', REJECTED: '修订已驳回', WITHDRAWN: '修订审核已撤回', APPROVED: '修订已审核待发布',
 };

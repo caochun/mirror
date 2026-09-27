@@ -405,6 +405,7 @@ requirements:
     title: "已发送消息修订和撤回"
     section: "3.4.8"
     actions:
+      - "SaveReminderRevision"
       - "SubmitReminderRevision"
       - "PublishReminderRevision"
       - "RequestReminderWithdrawal"

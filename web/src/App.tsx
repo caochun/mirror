@@ -11,6 +11,7 @@ import { ReminderList, ReminderTaskDetail } from './Reminders';
 import { ReminderEditor } from './ReminderEditor';
 import { ContentLibrary } from './ContentLibrary';
 import { Reading } from './Reading';
+import { ReminderRevision } from './ReminderRevision';
 
 const Session = createContext<{ actor: Actor; logout: () => void } | null>(null);
 const roleNames: Record<string, string> = { SUPER_ADMIN: '超级管理员', UNIT_ADMIN: '单位管理员', AREA_ADMIN: '片区管理员', REVIEWER: '推送审核员' };
@@ -40,6 +41,7 @@ export function App() {
     <Route path="/content-examples" element={<ContentLibrary />} />
     <Route path="/reminders" element={<ReminderList />} />
     <Route path="/reminders/new" element={<ReminderEditor />} />
+    <Route path="/reminders/:id/revision" element={<ReminderRevision />} />
     <Route path="/reminders/:id/edit" element={<ReminderEditor />} />
     <Route path="/reminders/:id" element={<ReminderTaskDetail />} />
     <Route path="*" element={<Navigate to="/workbench" replace />} />

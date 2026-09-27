@@ -24,7 +24,7 @@ class BusinessPackVerificationTest {
     void loadsBusinessDefinitionWithoutExposingIncompleteExecutableActions() {
         var pack = new DomainPackLoader().load(packPath());
         assertEquals("government-object-library", pack.manifest().name());
-        assertEquals("0.2.2", pack.manifest().version());
+        assertEquals("0.2.3", pack.manifest().version());
         assertEquals(pack.manifest().version(), pack.ontology().schema().version());
         assertTrue(pack.actions().isEmpty(), "Definition-only business commands must not become callable stubs");
         assertTrue(pack.ontology().schema().actionTypes().isEmpty());

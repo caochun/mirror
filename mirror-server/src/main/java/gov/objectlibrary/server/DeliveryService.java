@@ -108,17 +108,20 @@ public class DeliveryService {
                             && text(round, "taskId").equals(task.id())
                             && text(round, "snapshotDigest").equals(text(version, "snapshotHash")));
             if (!approved || !text(version, "taskId").equals(task.id())
-                    || !Set.of("APPROVED", "PUBLISHED").contains(text(version, "state"))) {
+                    || !Set.of("APPROVED", "PUBLISHED", "SUPERSEDED").contains(text(version, "state"))) {
                 throw new BusinessConflict("没有匹配的有效审核快照");
             }
             contracts.validateInputs(worker, "DispatchReminder", values("jobId", job.id(), "expectedVersion", job.version(),
                     "evaluatedAt", clock.instant().toString()));
             if (text(version, "state").equals("APPROVED")) {
+                if (!text(task, "currentPublishedVersionId").isEmpty()) throw new BusinessConflict("初次发送不能替换已发布版本");
                 contracts.requireTransition(version.type(), "state", "APPROVED", "PUBLISHED", "DispatchReminder");
                 tx.updateObject(version.type(), version.id(), values("state", "PUBLISHED", "publishedAt", clock.instant().toString()), version.version());
             }
             contracts.requireTransition(task.type(), "state", text(task, "state"), "SENDING", "DispatchReminder");
-            tx.updateObject(task.type(), task.id(), values("state", "SENDING", "currentPublishedVersionId", version.id()), task.version());
+            var taskChanges = values("state", "SENDING");
+            if (text(task, "currentPublishedVersionId").isEmpty()) taskChanges.put("currentPublishedVersionId", version.id());
+            tx.updateObject(task.type(), task.id(), taskChanges, task.version());
             tx.updateObject(job.type(), job.id(), values("state", "RUNNING", "leaseOwner", lease,
                     "leaseUntil", clock.instant().plusSeconds(60).toString()), job.version());
             return Map.of("jobId", job.id(), "state", "RUNNING", "mode", channel.mode());
