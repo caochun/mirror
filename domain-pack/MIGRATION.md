@@ -1,0 +1,17 @@
+# 从0.1.0到0.2.0的定义差异
+
+此文档是迁移设计，不是已运行迁移脚本。pack和schema版本共同升到0.2.0；现有应用自动加载ODL不代表已完成数据迁移。
+
+1. 保留已有对象名称与未提交提醒字段，新增business-evidence.odl。技术命令回执和锁移到runtime-support.odl，类型名未变。
+2. PersonHoldsPosition、AssignmentOnProject、ContentSuggestsTag、VersionUsesMedia、RiskInvolvesPerson、BatchAffectsTag放宽为多对多。岗位任职以AssignmentUsesPosition为权威，PersonHoldsPosition仅当前摘要投影，两者更新需一致。
+3. TagCandidateForPerson改为多对一。一条旧候选若连多个人员，要拆成每人员候选并保留原ID引用，不能丢弃其他关联。IssueForTag改为多对一，新增无需成功赋标即可存在的人员/规则/评估/候选异常关系。
+4. 标签定义parentId、规则tagDefinitionId等字符串是已有查询投影；对应新增关系为领域关联。迁移要建立关系并检查二者一致，不同时接受两套独立写入。发布版本需补齐当时完整配置摘要；无法恢复时标为未知，不拿当前配置冒充历史。
+5. 每人员+标签合并为唯一逻辑记录，来源拆到TagContribution；已有source/sourceReference/sourceOrganizationId保留为兼容摘要，完整来源以贡献为准。旧REMOVED映射SUPPRESSED；任何来源上的有效人工删除先保留为整体抑制，待人工确认解除。
+6. RecipientRecord以tenant+taskId+personId唯一；taskVersionId/state/sentAt保留为旧投影且taskVersionId/state变为可选。旧sentAt只有确认是首次成功送达才迁到firstDeliveredAt。多版本接收记录应合并稳定ID，同时保留旧ID映射用于外部回执匹配，不能丢失尝试/回执/阅读/撤回。
+7. VersionTargetsRecipient从一对多改为多对多，每个版本引用同一稳定名单。ReadReceipt关联原内容版本，RecipientVersionState保存版本阅读投影；deadlineAt按最初确认时限保留，不以新版本创建时间重算。
+8. TaskHasRecipient、RecipientForPerson为稳定关系；任务currentPublishedVersionId、pendingVersionId分别指当前发布与待审。旧snapshotId不能直接同时充当两者；根据审核/发布证据判定，证据不足标为待核实。
+9. ReviewRound及ContentSafetyCheck/MediaConfirmation需要保留每轮审核及确认。无法补足的历史仅作为遗留审计记录，不伪造审核/逐图确认人。
+10. AuthorityGrant为业务授权事实契约；现有mirror_accounts/权限表可作适配来源，不自动复制密码至UserAccount，不允许客户端改角色扩权。
+11. 旧TransferAssignment未包含完整校验且now为字面量，已退出执行注册。新的权威来源同步通过SynchronizePersonFacts契约执行，所有Handler需单独落实后才可开放。
+
+迁移后应验证：关系端点/唯一键一致、旧时间和外部ID可追溯、人工抑制未丢失、原接收总数不因版本膨胀、原截止时间不延长、未授权操作者不能通过新对象关系获取旧数据。

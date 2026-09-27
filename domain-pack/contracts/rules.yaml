@@ -1,0 +1,311 @@
+# Business definition only; not a Foundry executable manifest.
+schemaVersion: 1
+status: "definition-only"
+rules:
+  -
+    id: "AUTH"
+    source: "2.2；试点方案三（一）1、四"
+    objects:
+      - "UserAccount"
+      - "AuthorityGrant"
+      - "Organization"
+    definition: "每次读写按有效账号、功能权限、当前组织和数据范围求交。超级管理员全市，单位为当前单位及全部下级，片区为明确授权根集合及下级的并集。审核员无一般人员查询/赋标权限，仅本级创建单位任务审核。敏感查看另有权限。角色只是默认权限组合，不允许客户端指定角色绕过服务端授权。"
+  -
+    id: "SOURCE"
+    source: "3.1.1；试点方案三（一）2"
+    objects:
+      - "Person"
+      - "Organization"
+      - "PersonProfile"
+      - "ExternalIdentity"
+      - "Assignment"
+    definition: "人员身份和当前归属来自明确权威来源；档案职务等字段以可用白名单投影使用。来源不绑定明镜技术栈。来源字段、来源版本、观察时间可追溯。对象库不自行推断借调/挂职归属，不通过历史单位覆盖当前单位。不要求拷贝完整家庭和教育档案；使用稳定档案引用与受控只读字段。"
+  -
+    id: "IDENTITY"
+    source: "3.1.1—3.1.4"
+    objects:
+      - "Person"
+      - "Organization"
+      - "ObjectEligibility"
+      - "DataAssociationIssue"
+    definition: "允许异常人员留库。业务有效人员恰有一个有效当前组织；关系基数最多一个不是至少一个的校验。档案必须唯一有效才参与档案字段计算。缺少身份证号不妨碍人工赋标，但不可正式推送；工号不能代替渠道身份。缺少出生日期只影响年龄规则。人员/组织停用、非对象资格禁止新赋标、AI评估和提醒选入；重新启用重新计算，不恢复人工抑制。"
+  -
+    id: "HISTORY"
+    source: "3.2.9、6；试点方案三（一）5"
+    objects:
+      - "Person"
+      - "Assignment"
+      - "PersonTagAssignment"
+      - "ReminderTaskVersion"
+    definition: "稳定ID终身不变；对象/关系变化同时留底座历史，区分业务生效时间与记录时间，补录不能把接收时间当生效时间。历史业务快照不能被当前名称覆盖。过去事实可审计，当前操作权限与历史任务查看权限独立判断。账号、人员、组织停用均不删除历史。"
+  -
+    id: "TAG_TREE"
+    source: "3.2.1—3.2.2"
+    objects:
+      - "TagDefinition"
+      - "TagVersion"
+    definition: "因人/因事是业务维度，长期/阶段性是另一维度，互不等价。最多三级，可二级末节点赋标；父节点不赋标，不允许环。移动后对子树整体检查深度/维度。被赋标、规则引用、AI候选或历史推送引用的目录只能停用；未使用且无子节点才物理删除。稳定标签ID不随移动/更名改变。"
+  -
+    id: "TAG_VERSION"
+    source: "3.2.2、3.2.9"
+    objects:
+      - "TagDefinition"
+      - "TagVersion"
+      - "TagRule"
+      - "RuleVersion"
+      - "AiPolicyVersion"
+      - "RuleImpactPreview"
+    definition: "新末级标签默认人工，无自动规则和AI资格。定义、规则、AI候选或提示词改变均生成不可变版本；历史批次和任务引用旧版本。自动规则启用前预览新增/失效/不变/无法计算人数，预览绑定输入和配置摘要；变化后重新预览。确认发布创建重算批次；发布AI策略不自动创建评估批次。"
+  -
+    id: "RULES"
+    source: "3.2.3—3.2.6"
+    objects:
+      - "TagRule"
+      - "RuleVersion"
+      - "ClassificationMapping"
+      - "PersonProfile"
+      - "Assignment"
+    definition: "只允许日期相对条件、单位映射、标准字段匹配及all/any条件组；字段来自白名单，不允许SQL、脚本、正则、任意公式或客户端字段路径。单位性质默认沿父组织继承；职务层级保留命中最高一级，岗位领域允许多个、成长特质允许并存。一把手只适用于市管干部中的市管单位正职。出生日期按统计业务日期计算，年龄规则每天重算；字段和映射变化只重算相关人员规则。新提拔/退休过渡期仅人工，无必填日期、不自动到期、不得规则/AI赋标。"
+  -
+    id: "TAG_SOURCES"
+    source: "3.2.3、3.2.7、3.2.9"
+    objects:
+      - "PersonTagAssignment"
+      - "TagContribution"
+      - "TagEvaluation"
+      - "TagCandidate"
+    definition: "每租户人员+标签定义仅一条逻辑标签记录；来源贡献分别保存。当前有效=有效对象+启用目录+存在有效贡献+无人工抑制。删除面向整个逻辑标签，不按来源删除；规则持续命中不得解除抑制。人工恢复显式解除抑制并记录新的人工贡献，原来源历史保留。规则不再命中只结束该规则贡献，不结束人工/其他来源。来源指向原组织，操作组织另记。人工备注可选，无额外审核/材料要求。"
+  -
+    id: "AI_REVIEW"
+    source: "3.2.5、3.2.8"
+    objects:
+      - "AiPolicyVersion"
+      - "TagCandidate"
+      - "TagEvaluation"
+      - "TagBatch"
+    definition: "仅标准映射无法可靠判断且启用AI资格的标签进入AI候选。候选关联人员、标签版本、策略/提示词版本、输入摘要、理由、批次；有人员范围权限的管理员确认才生效。资料或配置变更后旧候选标为STALE，需重新评估。全市/指定范围批次仅超级管理员创建，不能用关键词或AI自动产出有效标签。"
+  -
+    id: "TAG_ISSUES"
+    source: "3.1.1、3.2.8"
+    objects:
+      - "TagProcessingIssue"
+      - "TagEvaluation"
+      - "TagCandidate"
+      - "TagBatch"
+    definition: "异常以人员+具体标签/规则处理，可在没有PersonTagAssignment时存在。分开记录规则无法计算、AI无法判断、调用失败；含字段、原因、检测时间、最近批次、处理建议。来源错误回来源治理，映射/策略错误由配置管理员修复。重算只针对受影响对象，批次保存成功/失败/跳过/无法判断统计。"
+  -
+    id: "MATTER"
+    source: "试点方案三（二）、附件4（二）"
+    objects:
+      - "SupervisionMatter"
+      - "MatterStage"
+      - "MatterParticipation"
+      - "RiskEvent"
+      - "TagContribution"
+    definition: "专项不限工程项目，可为资金、整改、换届、节庆、采购等事务。参与/经办/分管角色有有效期，人员同时参与多个事项或阶段。专项贡献必须指向具体事项阶段或参与关系及来源风险依据。事项/阶段结束只终止对应贡献，不影响其他事项和长期标签。风险线索来源与观察时间保留，不据标签给人员作违纪定性，不建设案件办理系统。"
+  -
+    id: "CONTENT"
+    source: "3.3.1—3.3.4"
+    objects:
+      - "ReminderContent"
+      - "ContentVersion"
+      - "MediaAsset"
+      - "ReminderTaskVersion"
+    definition: "全局内容库由超级管理员维护，无党委/纪委/职能部门分区和独立示例审核。任务引用启用示例后产生独立草稿，不回写示例，也不自动沉淀为示例。一条内容与多个标签双向多对多推荐，推荐不代替人选择。已用于任务的示例/媒体不能物理删除，未使用且无引用才清理。任务保存输入方式、原示例版本、分类和最终正文版本。"
+  -
+    id: "MEDIA"
+    source: "3.3.1、3.4.5"
+    objects:
+      - "MediaAsset"
+      - "ContentSafetyCheck"
+      - "MediaConfirmation"
+      - "ReminderTaskVersion"
+    definition: "仅受控文字、段落、列表、HTTPS链接和JPG/PNG图片；每图<=2MB、每正文<=6张，建议宽1080并等比适配。至少一段有效文字或一张有效图片。上传/粘贴存为受控不可猜测标识，不保存公开直链；发布快照固定媒体内容摘要和副本。清洗脚本/事件属性/危险协议/外部样式/未授权媒体。逐张确认不含身份证号/内部标签/预警原文/台账信息并留确认人；替换内容/图片后确认失效。本期音视频/表格/附件/答题/表单不实现。"
+  -
+    id: "SELECTION"
+    source: "3.4.1—3.4.2"
+    objects:
+      - "RecipientSelection"
+      - "SelectionEntry"
+      - "Person"
+      - "RecipientRecord"
+    definition: "多个组织根取并集，与标签条件取交集；标签可任一或全部，只计有效标签不计待复核候选。条件结果与指定人员叠加，按人员ID去重；手工排除优先，重算不能恢复，显式恢复才清除。分别记录命中/指定/重叠/排除/不合格原因。无唯一渠道身份/当前组织、停用、非对象不得最终选入。名单确认绑定revision/digest，变化后失效；1人明确提示定向发送。批量写在服务端逐人验权。"
+  -
+    id: "SNAPSHOT"
+    source: "3.3.4、3.4.5、3.4.7"
+    objects:
+      - "ReminderTaskVersion"
+      - "RecipientRecord"
+      - "ReviewRound"
+      - "ContentSafetyCheck"
+    definition: "提交时重验人员范围/资格及内容安全，若与已确认结果有差异须重新确认不能静默删人。冻结标题、正文、链接、图片副本、组织分布、名单、标签版本依据、时限、发送方式及时间。重复提醒提示人数/最近发送时间，允许明确确认继续；网络重试同任务同人员不重复提交。审核与发送只用同一快照，之后组织/标签改变不重算历史名单。"
+  -
+    id: "REVIEW"
+    source: "2.2.3、3.4.7"
+    objects:
+      - "ReviewRound"
+      - "ReminderTask"
+      - "ReminderTaskVersion"
+      - "AuthorityGrant"
+    definition: "创建单位按提交人的当前单位冻结；本级有效审核员至少一名，无人禁止提交。审核人不能是创建人或本轮提交人，且当前单位等于创建单位，不审核上下级/兄弟单位。同单位任一审核员通过即可，后续决策不得覆盖。每轮绑定版本摘要，驳回需意见；待审核只读，撤回后再编辑生成新轮次。超级管理员创建的任务仍需独立审核，不能用超级身份越过。"
+  -
+    id: "SCHEDULE"
+    source: "3.4.3、3.4.6—3.4.7"
+    objects:
+      - "ReminderTask"
+      - "ReviewRound"
+      - "ReminderSendJob"
+    definition: "仅审核后立即或单次定时，无周期性任务。未审核且到达计划时间则审核过期，禁止迟到批准/补发，必须重新设时再提交。批准创建持久发送作业，计划时间前不可派发。已批准但未发送的定时任务可有权管理员取消，原因必填并取消未启动作业。"
+  -
+    id: "REVISION"
+    source: "3.4.4、3.4.8"
+    objects:
+      - "ReminderTask"
+      - "ReminderTaskVersion"
+      - "RecipientRecord"
+      - "RecipientVersionState"
+    definition: "修订只改标题/正文/图片/链接，形成待审版；批准前旧发布版继续可读。发布新版保持同一任务人员接收ID、首次送达时间和截止时间，只重置最新版阅读投影；过期后发布新版可能立即逾期。新增接收人或改时限必须新任务；移除仅走撤回。历史版本阅读只用于审计，不作为独立业务阅读统计。"
+  -
+    id: "DELIVERY"
+    source: "3.5.1—3.5.3、3.5.5"
+    objects:
+      - "RecipientRecord"
+      - "DeliveryAttempt"
+      - "DeliveryReceipt"
+      - "IntegrationIssue"
+    definition: "内部用稳定人员/接收ID，唯一触达渠道鹿路通，外部身份字段与签名不硬编码进本体。一次尝试对应外部请求，已提交不等于送达；区分成功、明确失败、未知。回执按渠道+外部事件ID去重并关联尝试。迟到失败不能覆盖已有成功；不一致单独记异常。只重试失败/未知，成功不重复。对外发送由已提交outbox/作业执行，不在数据库事务内调用远端。"
+  -
+    id: "READ"
+    source: "3.5.3、3.5.6"
+    objects:
+      - "ReadReceipt"
+      - "RecipientVersionState"
+      - "IntegrationIssue"
+    definition: "短期本人会话校验成功、当前发布正文成功加载/渲染后记首次阅读；同接收记录+版本幂等，不覆盖第一次时间。正文失败不记已读，个别图片失败仍可记已读且记录图片异常。送达结果和阅读独立，无成功回执仍可有真实已读，记对接不一致。不采集停留/滚动/点击/考试；撤回后不返回正文或新增阅读。"
+  -
+    id: "DEADLINE"
+    source: "3.4.4、3.5.4"
+    objects:
+      - "RecipientRecord"
+      - "OverdueRecord"
+      - "RecipientVersionState"
+    definition: "时限显式选择24/48/72/168小时。每位接收人从首次真实送达成功起算；先失败后成功以该次首次成功起算；后续重试/修订不重置。送达未确认无合法起点时不可猜测截止。到期且最新版本未读才生成逾期，记录主管组织、产生/解除时间；真实新版阅读解除，历史保留。当前单位管理员只能看当前范围内逾期，不能代读/手工解除，不采集线下整改反馈、不导出未读名单。"
+  -
+    id: "WITHDRAWAL"
+    source: "3.4.8"
+    objects:
+      - "WithdrawalRecord"
+      - "RecipientRecord"
+      - "ReminderTask"
+      - "IntegrationIssue"
+    definition: "有权管理员可直接撤回，原因必填，无需审核。保留逐人请求/响应/操作者/组织/时间；请求中不等于成功，区分全部/部分/失败。只重试失败/未知，不重复成功撤回。保留发送、阅读、审核历史，生效撤回在本人内容访问中关闭正文。"
+  -
+    id: "PRIVACY"
+    source: "2.2、3.5.2、3.5.6、4、6"
+    objects:
+      - "PersonProfile"
+      - "Person"
+      - "ExternalIdentity"
+      - "AssistantQuery"
+    definition: "身份/联系方式默认脱敏，完整查看需要独立权限并写审计。H5仅本人本次提醒，不能访问标签/风险原文/审核/他人名单；短期会话防伪、防重放、防转发越权，不在URL传明文身份或手机。图片同样鉴权。敏感来源引用与证据需受保护；@sensitive元数据本身不等于加密或授权已经实现。"
+  -
+    id: "ASSISTANT"
+    source: "3.7、9.1"
+    objects:
+      - "AssistantQuery"
+      - "AssistantActionCard"
+    definition: "仅超级管理员使用全市查询，但不能访问未授权敏感明文。解析组织/时间/指标条件，摘要带明细入口、查询时间和来源；问口径/操作引用需求原文。歧义先说明，未登记指标明确无法回答，不产生廉洁指数排名。动作卡只转交筛选条件到人工创建流程，不承担审批/发送。记录用户、问题、范围、时间和结果依据。"
+  -
+    id: "METRICS"
+    source: "3.6、4.2"
+    objects:
+      - "Person"
+      - "PersonTagAssignment"
+      - "RecipientRecord"
+      - "RecipientVersionState"
+    definition: "对象与标签覆盖按人员去重，多标签分布不能相加当总人数；跨任务接收统计按任务+人员的接收记录计人次，另有独立去重人数。阅读仅当前发布版本；组织归属区分创建单位、发送快照单位、当前主管单位。权限与时间条件贯穿摘要和明细，返回口径和数据截至时点；事件漏到不能当作0或成功。"
+  -
+    id: "AUDIT"
+    source: "2.2、4.6、6、9.1"
+    objects:
+      - "ReviewRound"
+      - "TagContribution"
+      - "ContentSafetyCheck"
+      - "AssistantQuery"
+    definition: "业务事实、关系、事件及审计必须同事务；审计含操作者/操作单位/时间/对象/前后状态/原因/批次。关键操作包括标签增删、提交、逐图确认、审核、修订、撤回、敏感查看、逾期查看、AI查询。运行时技术回执/锁独立于业务模型；查询动作审计不等于修改业务事实。"
+  -
+    id: "REFERENCES"
+    source: "跨领域引用一致性契约"
+    objects:
+      - "RecipientRecord"
+      - "ReminderTaskVersion"
+      - "ReviewRound"
+      - "TagContribution"
+      - "TagVersion"
+      - "TagCandidate"
+      - "AuthorityGrant"
+    definition: "对象引用必须同租户。ReviewForVersion的版本必须属于ReviewForTask的任务；所有RecipientForPerson和TaskHasRecipient组成稳定接收键，VersionTargetsRecipient必须在该任务冻结名单中。版本阅读只能连接同任务的版本和接收记录。TagContribution使用版本必须属于PersonTagAssignment的标签；候选/规则版本/评估指向同一目标标签及人员。SelectionEntry唯一于名单+人员。关系与字符串ID投影不允许独立写入；历史快照字段例外但需声明asOf和来源。"
+uniqueKeys:
+  -
+    object: "PersonTagAssignment"
+    fields:
+      - "personId"
+      - "tagDefinitionId"
+    scope: "tenant"
+    meaning: "一条逻辑标签，多条来源贡献"
+  -
+    object: "RecipientRecord"
+    fields:
+      - "taskId"
+      - "personId"
+    scope: "tenant"
+    meaning: "跨内容版本稳定接收记录"
+  -
+    object: "ReadReceipt"
+    fields:
+      - "recipientId"
+      - "taskVersionId"
+    scope: "tenant"
+    meaning: "同版本首次阅读，仅第一条有效"
+  -
+    object: "DeliveryReceipt"
+    fields:
+      - "externalEventId"
+    scope: "tenant+channel"
+    meaning: "外部事件幂等"
+  -
+    object: "ReviewRound"
+    fields:
+      - "roundNumber"
+    scope: "tenant+ReviewForTask"
+    meaning: "任务审核轮次唯一"
+  -
+    object: "RecipientVersionState"
+    fields: []
+    scope: "tenant+VersionStateForRecipient+VersionStateForVersion"
+    meaning: "每接收记录每版本一个阅读投影"
+conflicts:
+  -
+    id: "C_SCOPE"
+    source: "试点方案三（二）与需求书3.2.1"
+    decision: "同时定义长期标签和专项事项扩展。专项定义不表示需求书首期已纳入实现，范围配置明确区分。"
+  -
+    id: "C_RECEIPT"
+    source: "试点方案三（三）与需求书3.5"
+    decision: "业务事实分为渠道送达和本人阅读；细化方案采用本系统H5记录阅读，不依赖鹿路通已读。"
+  -
+    id: "C_SMS"
+    source: "需求书3.5.1与5.2第7条"
+    decision: "冲突待业务确认；默认只走鹿路通、不自动短信，预留渠道能力不能表述为已确认需求。"
+  -
+    id: "C_NON_OBJECT"
+    source: "需求书2.2权限矩阵与3.1.1"
+    decision: "非对象标记独立权限，默认仅超级管理员；是否向下级授权待确认。"
+  -
+    id: "C_UPSTREAM"
+    source: "需求书既有明镜假设与用户指示"
+    decision: "保留权威来源业务原则，来源系统/身份提供方为可替换契约；不假设既有明镜技术栈存在。"
+  -
+    id: "C_READ_RATE"
+    source: "需求书3.6.3未完全限定分母"
+    decision: "展示送达者阅读率=已送达且已读/已送达，另列全目标阅读覆盖率=所有有效已读/有效目标；均带人数或人次及版本口径。"

@@ -1,4 +1,4 @@
-extend schema @namespace(name: "gov.object-library", version: "0.1.0")
+extend schema @namespace(name: "gov.object-library", version: "0.2.0")
 
 type Person @objectType {
   id: ID! @primary
@@ -6,6 +6,17 @@ type Person @objectType {
   employeeNo: String @unique @indexed
   status: String!
   identityStatus: String!
+  gender: String
+  birthDate: Date
+  joinedAt: Date
+  rank: String
+  managedCadre: Boolean
+  identityReference: String @sensitive
+  phoneReference: String @sensitive
+  profileStatus: String
+  sourceSystem: String
+  sourceRecordId: String
+  sourceObservedAt: DateTime
 }
 
 type Organization @objectType {
@@ -14,6 +25,10 @@ type Organization @objectType {
   organizationCode: String @unique @indexed
   nature: String!
   status: String!
+  sourceSystem: String
+  sourceRecordId: String
+  managedUnit: Boolean
+  responsibilityKind: String
 }
 
 type Position @objectType {
@@ -29,6 +44,9 @@ type Assignment @objectType {
   status: String!
   startedAt: DateTime
   endedAt: DateTime
+  isPrincipal: Boolean
+  responsibilities: String
+  sourceReference: String
 }
 
 type ExternalIdentity @objectType {
@@ -37,6 +55,9 @@ type ExternalIdentity @objectType {
   sourceRecordId: String! @indexed
   status: String!
   observedAt: DateTime
+  identityKind: String
+  verifiedAt: DateTime
+  verificationReference: String
 }
 
 type DataAssociationIssue @objectType {
@@ -47,6 +68,10 @@ type DataAssociationIssue @objectType {
   status: String!
   detectedAt: DateTime!
   resolvedAt: DateTime
+  suggestedResolution: String
+  sourceReference: String
+  resolvedBy: String
+  resolution: String
 }
 
 type ObjectEligibility @objectType {
@@ -75,6 +100,9 @@ type TagDefinition @objectType {
   dimension: String!
   description: String
   currentVersionId: String
+  assignmentMode: String
+  aiEligible: Boolean
+  reminderFocus: String
 }
 
 type TagVersion @objectType {
@@ -85,6 +113,12 @@ type TagVersion @objectType {
   publishedAt: DateTime
   nameSnapshot: String
   descriptionSnapshot: String
+  parentIdSnapshot: String
+  dimensionSnapshot: String
+  scopeSnapshot: String
+  assignmentModeSnapshot: String
+  reminderFocusSnapshot: String
+  configurationDigest: String
 }
 
 type TagRule @objectType {
@@ -94,6 +128,10 @@ type TagRule @objectType {
   expression: String!
   status: String!
   version: String!
+  configurationVersion: String
+  conditionJson: String
+  fieldDependenciesJson: String
+  recomputeSchedule: String
 }
 
 type PersonTagAssignment @objectType {
@@ -112,20 +150,14 @@ type PersonTagAssignment @objectType {
   operatorId: String
   sourceOrganizationId: String
   operatorOrganizationId: String
+  suppressedAt: DateTime
+  suppressedBy: String
+  suppressionReason: String
 }
 
-type BusinessCommandReceipt @objectType {
-  id: ID! @primary
-  action: String!
-  actorId: String!
-  requestHash: String!
-  responseJson: String!
-}
 
-type BusinessWriteLock @objectType {
-  id: ID! @primary
-  actorId: String!
-}
+
+
 
 type TagCandidate @objectType {
   id: ID! @primary
@@ -134,6 +166,11 @@ type TagCandidate @objectType {
   reason: String!
   createdAt: DateTime!
   reviewedAt: DateTime
+  reviewDecision: String
+  reviewedBy: String
+  reviewOrganizationId: String
+  inputDigest: String
+  assessmentVersion: String
 }
 
 type TagProcessingIssue @objectType {
@@ -143,6 +180,9 @@ type TagProcessingIssue @objectType {
   field: String
   state: String!
   detectedAt: DateTime!
+  suggestedResolution: String
+  resolvedAt: DateTime
+  resolution: String
 }
 
 type TagBatch @objectType {
@@ -153,6 +193,12 @@ type TagBatch @objectType {
   finishedAt: DateTime
   successCount: Int!
   failureCount: Int!
+  scopeSnapshotJson: String
+  configurationDigest: String
+  createdBy: String
+  organizationId: String
+  skippedCount: Int
+  unknownCount: Int
 }
 
 type Project @objectType {
@@ -169,6 +215,10 @@ type RiskEvent @objectType {
   occurredAt: DateTime!
   state: String!
   description: String
+  sourceSystem: String
+  sourceRecordId: String
+  observedAt: DateTime
+  internalEvidenceReference: String @sensitive
 }
 
 type ReminderContent @objectType {
@@ -194,6 +244,12 @@ type MediaAsset @objectType {
   storageKey: String!
   state: String!
   createdAt: DateTime!
+  mimeType: String
+  sizeBytes: Int
+  contentHash: String
+  width: Int
+  height: Int
+  uploadedBy: String
 }
 
 type ReminderTask @objectType {
@@ -203,6 +259,19 @@ type ReminderTask @objectType {
   plannedAt: DateTime
   readingWindow: String!
   createdAt: DateTime!
+  title: String
+  bodyHtml: String
+  personIdsJson: String
+  createdBy: String @indexed
+  organizationId: String @indexed
+  reviewRound: Int
+  submittedBy: String
+  snapshotId: String
+  reviewedBy: String
+  reviewComment: String
+  currentPublishedVersionId: String
+  pendingVersionId: String
+  categorySnapshot: String
 }
 
 type ReminderTaskVersion @objectType {
@@ -214,15 +283,48 @@ type ReminderTaskVersion @objectType {
   bodySnapshot: String!
   readingWindow: String!
   publishedAt: DateTime
+  recipientsJson: String
+  snapshotHash: String
+  sendMode: String
+  plannedAt: DateTime
+  submittedAt: DateTime
+  versionKind: String
+  sourceContentVersionId: String
+  linksSnapshotJson: String
+  mediaManifestDigest: String
+  selectionDigest: String
+  selectionSnapshotJson: String
+  scopeSnapshotJson: String
+  contentDigest: String
+  categorySnapshot: String
+}
+
+type ReminderSendJob @objectType {
+  id: ID! @primary
+  taskId: String! @indexed
+  snapshotId: String!
+  state: String! @indexed
+  dueAt: DateTime!
+  createdAt: DateTime!
 }
 
 type RecipientRecord @objectType {
   id: ID! @primary
-  taskVersionId: String! @indexed
+  taskVersionId: String @indexed
   personId: String! @indexed
-  state: String! @indexed
+  state: String @indexed
   sentAt: DateTime
   deadlineAt: DateTime
+  personNameSnapshot: String
+  organizationIdSnapshot: String
+  organizationNameSnapshot: String
+  readingWindow: String
+  taskId: String! @indexed
+  firstDeliveredAt: DateTime
+  deliveryState: String
+  withdrawalState: String
+  selectionSource: String
+  eligibilitySnapshotJson: String
 }
 
 type DeliveryAttempt @objectType {
@@ -231,6 +333,10 @@ type DeliveryAttempt @objectType {
   state: String!
   attemptedAt: DateTime!
   errorCode: String
+  attemptKey: String
+  submittedAt: DateTime
+  externalRequestId: String
+  resultObservedAt: DateTime
 }
 
 type DeliveryReceipt @objectType {
@@ -239,6 +345,10 @@ type DeliveryReceipt @objectType {
   state: String!
   receivedAt: DateTime!
   externalId: String
+  externalEventId: String
+  occurredAt: DateTime
+  attemptId: String
+  errorCode: String
 }
 
 type ReadReceipt @objectType {
@@ -246,6 +356,9 @@ type ReadReceipt @objectType {
   recipientId: String! @indexed
   taskVersionId: String! @indexed
   readAt: DateTime!
+  eventKey: String
+  recordedAt: DateTime
+  identityEvidenceReference: String
 }
 
 type OverdueRecord @objectType {
@@ -254,6 +367,9 @@ type OverdueRecord @objectType {
   state: String!
   createdAt: DateTime!
   resolvedAt: DateTime
+  taskVersionId: String
+  supervisorOrganizationId: String
+  closedReason: String
 }
 
 type WithdrawalRecord @objectType {
@@ -263,6 +379,11 @@ type WithdrawalRecord @objectType {
   reason: String
   requestedAt: DateTime!
   completedAt: DateTime
+  requestedBy: String
+  organizationId: String
+  requestKey: String
+  externalRequestId: String
+  errorCode: String
 }
 
 type PersonBelongsToOrganization @linkType(from: "Person", to: "Organization", cardinality: MANY_TO_ONE) {
@@ -271,7 +392,7 @@ type PersonBelongsToOrganization @linkType(from: "Person", to: "Organization", c
   endedAt: DateTime
 }
 
-type PersonHoldsPosition @linkType(from: "Person", to: "Position", cardinality: ONE_TO_MANY) {
+type PersonHoldsPosition @linkType(from: "Person", to: "Position", cardinality: MANY_TO_MANY) {
   id: ID! @primary
   startedAt: DateTime!
   endedAt: DateTime
@@ -289,7 +410,7 @@ type AssignmentInOrganization @linkType(from: "Assignment", to: "Organization", 
   endedAt: DateTime
 }
 
-type AssignmentOnProject @linkType(from: "Assignment", to: "Project", cardinality: MANY_TO_ONE) {
+type AssignmentOnProject @linkType(from: "Assignment", to: "Project", cardinality: MANY_TO_MANY) {
   id: ID! @primary
   role: String
 }
@@ -330,15 +451,15 @@ type TagAssignmentUsesDefinition @linkType(from: "PersonTagAssignment", to: "Tag
   id: ID! @primary
 }
 
-type TagCandidateForPerson @linkType(from: "TagCandidate", to: "Person", cardinality: ONE_TO_MANY) {
+type TagCandidateForPerson @linkType(from: "TagCandidate", to: "Person", cardinality: MANY_TO_ONE) {
   id: ID! @primary
 }
 
-type IssueForTag @linkType(from: "TagProcessingIssue", to: "PersonTagAssignment", cardinality: ONE_TO_MANY) {
+type IssueForTag @linkType(from: "TagProcessingIssue", to: "PersonTagAssignment", cardinality: MANY_TO_ONE) {
   id: ID! @primary
 }
 
-type BatchAffectsTag @linkType(from: "TagBatch", to: "PersonTagAssignment", cardinality: ONE_TO_MANY) {
+type BatchAffectsTag @linkType(from: "TagBatch", to: "PersonTagAssignment", cardinality: MANY_TO_MANY) {
   id: ID! @primary
 }
 
@@ -346,11 +467,11 @@ type ContentHasVersion @linkType(from: "ReminderContent", to: "ContentVersion", 
   id: ID! @primary
 }
 
-type ContentSuggestsTag @linkType(from: "ReminderContent", to: "TagDefinition", cardinality: ONE_TO_MANY) {
+type ContentSuggestsTag @linkType(from: "ReminderContent", to: "TagDefinition", cardinality: MANY_TO_MANY) {
   id: ID! @primary
 }
 
-type VersionUsesMedia @linkType(from: "ContentVersion", to: "MediaAsset", cardinality: ONE_TO_MANY) {
+type VersionUsesMedia @linkType(from: "ContentVersion", to: "MediaAsset", cardinality: MANY_TO_MANY) {
   id: ID! @primary
 }
 
@@ -358,7 +479,7 @@ type TaskHasVersion @linkType(from: "ReminderTask", to: "ReminderTaskVersion", c
   id: ID! @primary
 }
 
-type VersionTargetsRecipient @linkType(from: "ReminderTaskVersion", to: "RecipientRecord", cardinality: ONE_TO_MANY) {
+type VersionTargetsRecipient @linkType(from: "ReminderTaskVersion", to: "RecipientRecord", cardinality: MANY_TO_MANY) {
   id: ID! @primary
 }
 
@@ -382,14 +503,8 @@ type RecipientHasWithdrawal @linkType(from: "RecipientRecord", to: "WithdrawalRe
   id: ID! @primary
 }
 
-type RiskInvolvesPerson @linkType(from: "RiskEvent", to: "Person", cardinality: ONE_TO_MANY) {
+type RiskInvolvesPerson @linkType(from: "RiskEvent", to: "Person", cardinality: MANY_TO_MANY) {
   id: ID! @primary
   source: String
-}
-
-type TransferAssignment @actionType {
-  assignment: Assignment! @param
-  oldLinkId: String! @param
-  organization: Organization! @param
-  reason: String @param
+  role: String
 }

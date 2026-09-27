@@ -1,8 +1,20 @@
 name: government-object-library
-version: 0.1.0
+version: 0.2.0
 namespace: gov.object-library
-description: "政务系统对象库业务 Domain Pack"
+description: "政务对象库业务事实、关系与动作契约；不是完整业务执行实现"
 schema:
   - schema/domain.odl
-actions:
-  - actions/transfer-assignment.yaml
+  - schema/business-evidence.odl
+  - schema/runtime-support.odl
+# Current Foundry loader only executes this list. Do not register definition-only contracts here.
+actions: []
+# Mirror definition index; ignored by the current Foundry runtime loader and checked by business-verification.
+x-business-contracts:
+  - contracts/actions.yaml
+  - contracts/rules.yaml
+  - contracts/states.yaml
+  - contracts/metrics.yaml
+  - contracts/scenarios.yaml
+  - contracts/tag-catalog.yaml
+  - contracts/coverage.yaml
+x-action-signatures: contracts/action-types.odl

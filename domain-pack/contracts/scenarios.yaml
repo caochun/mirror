@@ -1,0 +1,190 @@
+# Business definition only; not a Foundry executable manifest.
+schemaVersion: 1
+status: "definition-only"
+note: "下列为业务验收规格，不声称生产处理器已实现；结构/模型测试另见business-verification。"
+scenarios:
+  -
+    id: "S01"
+    name: "局部缺失不否定整个人"
+    given: "人员存在且组织唯一，但出生日期不可用"
+    actions:
+      - "SynchronizePersonFacts"
+      - "ApplyRuleEvaluation"
+      - "AddPersonTag"
+    expect:
+      - "年龄规则UNKNOWN并记局部问题"
+      - "不依赖年龄的单位性质规则继续MATCH"
+      - "人工赋标仍可执行；身份不可推送时单独限制正式名单"
+  -
+    id: "S02"
+    name: "并行来源与人工抑制"
+    given: "人员的同一标签有RULE、MANUAL两种有效贡献"
+    actions:
+      - "RemovePersonTag"
+      - "ApplyRuleEvaluation"
+      - "RestorePersonTag"
+    expect:
+      - "逻辑标签SUPPRESSED"
+      - "规则再次MATCH只记录评估，不解除抑制"
+      - "恢复后ACTIVE且原来源/来源组织历史保留"
+  -
+    id: "S03"
+    name: "两事项阶段隔离"
+    given: "同一人员参加A项目评标和B项目验收，共享一个专项标签定义"
+    actions:
+      - "RegisterSupervisionMatter"
+      - "RegisterMatterParticipation"
+      - "AssignStageTag"
+      - "EndMatterStage"
+    expect:
+      - "建立A和B独立贡献"
+      - "结束A阶段只结束A贡献"
+      - "B贡献仍有效且逻辑标签仍ACTIVE，可追溯A已结束"
+  -
+    id: "S04"
+    name: "非对象与停用"
+    given: "有效人员已有标签和提醒历史"
+    actions:
+      - "SetObjectEligibility"
+      - "ApplySourceLifecycle"
+    expect:
+      - "资格变NON_OBJECT或来源停用后禁止新赋标/AI/选人"
+      - "对象及关系历史不删除"
+      - "重新启用不解除人工抑制"
+  -
+    id: "S05"
+    name: "候选不是有效标签"
+    given: "AI配置已发布，候选输入资料已改变"
+    actions:
+      - "PublishAiPolicyVersion"
+      - "StartTagBatch"
+      - "RecordTagCandidate"
+      - "ReviewTagCandidate"
+    expect:
+      - "发布本身不创建评估"
+      - "未经确认不能用于正式筛选"
+      - "过时建议STALE，不能直接批准生成有效标签"
+  -
+    id: "S06"
+    name: "人工排除与重新确认"
+    given: "多个组织及标签any条件命中P1/P2，手工指定P2/P3"
+    actions:
+      - "UpdateRecipientSelection"
+      - "ConfirmRecipientSelection"
+      - "UpdateRecipientSelection"
+    expect:
+      - "最终人员去重为P1/P2/P3"
+      - "排除P2后条件重算仍不含P2"
+      - "任何名单变化清除旧确认；单人必须定向确认"
+  -
+    id: "S07"
+    name: "独立审核与过期"
+    given: "单位A创建定时任务，审核员仅有A子单位范围"
+    actions:
+      - "SubmitReminderReview"
+      - "DecideReminderReview"
+      - "ExpireReminderReview"
+    expect:
+      - "无本级有效审核员不得提交"
+      - "子单位审核员及创建人不能通过"
+      - "计划时间已到尚未审核则EXPIRED，不迟到批准/补发"
+  -
+    id: "S08"
+    name: "快照不可漂移"
+    given: "引用内容v1并冻结人员名单，然后更名标签、修改示例、调动人员"
+    actions:
+      - "SaveReminderDraft"
+      - "SubmitReminderReview"
+      - "PublishTagDefinition"
+      - "SaveContentExample"
+      - "SynchronizePersonFacts"
+    expect:
+      - "任务仍保留当时内容/标签版本/组织分布"
+      - "发送不得根据当前标签重算历史名单"
+      - "旧单位任务查看权限与新单位人员权限分开判断"
+  -
+    id: "S09"
+    name: "送达与阅读独立"
+    given: "本人内容可访问但渠道回执结果UNKNOWN"
+    actions:
+      - "ReadOwnReminder"
+      - "RecordFirstRead"
+      - "RecordDeliveryReceipt"
+    expect:
+      - "有效正文阅读记READ并记录回执不一致"
+      - "迟到送达成功不覆盖首次阅读"
+      - "重复阅读不改变第一次时间，送达未知不能猜截止"
+  -
+    id: "S10"
+    name: "新版不延长期限"
+    given: "9月26日08:00首次送达，24小时期限为27日08:00，27日09:00发布修订"
+    actions:
+      - "SubmitReminderRevision"
+      - "DecideReminderReview"
+      - "PublishReminderRevision"
+      - "EvaluateOverdue"
+      - "RecordFirstRead"
+    expect:
+      - "接收记录ID、原名单、首次送达及截止不变"
+      - "新版UNREAD立即满足逾期，旧版阅读仅审计"
+      - "真实新版阅读解除新版逾期，不能由管理员代标"
+  -
+    id: "S11"
+    name: "逐人失败与撤回"
+    given: "任务三人，P1成功、P2失败、P3未知"
+    actions:
+      - "RetryFailedRecipients"
+      - "RequestReminderWithdrawal"
+      - "RecordWithdrawalResult"
+      - "RetryWithdrawal"
+    expect:
+      - "发送重试仅P2/P3"
+      - "撤回逐人登记结果，不能请求后即全部成功"
+      - "成功撤回不能重复，失败/未知可重试；正文访问关闭后原历史仍在"
+  -
+    id: "S12"
+    name: "H5异常与隐私"
+    given: "短期本人会话已验证，正文成功但一张图片失败"
+    actions:
+      - "ReadOwnReminder"
+      - "RecordIntegrationIssue"
+      - "RecordFirstRead"
+    expect:
+      - "正文成功仍READ，单独记图片异常"
+      - "正文失败不记READ、不自动重发"
+      - "转发给其他人不能读；接口不返回内部标签/风险/审核/名单"
+  -
+    id: "S13"
+    name: "AI动作卡只传条件"
+    given: "超级管理员查询区镇无因事标签人员"
+    actions:
+      - "QueryAssistant"
+      - "ProposeAssistantAction"
+      - "ConfirmAssistantAction"
+    expect:
+      - "摘要带时间、组织、指标和明细入口"
+      - "卡片只进入人工创建流程，不批准/发送"
+      - "未知指标和廉洁指数排名拒绝，身份证手机始终脱敏"
+  -
+    id: "S14"
+    name: "人数与人次"
+    given: "P1收到两任务，P2收到一任务；一条记录已读但送达未知"
+    actions:
+      - "QueryBusinessMetrics"
+    expect:
+      - "目标3人次/2人，版本修订不增加人次"
+      - "送达者阅读率仅计算已送达且已读，分子<=分母"
+      - "全目标覆盖率可包含已读但送达未知，另外展示不一致"
+  -
+    id: "S15"
+    name: "媒体和引用保护"
+    given: "已发布任务引用内容v1与图片M1，草稿更换为M2"
+    actions:
+      - "RegisterMediaAsset"
+      - "ConfirmReminderContent"
+      - "SetContentAvailability"
+      - "DeleteUnusedContent"
+    expect:
+      - "M1和已用示例不可物理删除"
+      - "M2必须重新逐张确认，旧确认不复用"
+      - "停用示例不覆盖历史任务正文"

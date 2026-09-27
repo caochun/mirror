@@ -1,0 +1,14 @@
+# Technical support for existing application commands; not a government business domain.
+
+type BusinessCommandReceipt @objectType {
+  id: ID! @primary
+  action: String!
+  actorId: String!
+  requestHash: String!
+  responseJson: String!
+}
+
+type BusinessWriteLock @objectType {
+  id: ID! @primary
+  actorId: String!
+}

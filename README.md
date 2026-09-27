@@ -18,6 +18,8 @@
 
 基础 Domain Pack 只描述对象、关系和生命周期。标签计算、风险判断、廉洁提醒、鹿路通送达和具体监督流程在本业务仓库扩展，Foundry 不包含这些政务业务语义。
 
+业务定义已升级为 [Domain Pack 0.2.0](domain-pack/README.md)，补充动作契约、来源依据、专项事项与版本追溯。动作契约目前为定义状态，现有业务原型和大屏Mock不等于这些契约的生产实现。可单独运行 `mvn -pl business-verification -am test` 验证定义；数据库迁移边界见 [MIGRATION.md](domain-pack/MIGRATION.md)。
+
 ## 获取和验证 Foundry
 
 ```bash

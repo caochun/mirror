@@ -1,0 +1,568 @@
+# Business facts and evidence added in definition revision 0.2.0.
+
+type PersonProfile @objectType {
+  id: ID! @primary
+  sourceSystem: String!
+  sourceRecordId: String!
+  state: String!
+  observedAt: DateTime!
+  fieldsJson: String @sensitive
+  fieldAvailabilityJson: String
+  sourceVersion: String
+}
+
+type AuthorityGrant @objectType {
+  id: ID! @primary
+  permission: String!
+  state: String!
+  scopeKind: String!
+  validFrom: DateTime!
+  validTo: DateTime
+}
+
+type ClassificationMapping @objectType {
+  id: ID! @primary
+  kind: String!
+  sourceCode: String!
+  state: String!
+  version: String!
+  inherited: Boolean!
+  priority: Int
+  publishedAt: DateTime
+}
+
+type RuleVersion @objectType {
+  id: ID! @primary
+  version: String!
+  state: String!
+  conditionJson: String!
+  fieldDependenciesJson: String!
+  configurationDigest: String!
+  createdAt: DateTime!
+  publishedAt: DateTime
+}
+
+type RuleImpactPreview @objectType {
+  id: ID! @primary
+  inputDigest: String!
+  scopeJson: String!
+  addedCount: Int!
+  expiredCount: Int!
+  unchangedCount: Int!
+  unknownCount: Int!
+  createdAt: DateTime!
+}
+
+type AiPolicyVersion @objectType {
+  id: ID! @primary
+  version: String!
+  state: String!
+  promptTemplate: String!
+  allowedFieldsJson: String!
+  configurationDigest: String!
+  createdAt: DateTime!
+  publishedAt: DateTime
+}
+
+type TagEvaluation @objectType {
+  id: ID! @primary
+  state: String!
+  inputDigest: String!
+  evidenceJson: String @sensitive
+  reason: String!
+  evaluatedAt: DateTime!
+}
+
+type TagContribution @objectType {
+  id: ID! @primary
+  source: String!
+  sourceReference: String!
+  state: String!
+  effectiveFrom: DateTime!
+  effectiveTo: DateTime
+  reason: String
+  actorId: String
+  organizationId: String
+}
+
+type SupervisionMatter @objectType {
+  id: ID! @primary
+  name: String!
+  kind: String!
+  state: String!
+  sourceSystem: String
+  sourceRecordId: String
+  startedAt: DateTime
+  endedAt: DateTime
+}
+
+type MatterStage @objectType {
+  id: ID! @primary
+  name: String!
+  sequence: Int!
+  state: String!
+  startedAt: DateTime
+  endedAt: DateTime
+}
+
+type MatterParticipation @objectType {
+  id: ID! @primary
+  role: String!
+  state: String!
+  responsibilities: String
+  validFrom: DateTime!
+  validTo: DateTime
+}
+
+type RecipientSelection @objectType {
+  id: ID! @primary
+  state: String!
+  organizationRootsJson: String!
+  tagVersionIdsJson: String!
+  tagOperator: String!
+  criteriaDigest: String!
+  revision: Int!
+  confirmedDigest: String
+  confirmedAt: DateTime
+  confirmedBy: String
+}
+
+type SelectionEntry @objectType {
+  id: ID! @primary
+  state: String!
+  matchedByCondition: Boolean!
+  explicitlyIncluded: Boolean!
+  manuallyExcluded: Boolean!
+  exclusionReason: String
+  sourceOrganizationId: String
+  eligibilityDigest: String
+  confirmedPersonVersion: Int
+}
+
+type ReviewRound @objectType {
+  id: ID! @primary
+  roundNumber: Int!
+  state: String!
+  submittedBy: String!
+  submittedAt: DateTime!
+  snapshotDigest: String!
+  decidedBy: String
+  decidedAt: DateTime
+  comment: String
+}
+
+type ContentSafetyCheck @objectType {
+  id: ID! @primary
+  state: String!
+  contentDigest: String!
+  selectionDigest: String!
+  mediaDigest: String!
+  linksJson: String!
+  duplicateRecipientCount: Int!
+  previousSentAt: DateTime
+  confirmedBy: String
+  confirmedAt: DateTime
+}
+
+type MediaConfirmation @objectType {
+  id: ID! @primary
+  mediaDigest: String!
+  confirmedBy: String!
+  confirmedAt: DateTime!
+  assertion: String!
+}
+
+type RecipientVersionState @objectType {
+  id: ID! @primary
+  state: String!
+  firstReadAt: DateTime
+  publishedAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type IntegrationIssue @objectType {
+  id: ID! @primary
+  category: String!
+  state: String!
+  reason: String!
+  externalEventId: String
+  occurredAt: DateTime!
+  resolvedAt: DateTime
+  resolution: String
+  resolvedBy: String
+}
+
+type AssistantQuery @objectType {
+  id: ID! @primary
+  question: String!
+  parsedConditionsJson: String!
+  metricCodesJson: String!
+  resultScopeJson: String!
+  sourceReferencesJson: String!
+  state: String!
+  requestedAt: DateTime!
+}
+
+type AssistantActionCard @objectType {
+  id: ID! @primary
+  action: String!
+  conditionsJson: String!
+  state: String!
+  createdAt: DateTime!
+  expiresAt: DateTime!
+  confirmedAt: DateTime
+}
+
+type AssignmentUsesPosition @linkType(from: "Assignment", to: "Position", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ProfileForPerson @linkType(from: "PersonProfile", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type IssueForProfile @linkType(from: "DataAssociationIssue", to: "PersonProfile", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type GrantForAccount @linkType(from: "AuthorityGrant", to: "UserAccount", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type GrantScopeRoot @linkType(from: "AuthorityGrant", to: "Organization", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type AccountCurrentOrganization @linkType(from: "UserAccount", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TagParent @linkType(from: "TagDefinition", to: "TagDefinition", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TagHasVersion @linkType(from: "TagDefinition", to: "TagVersion", cardinality: ONE_TO_MANY) {
+  id: ID! @primary
+}
+
+type RuleForTag @linkType(from: "TagRule", to: "TagDefinition", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RuleHasVersion @linkType(from: "TagRule", to: "RuleVersion", cardinality: ONE_TO_MANY) {
+  id: ID! @primary
+}
+
+type RuleVersionUsesTagVersion @linkType(from: "RuleVersion", to: "TagVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type MappingForOrganization @linkType(from: "ClassificationMapping", to: "Organization", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type MappingForTag @linkType(from: "ClassificationMapping", to: "TagDefinition", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type PreviewForRuleVersion @linkType(from: "RuleImpactPreview", to: "RuleVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type AiPolicyForTagVersion @linkType(from: "AiPolicyVersion", to: "TagVersion", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type BatchUsesRuleVersion @linkType(from: "TagBatch", to: "RuleVersion", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type BatchUsesAiPolicy @linkType(from: "TagBatch", to: "AiPolicyVersion", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type EvaluationForPerson @linkType(from: "TagEvaluation", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type EvaluationForTagVersion @linkType(from: "TagEvaluation", to: "TagVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type EvaluationUsesRuleVersion @linkType(from: "TagEvaluation", to: "RuleVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type EvaluationInBatch @linkType(from: "TagEvaluation", to: "TagBatch", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type EvaluationUsesProfile @linkType(from: "TagEvaluation", to: "PersonProfile", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type EvaluationUsesAssignment @linkType(from: "TagEvaluation", to: "Assignment", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type CandidateUsesEvaluation @linkType(from: "TagCandidate", to: "TagEvaluation", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type CandidateForTagVersion @linkType(from: "TagCandidate", to: "TagVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type CandidateUsesAiPolicy @linkType(from: "TagCandidate", to: "AiPolicyVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type CandidateInBatch @linkType(from: "TagCandidate", to: "TagBatch", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TagIssueForPerson @linkType(from: "TagProcessingIssue", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TagIssueForTagVersion @linkType(from: "TagProcessingIssue", to: "TagVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TagIssueForEvaluation @linkType(from: "TagProcessingIssue", to: "TagEvaluation", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TagIssueForCandidate @linkType(from: "TagProcessingIssue", to: "TagCandidate", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TagIssueInBatch @linkType(from: "TagProcessingIssue", to: "TagBatch", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type AssignmentHasContribution @linkType(from: "PersonTagAssignment", to: "TagContribution", cardinality: ONE_TO_MANY) {
+  id: ID! @primary
+}
+
+type ContributionUsesVersion @linkType(from: "TagContribution", to: "TagVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ContributionFromEvaluation @linkType(from: "TagContribution", to: "TagEvaluation", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ContributionFromCandidate @linkType(from: "TagContribution", to: "TagCandidate", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ContributionInBatch @linkType(from: "TagContribution", to: "TagBatch", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type ContributionFromOrganization @linkType(from: "TagContribution", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type MatterForProject @linkType(from: "SupervisionMatter", to: "Project", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type MatterHasStage @linkType(from: "SupervisionMatter", to: "MatterStage", cardinality: ONE_TO_MANY) {
+  id: ID! @primary
+}
+
+type MatterOwnedByOrganization @linkType(from: "SupervisionMatter", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ParticipationInMatter @linkType(from: "MatterParticipation", to: "SupervisionMatter", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ParticipationInStage @linkType(from: "MatterParticipation", to: "MatterStage", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type ParticipationForPerson @linkType(from: "MatterParticipation", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ParticipationUsesAssignment @linkType(from: "MatterParticipation", to: "Assignment", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RiskInMatter @linkType(from: "RiskEvent", to: "SupervisionMatter", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type RiskInStage @linkType(from: "RiskEvent", to: "MatterStage", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ContributionFromParticipation @linkType(from: "TagContribution", to: "MatterParticipation", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ContributionFromStage @linkType(from: "TagContribution", to: "MatterStage", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ContributionFromRisk @linkType(from: "TagContribution", to: "RiskEvent", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type TaskForMatter @linkType(from: "ReminderTask", to: "SupervisionMatter", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type TaskForStage @linkType(from: "ReminderTask", to: "MatterStage", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type TaskForRisk @linkType(from: "ReminderTask", to: "RiskEvent", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type TaskCreatedByAccount @linkType(from: "ReminderTask", to: "UserAccount", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TaskOwnedByOrganization @linkType(from: "ReminderTask", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TaskHasSelection @linkType(from: "ReminderTask", to: "RecipientSelection", cardinality: ONE_TO_ONE) {
+  id: ID! @primary
+}
+
+type SelectionHasEntry @linkType(from: "RecipientSelection", to: "SelectionEntry", cardinality: ONE_TO_MANY) {
+  id: ID! @primary
+}
+
+type SelectionEntryForPerson @linkType(from: "SelectionEntry", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type SelectionUsesTagVersion @linkType(from: "RecipientSelection", to: "TagVersion", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type TaskHasRecipient @linkType(from: "ReminderTask", to: "RecipientRecord", cardinality: ONE_TO_MANY) {
+  id: ID! @primary
+}
+
+type RecipientForPerson @linkType(from: "RecipientRecord", to: "Person", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TaskVersionFromContent @linkType(from: "ReminderTaskVersion", to: "ContentVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type TaskVersionUsesMedia @linkType(from: "ReminderTaskVersion", to: "MediaAsset", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type TaskVersionUsesTagVersion @linkType(from: "ReminderTaskVersion", to: "TagVersion", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+}
+
+type ReviewForTask @linkType(from: "ReviewRound", to: "ReminderTask", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ReviewForVersion @linkType(from: "ReviewRound", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ReviewOwnedByOrganization @linkType(from: "ReviewRound", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ReviewSubmittedBy @linkType(from: "ReviewRound", to: "UserAccount", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ReviewDecidedBy @linkType(from: "ReviewRound", to: "UserAccount", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type SafetyCheckForVersion @linkType(from: "ContentSafetyCheck", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type MediaConfirmationForCheck @linkType(from: "MediaConfirmation", to: "ContentSafetyCheck", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type MediaConfirmationForAsset @linkType(from: "MediaConfirmation", to: "MediaAsset", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type SendJobForTask @linkType(from: "ReminderSendJob", to: "ReminderTask", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type SendJobForVersion @linkType(from: "ReminderSendJob", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type SendJobHasAttempt @linkType(from: "ReminderSendJob", to: "DeliveryAttempt", cardinality: ONE_TO_MANY) {
+  id: ID! @primary
+}
+
+type DeliveryReceiptForAttempt @linkType(from: "DeliveryReceipt", to: "DeliveryAttempt", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type VersionStateForRecipient @linkType(from: "RecipientVersionState", to: "RecipientRecord", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type VersionStateForVersion @linkType(from: "RecipientVersionState", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type ReadReceiptForVersion @linkType(from: "ReadReceipt", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type OverdueForVersion @linkType(from: "OverdueRecord", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type OverdueSupervisedBy @linkType(from: "OverdueRecord", to: "Organization", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type IntegrationIssueForRecipient @linkType(from: "IntegrationIssue", to: "RecipientRecord", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type IntegrationIssueForVersion @linkType(from: "IntegrationIssue", to: "ReminderTaskVersion", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type IntegrationIssueForMedia @linkType(from: "IntegrationIssue", to: "MediaAsset", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type AssistantQueryByAccount @linkType(from: "AssistantQuery", to: "UserAccount", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type CardFromQuery @linkType(from: "AssistantActionCard", to: "AssistantQuery", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type EligibilityForAccount @linkType(from: "ObjectEligibility", to: "UserAccount", cardinality: MANY_TO_ONE) {
+  id: ID! @primary
+}
+
+type EvaluationUsesMapping @linkType(from: "TagEvaluation", to: "ClassificationMapping", cardinality: MANY_TO_MANY) {
+  id: ID! @primary
+  mappingVersion: String!
+  mappingSnapshotJson: String!
+}

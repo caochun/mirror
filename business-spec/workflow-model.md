@@ -1,5 +1,7 @@
 # 业务状态和 Action
 
+> 本文为早期流程摘要。新版动作定义和状态约束见 [动作契约](../domain-pack/contracts/actions.yaml)、[动作签名](../domain-pack/contracts/action-types.odl) 和 [状态契约](../domain-pack/contracts/states.yaml)。送达与版本阅读独立；修订不重置首次送达时间或阅读截止时间。
+
 ## 标签状态
 
 ```text
@@ -62,4 +64,3 @@ ResolveOverdueRecord
 ```
 
 所有生产写入都必须经过 Foundry Action 或受控同步命令，并写入历史、审计和事件。
-
