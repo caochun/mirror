@@ -242,17 +242,17 @@ class ReminderWorkflowTest {
         var unit = login("unit");
         String prefix = UUID.randomUUID().toString();
         try (var tx = storage.beginTransaction(CONTEXT)) {
-            tx.createObject("TagDefinition", prefix + "-parent", Map.of("status", "ACTIVE", "parentId", ""));
-            tx.createObject("TagDefinition", prefix + "-a", Map.of("status", "ACTIVE", "parentId", prefix + "-parent"));
-            tx.createObject("TagDefinition", prefix + "-b", Map.of("status", "ACTIVE", "parentId", ""));
+            tx.createObject("TagDefinition", prefix + "-parent", Map.of("code", prefix + "-parent", "name", "筛选测试parent", "dimension", "PERSON", "scope", "LONG_TERM", "level", 1, "status", "ACTIVE", "parentId", ""));
+            tx.createObject("TagDefinition", prefix + "-a", Map.of("code", prefix + "-a", "name", "筛选测试a", "dimension", "PERSON", "scope", "LONG_TERM", "level", 2, "status", "ACTIVE", "parentId", prefix + "-parent"));
+            tx.createObject("TagDefinition", prefix + "-b", Map.of("code", prefix + "-b", "name", "筛选测试b", "dimension", "PERSON", "scope", "LONG_TERM", "level", 1, "status", "ACTIVE", "parentId", ""));
             tx.createObject("PersonTagAssignment", prefix + "-a1", Map.of("personId", "demo-person-001",
-                    "tagDefinitionId", prefix + "-a", "state", "ACTIVE", "manualSuppressed", false));
+                    "tagDefinitionId", prefix + "-a", "state", "ACTIVE", "manualSuppressed", false, "source", "MANUAL", "tagVersion", "fixture-v1", "effectiveFrom", "2026-01-01T00:00:00Z"));
             tx.createObject("PersonTagAssignment", prefix + "-b1", Map.of("personId", "demo-person-001",
-                    "tagDefinitionId", prefix + "-b", "state", "ACTIVE", "manualSuppressed", false));
+                    "tagDefinitionId", prefix + "-b", "state", "ACTIVE", "manualSuppressed", false, "source", "MANUAL", "tagVersion", "fixture-v1", "effectiveFrom", "2026-01-01T00:00:00Z"));
             tx.createObject("PersonTagAssignment", prefix + "-a2", Map.of("personId", "demo-person-002",
-                    "tagDefinitionId", prefix + "-a", "state", "SUPPRESSED", "manualSuppressed", true));
+                    "tagDefinitionId", prefix + "-a", "state", "SUPPRESSED", "manualSuppressed", true, "source", "MANUAL", "tagVersion", "fixture-v1", "effectiveFrom", "2026-01-01T00:00:00Z"));
             tx.createObject("PersonTagAssignment", prefix + "-b3", Map.of("personId", "demo-person-003",
-                    "tagDefinitionId", prefix + "-b", "state", "ACTIVE", "manualSuppressed", false));
+                    "tagDefinitionId", prefix + "-b", "state", "ACTIVE", "manualSuppressed", false, "source", "MANUAL", "tagVersion", "fixture-v1", "effectiveFrom", "2026-01-01T00:00:00Z"));
             tx.commit();
         }
         var any = new HashMap<String, Object>(filter(List.of("demo-a"), List.of(), List.of()));

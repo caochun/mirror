@@ -162,7 +162,7 @@ class TagWorkflowTest {
                     "tagNameSnapshot", "测试标签", "state", "ACTIVE", "source", "RULE", "manualSuppressed", false,
                     "sourceOrganizationId", "demo-a", "effectiveFrom", "2026-09-01T00:00:00Z"));
             tx.createLink("PersonHasTag", "legacy-p-" + tag, new EntityKey("Person", "demo-person-004"),
-                    assignment.key(), Map.of());
+                    assignment.key(), Map.of("linkedAt", "2026-09-01T00:00:00Z"));
             tx.createLink("TagAssignmentUsesDefinition", "legacy-t-" + tag, assignment.key(),
                     new EntityKey("TagDefinition", tag), Map.of());
             tx.commit();

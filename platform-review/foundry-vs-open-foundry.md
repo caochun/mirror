@@ -1,6 +1,6 @@
 # Java Foundry 与 Open Foundry 覆盖对照
 
-日期：2026-09-27。**以下矩阵及探针结果为ff944f7的审计基线，后续修复见[治理修复记录](governance-repair.md)和[时间修复报告](temporal-repair.md)；不要将历史缺陷表当成当前全部状态。** 本次比较平台能力，不把Mirror的标签规则、廉洁提醒或政务流程作为Foundry应实现的功能。
+日期：2026-09-27。**以下矩阵及探针结果为ff944f7的审计基线，后续修复见[治理修复记录](governance-repair.md)、[时间修复报告](temporal-repair.md)和[属性约束修复](property-validation-repair.md)；不要将历史缺陷表当成当前全部状态。** 本次比较平台能力，不把Mirror的标签规则、廉洁提醒或政务流程作为Foundry应实现的功能。
 
 ## 固定比较基线
 

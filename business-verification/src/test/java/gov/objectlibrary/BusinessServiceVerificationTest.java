@@ -45,7 +45,7 @@ class BusinessServiceVerificationTest {
             tx.createObject("Organization", "org-a", Map.of("name", "A", "nature", "CITY", "status", "ACTIVE"));
             tx.createObject("Organization", "org-b", Map.of("name", "B", "nature", "CITY", "status", "ACTIVE"));
             tx.createObject("Assignment", "assignment-1", Map.of("title", "Engineer", "status", "ACTIVE"));
-            tx.createObject("TagDefinition", "tag-risk", Map.of("code", "RISK", "name", "Risk", "scope", "PERSON", "status", "ACTIVE", "level", 1));
+            tx.createObject("TagDefinition", "tag-risk", Map.of("code", "RISK", "name", "Risk", "scope", "LONG_TERM", "dimension", "PERSON", "status", "ACTIVE", "level", 1));
             tx.commit();
         }
     }

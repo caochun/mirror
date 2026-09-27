@@ -30,8 +30,8 @@ class RulePersistenceRestartTest {
             var storage = app.getBean(StorageProvider.class);
             try (var tx = storage.beginTransaction(context)) {
                 for (int i = 0; i < 110; i++) {
-                    var person = tx.createObject("Person", "extra-rule-person-" + i, Map.of("name", "批次验证" + i, "status", "ACTIVE"));
-                    tx.createLink("PersonBelongsToOrganization", "extra-rule-org-" + i, person.key(), new EntityKey("Organization", "demo-a"), Map.of());
+                    var person = tx.createObject("Person", "extra-rule-person-" + i, Map.of("name", "批次验证" + i, "status", "ACTIVE", "identityStatus", "PENDING"));
+                    tx.createLink("PersonBelongsToOrganization", "extra-rule-org-" + i, person.key(), new EntityKey("Organization", "demo-a"), Map.of("startedAt", "2026-01-01T00:00:00Z"));
                 }
                 tx.commit();
             }

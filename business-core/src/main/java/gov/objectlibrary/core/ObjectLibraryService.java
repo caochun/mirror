@@ -254,7 +254,7 @@ public final class ObjectLibraryService {
                 requireObject(context, "Person", personId);
                 String recipientId = taskId + "-recipient-" + personId;
                 ObjectRecord recipient = tx.createObject("RecipientRecord", recipientId,
-                        values("taskVersionId", versionId, "personId", personId, "state", "PENDING",
+                        values("taskId", taskId, "taskVersionId", versionId, "personId", personId, "state", "PENDING",
                                 "readingWindow", readingWindow));
                 tx.createLink("VersionTargetsRecipient", "version-recipient-" + recipientId,
                         version.key(), recipient.key(), Map.of());
@@ -290,7 +290,7 @@ public final class ObjectLibraryService {
         return write(context, "AddRecipient", tx -> {
             String recipientId = taskVersionId + "-recipient-" + personId;
             ObjectRecord recipient = tx.createObject("RecipientRecord", recipientId,
-                    values("taskVersionId", taskVersionId, "personId", personId, "state", "PENDING"));
+                    values("taskId", version.properties().get("taskId"), "taskVersionId", taskVersionId, "personId", personId, "state", "PENDING"));
             tx.createLink("VersionTargetsRecipient", "version-recipient-" + recipientId,
                     version.key(), recipient.key(), Map.of());
             return recipient;
@@ -389,7 +389,7 @@ public final class ObjectLibraryService {
             ObjectRecord version = tx.createObject("ReminderTaskVersion", newVersionId,
                     values("taskId", taskId, "version", String.valueOf(number), "state", "DRAFT",
                             "titleSnapshot", title, "bodySnapshot", body,
-                            "readingWindow", task.properties().get("readingWindow"), "createdAt", now));
+                            "readingWindow", task.properties().get("readingWindow")));
             tx.createLink("TaskHasVersion", "task-version-" + newVersionId, task.key(), version.key(), Map.of());
             for (var recipientLink : storage.getLinks(context, oldVersion.key(), "VersionTargetsRecipient",
                     StorageProvider.Direction.OUTBOUND, QueryOptions.defaults())) {
@@ -398,12 +398,12 @@ public final class ObjectLibraryService {
                 String personId = String.valueOf(oldRecipient.properties().get("personId"));
                 String recipientId = newVersionId + "-recipient-" + personId;
                 ObjectRecord recipient = tx.createObject("RecipientRecord", recipientId,
-                        values("taskVersionId", newVersionId, "personId", personId, "state", "PENDING",
+                        values("taskId", taskId, "taskVersionId", newVersionId, "personId", personId, "state", "PENDING",
                                 "readingWindow", task.properties().get("readingWindow")));
                 tx.createLink("VersionTargetsRecipient", "version-recipient-" + recipientId,
                         version.key(), recipient.key(), Map.of());
             }
-            return tx.updateObject(task.type(), task.id(), Map.of("state", "DRAFT", "currentVersionId", newVersionId), task.version());
+            return tx.updateObject(task.type(), task.id(), Map.of("state", "DRAFT", "pendingVersionId", newVersionId), task.version());
         });
     }
 
@@ -490,8 +490,9 @@ public final class ObjectLibraryService {
         int created = 0;
         for (ObjectRecord recipient : storage.queryObjects(context, "RecipientRecord", QueryOptions.defaults())) {
             Object deadline = recipient.properties().get("deadlineAt");
-            if (!(deadline instanceof Instant deadlineAt) || deadlineAt.isAfter(now)
-                    || !"UNREAD".equals(recipient.properties().get("state"))) continue;
+            if (deadline == null || !"UNREAD".equals(recipient.properties().get("state"))) continue;
+            Instant deadlineAt = Instant.parse(deadline.toString());
+            if (deadlineAt.isAfter(now)) continue;
             String overdueId = "overdue-" + recipient.id();
             if (storage.getObject(context, "OverdueRecord", overdueId) != null) continue;
             write(context, "CreateOverdueRecord", tx -> {

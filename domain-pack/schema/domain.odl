@@ -1,6 +1,7 @@
-extend schema @namespace(name: "gov.object-library", version: "0.2.8")
+extend schema @namespace(name: "gov.object-library", version: "0.2.9")
 
 type Person @objectType {
+  title: String
   id: ID! @primary
   name: String! @indexed
   employeeNo: String @unique @indexed

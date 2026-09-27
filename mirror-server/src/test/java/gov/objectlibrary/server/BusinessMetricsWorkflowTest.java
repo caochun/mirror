@@ -231,23 +231,23 @@ class BusinessMetricsWorkflowTest {
         try (var tx = storage.beginTransaction(context)) {
             var org = tx.createObject("Organization", "quality-root", Map.of("name", "质量测试单位", "status", "ACTIVE", "nature", "CITY"));
             for (String id : List.of("p1", "p2")) {
-                var person = tx.createObject("Person", id, Map.of("name", id, "status", "ACTIVE", "identityReference", "mock:" + id));
-                tx.createLink("PersonBelongsToOrganization", "org-" + id, person.key(), org.key(), Map.of());
+                var person = tx.createObject("Person", id, Map.of("name", id, "status", "ACTIVE", "identityStatus", "OK", "identityReference", "mock:" + id));
+                tx.createLink("PersonBelongsToOrganization", "org-" + id, person.key(), org.key(), Map.of("startedAt", clock.now.toString()));
             }
-            var account = tx.createObject("UserAccount", "technical", Map.of("username", "technical", "state", "ACTIVE"));
-            var eligibility = tx.createObject("ObjectEligibility", "non-object", Map.of("state", "NON_OBJECT"));
+            var account = tx.createObject("UserAccount", "technical", Map.of("username", "technical", "state", "ACTIVE", "changedAt", clock.now.toString()));
+            var eligibility = tx.createObject("ObjectEligibility", "non-object", Map.of("state", "NON_OBJECT", "changedAt", clock.now.toString()));
             tx.createLink("AccountCurrentOrganization", "account-org", account.key(), org.key(), Map.of());
             tx.createLink("EligibilityForAccount", "elig-account", eligibility.key(), account.key(), Map.of());
-            tx.createLink("EligibilityForPerson", "elig-person", eligibility.key(), new EntityKey("Person", "p2"), Map.of());
+            tx.createLink("EligibilityForPerson", "elig-person", eligibility.key(), new EntityKey("Person", "p2"), Map.of("linkedAt", clock.now.toString()));
             for (String category : List.of("IDENTITY", "PROFILE")) {
-                var issue = tx.createObject("DataAssociationIssue", category, Map.of("category", category, "status", "OPEN", "detectedAt", clock.now.toString()));
-                tx.createLink("IssueForPerson", category, issue.key(), new EntityKey("Person", "p1"), Map.of());
+                var issue = tx.createObject("DataAssociationIssue", category, Map.of("category", category, "reason", "测试关联异常", "status", "OPEN", "detectedAt", clock.now.toString()));
+                tx.createLink("IssueForPerson", category, issue.key(), new EntityKey("Person", "p1"), Map.of("linkedAt", clock.now.toString()));
             }
-            tx.createObject("TagDefinition", "tag", Map.of("name", "质量标签", "status", "ACTIVE"));
-            var version = tx.createObject("TagVersion", "tag-v1", Map.of("tagDefinitionId", "tag", "status", "PUBLISHED"));
-            tx.createObject("PersonTagAssignment", "assignment", Map.of("personId", "p1", "tagDefinitionId", "tag", "state", "SUPPRESSED", "manualSuppressed", true));
+            tx.createObject("TagDefinition", "tag", Map.of("name", "质量标签", "code", "QUALITY", "dimension", "PERSON", "scope", "LONG_TERM", "level", 1, "status", "ACTIVE"));
+            var version = tx.createObject("TagVersion", "tag-v1", Map.of("tagDefinitionId", "tag", "version", "1", "status", "PUBLISHED"));
+            tx.createObject("PersonTagAssignment", "assignment", Map.of("personId", "p1", "tagDefinitionId", "tag", "source", "MANUAL", "tagVersion", "tag-v1", "effectiveFrom", clock.now.toString(), "state", "SUPPRESSED", "manualSuppressed", true));
             for (String id : List.of("issue-one", "issue-two")) {
-                var issue = tx.createObject("TagProcessingIssue", id, Map.of("category", "RULE_UNCOMPUTABLE", "state", "OPEN", "detectedAt", clock.now.toString()));
+                var issue = tx.createObject("TagProcessingIssue", id, Map.of("category", "RULE_UNCOMPUTABLE", "reason", "测试规则缺失输入", "state", "OPEN", "detectedAt", clock.now.toString()));
                 tx.createLink("TagIssueForPerson", id, issue.key(), new EntityKey("Person", "p1"), Map.of());
                 tx.createLink("TagIssueForTagVersion", id, issue.key(), version.key(), Map.of());
             }
@@ -284,7 +284,7 @@ class BusinessMetricsWorkflowTest {
                 org.openfoundry.foundation.spi.StorageProvider.Direction.OUTBOUND, org.openfoundry.foundation.spi.QueryOptions.defaults()).getFirst();
         try (var tx = storage.beginTransaction(CONTEXT)) {
             tx.deleteLink(link.type(), link.id(), link.version());
-            tx.createLink(link.type(), "metrics-move-" + key(), link.from(), new EntityKey("Organization", "demo-b"), Map.of());
+            tx.createLink(link.type(), "metrics-move-" + key(), link.from(), new EntityKey("Organization", "demo-b"), Map.of("startedAt", clock.now.toString()));
             tx.commit();
         }
         try {
@@ -294,7 +294,7 @@ class BusinessMetricsWorkflowTest {
                     org.openfoundry.foundation.spi.QueryOptions.defaults()).getFirst();
             try (var tx = storage.beginTransaction(CONTEXT)) {
                 tx.deleteLink(current.type(), current.id(), current.version());
-                tx.createLink(link.type(), "metrics-restore-" + key(), link.from(), link.to(), Map.of());
+                tx.createLink(link.type(), "metrics-restore-" + key(), link.from(), link.to(), Map.of("startedAt", clock.now.toString()));
                 tx.commit();
             }
         }

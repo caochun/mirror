@@ -41,7 +41,7 @@ class Bootstrap implements ApplicationRunner {
                 tx.createObject("Organization", "demo-b", Map.of("name", "演示二局", "nature", "DEPARTMENT", "status", "ACTIVE"));
                 for (String id : new String[]{"demo-a", "demo-b", "demo-child"})
                     tx.createLink("OrganizationParent", "parent-"+id, new EntityKey("Organization",id),
-                            new EntityKey("Organization",id.equals("demo-child")?"demo-a":"city"), Map.of("relation","PARENT"));
+                            new EntityKey("Organization",id.equals("demo-child")?"demo-a":"city"), Map.of("relation","PARENT", "startedAt", "2026-01-01T00:00:00Z"));
                 for (int i=1;i<=24;i++) {
                     String id="demo-person-"+String.format("%03d",i);
                     String org=i<=8?"demo-a":i<=16?"demo-child":"demo-b";

@@ -64,11 +64,11 @@ class ApplicationSecurityTest {
         var context=RequestContext.system("mirror","test");
         try(var tx=storage.beginTransaction(context)) {
             for(int i=0;i<125;i++) tx.createObject("Person","bulk-"+i,Map.of("name","分页测试"+i,
-                    "status","ACTIVE","identityStatus","PENDING","identityNumber","PRIVATE-ID","phone","PRIVATE-PHONE"));
+                    "status","ACTIVE","identityStatus","PENDING","identityReference","PRIVATE-ID","phoneReference","PRIVATE-PHONE"));
             tx.commit();
         }
         try(var tx=storage.beginTransaction(RequestContext.system("other-tenant","test"))) {
-            tx.createObject("Person","other-person",Map.of("name","SHOULD-NOT-LEAK","status","ACTIVE"));tx.commit();
+            tx.createObject("Person","other-person",Map.of("name","SHOULD-NOT-LEAK","status","ACTIVE","identityStatus","PENDING"));tx.commit();
         }
         var session=login("admin");
         mvc.perform(get("/api/people").session(session).param("q","分页测试").param("page","1").param("size","100"))

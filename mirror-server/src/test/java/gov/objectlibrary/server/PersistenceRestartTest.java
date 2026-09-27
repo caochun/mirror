@@ -27,7 +27,7 @@ class PersistenceRestartTest {
         try(var app=new SpringApplicationBuilder(MirrorApplication.class).run(args)) {
             var storage=app.getBean(StorageProvider.class);
             try(var tx=storage.beginTransaction(context)) {
-                tx.createObject("Person","persisted-person",Map.of("name","持久化测试","status","ACTIVE"));
+                tx.createObject("Person","persisted-person",Map.of("name","持久化测试","status","ACTIVE","identityStatus","PENDING"));
                 tx.createLink("PersonBelongsToOrganization","persisted-org",new EntityKey("Person","persisted-person"),
                         new EntityKey("Organization","city"),Map.of("startedAt","2026-01-01T00:00:00Z"));tx.commit();
             }

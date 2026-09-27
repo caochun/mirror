@@ -48,12 +48,12 @@ class RuleWorkflowTest {
         String missing = "rule-missing-" + suffix;
         try (var tx = storage.beginTransaction(CONTEXT)) {
             var organization = tx.createObject("Organization", org, Map.of("name", "规则验证单位", "nature", "DEPARTMENT", "status", "ACTIVE"));
-            tx.createLink("OrganizationParent", "parent-" + suffix, organization.key(), new EntityKey("Organization", "demo-a"), Map.of());
+            tx.createLink("OrganizationParent", "parent-" + suffix, organization.key(), new EntityKey("Organization", "demo-a"), Map.of("relation", "PARENT", "startedAt", clock.now.toString()));
             for (String person : List.of(known, missing)) {
                 var properties = new java.util.HashMap<String, Object>(Map.of("name", person.equals(known) ? "有依据人员" : "待补生日人员", "status", "ACTIVE", "identityStatus", "OK", "identityReference", "mock:" + person));
                 if (person.equals(known)) properties.put("birthDate", "2000-01-01");
                 var record = tx.createObject("Person", person, properties);
-                tx.createLink("PersonBelongsToOrganization", "org-" + person, record.key(), organization.key(), Map.of());
+                tx.createLink("PersonBelongsToOrganization", "org-" + person, record.key(), organization.key(), Map.of("startedAt", clock.now.toString()));
             }
             tx.commit();
         }
@@ -180,8 +180,8 @@ class RuleWorkflowTest {
         assertEquals(34, facts.load(admin(), person, java.util.Set.of("ageYears")).fields().get("ageYears"));
         try (var tx = storage.beginTransaction(CONTEXT)) {
             var assignment = tx.createObject("Assignment", "job-" + key(), Map.of("title", "局长", "status", "ACTIVE"));
-            tx.createLink("PersonHasAssignment", "person-job-" + key(), person.key(), assignment.key(), Map.of());
-            tx.createLink("AssignmentInOrganization", "job-org-" + key(), assignment.key(), new EntityKey("Organization", fixture.org()), Map.of());
+            tx.createLink("PersonHasAssignment", "person-job-" + key(), person.key(), assignment.key(), Map.of("startedAt", clock.now.toString()));
+            tx.createLink("AssignmentInOrganization", "job-org-" + key(), assignment.key(), new EntityKey("Organization", fixture.org()), Map.of("startedAt", clock.now.toString()));
             tx.commit();
         }
         assertFalse(facts.load(admin(), person, java.util.Set.of("positionCode")).fields().containsKey("positionCode"));

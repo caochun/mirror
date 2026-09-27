@@ -1,5 +1,5 @@
 name: government-object-library
-version: 0.2.8
+version: 0.2.9
 namespace: gov.object-library
 description: "政务对象库业务事实、关系与动作契约；不是完整业务执行实现"
 schema:

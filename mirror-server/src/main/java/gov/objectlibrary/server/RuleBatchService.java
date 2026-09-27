@@ -208,7 +208,7 @@ class RuleBatchService {
                     "source", "RULE", "sourceReference", rule.id(), "sourceOrganizationId", input.organizationId(), "manualSuppressed", false,
                     "tagVersion", tagVersionId, "tagNameSnapshot", text(tag, "name"), "effectiveFrom", clock.instant().toString(),
                     "operatorId", actor.username(), "operatorOrganizationId", ""));
-            tx.createLink("PersonHasTag", "person-" + id, person.key(), assignment.key(), Map.of());
+            tx.createLink("PersonHasTag", "person-" + id, person.key(), assignment.key(), Map.of("linkedAt", clock.instant().toString()));
             tx.createLink("TagAssignmentUsesDefinition", "tag-" + id, assignment.key(), tag.key(), Map.of());
         } else if (!before.equals(state) || matched && !text(assignment, "tagVersion").equals(tagVersionId)) {
             contracts.requireTransition(assignment.type(), "state", before.equals("REMOVED") ? "SUPPRESSED" : before, state, "ApplyRuleEvaluation");

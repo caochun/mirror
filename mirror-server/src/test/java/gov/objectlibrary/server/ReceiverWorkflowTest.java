@@ -262,7 +262,7 @@ class ReceiverWorkflowTest {
         var original = storage.getLink(CONTEXT, "PersonBelongsToOrganization", "org-demo-person-001");
         try (var tx = storage.beginTransaction(CONTEXT)) {
             tx.deleteLink(original.type(), original.id(), original.version());
-            tx.createLink(original.type(), "transferred-" + UUID.randomUUID(), original.from(), new EntityKey("Organization", "demo-b"), Map.of());
+            tx.createLink(original.type(), "transferred-" + UUID.randomUUID(), original.from(), new EntityKey("Organization", "demo-b"), Map.of("startedAt", clock.now.toString()));
             tx.commit();
         }
         try {
@@ -279,7 +279,7 @@ class ReceiverWorkflowTest {
             var current = storage.getLinks(CONTEXT, original.from(), "PersonBelongsToOrganization", StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).getFirst();
             try (var tx = storage.beginTransaction(CONTEXT)) {
                 tx.deleteLink(current.type(), current.id(), current.version());
-                tx.createLink(original.type(), "restored-" + UUID.randomUUID(), original.from(), original.to(), Map.of());
+                tx.createLink(original.type(), "restored-" + UUID.randomUUID(), original.from(), original.to(), Map.of("startedAt", clock.now.toString()));
                 tx.commit();
             }
         }

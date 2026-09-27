@@ -15,6 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class BusinessPackVerificationTest {
+    private static final String NOW = "2026-09-26T08:00:00Z";
     static Path packPath() {
         Path path = Path.of("..", "domain-pack").toAbsolutePath().normalize();
         return Files.exists(path) ? path : Path.of("domain-pack").toAbsolutePath().normalize();
@@ -24,7 +25,7 @@ class BusinessPackVerificationTest {
     void loadsBusinessDefinitionWithoutExposingIncompleteExecutableActions() {
         var pack = new DomainPackLoader().load(packPath());
         assertEquals("government-object-library", pack.manifest().name());
-        assertEquals("0.2.8", pack.manifest().version());
+        assertEquals("0.2.9", pack.manifest().version());
         assertEquals(pack.manifest().version(), pack.ontology().schema().version());
         assertTrue(pack.actions().isEmpty(), "Definition-only business commands must not become callable stubs");
         assertTrue(pack.ontology().schema().actionTypes().isEmpty());
@@ -42,16 +43,16 @@ class BusinessPackVerificationTest {
         var parentB = new EntityKey("Organization", "B");
         try (var tx = storage.beginTransaction(context)) {
             for (String id : new String[]{"A", "B", "C"}) {
-                tx.createObject("Organization", id, Map.of("name", id, "status", "ACTIVE"));
+                tx.createObject("Organization", id, Map.of("name", id, "nature", "DEPARTMENT", "status", "ACTIVE"));
             }
-            tx.createLink("OrganizationParent", "C-A", child, parentA, Map.of());
-            var issue = tx.createObject("DataAssociationIssue", "org-issue", Map.of("status", "OPEN"));
+            tx.createLink("OrganizationParent", "C-A", child, parentA, Map.of("relation", "PARENT", "startedAt", NOW));
+            var issue = tx.createObject("DataAssociationIssue", "org-issue", Map.of("category", "ORGANIZATION", "reason", "测试组织关联异常", "detectedAt", NOW, "status", "OPEN"));
             tx.createLink("IssueForOrganization", "issue-C", issue.key(), child, Map.of());
-            var account = tx.createObject("UserAccount", "operator", Map.of("username", "operator", "state", "ACTIVE"));
+            var account = tx.createObject("UserAccount", "operator", Map.of("username", "operator", "state", "ACTIVE", "changedAt", NOW));
             tx.createLink("AccountCurrentOrganization", "operator-A", account.key(), parentA, Map.of());
             for (String id : new String[]{"source-one", "source-two"}) {
                 var grant = tx.createObject("AuthorityGrant", id, Map.of("permission", "PERSON_READ",
-                        "scopeKind", "CUSTOM_ORGS", "state", "ACTIVE", "sourceSystem", id));
+                        "scopeKind", "CUSTOM_ORGS", "state", "ACTIVE", "sourceSystem", id, "validFrom", NOW));
                 tx.createLink("GrantForAccount", id, grant.key(), account.key(), Map.of());
                 tx.createLink("GrantScopeRoot", id + "-A", grant.key(), parentA, Map.of());
                 tx.createLink("GrantScopeRoot", id + "-B", grant.key(), parentB, Map.of());
@@ -60,11 +61,11 @@ class BusinessPackVerificationTest {
         }
         try (var tx = storage.beginTransaction(context)) {
             assertThrows(IllegalStateException.class, () -> tx.createLink("OrganizationParent", "invalid",
-                    child, parentB, Map.of()), "One organization cannot have two current parents");
+                    child, parentB, Map.of("relation", "PARENT", "startedAt", NOW)), "One organization cannot have two current parents");
         }
         try (var tx = storage.beginTransaction(context)) {
             tx.deleteLink("OrganizationParent", "C-A", 1);
-            tx.createLink("OrganizationParent", "C-B", child, parentB, Map.of());
+            tx.createLink("OrganizationParent", "C-B", child, parentB, Map.of("relation", "PARENT", "startedAt", NOW));
             tx.updateObject("AuthorityGrant", "source-one", Map.of("state", "REVOKED"), 1);
             tx.commit();
         }
@@ -87,26 +88,26 @@ class BusinessPackVerificationTest {
         storage.applySchema(context, pack.ontology().schema());
         String deadline = "2026-09-27T08:00:00Z";
         try (var tx = storage.beginTransaction(context)) {
-            tx.createObject("Person", "p1", Map.of("name", "演示甲"));
-            tx.createObject("Person", "p2", Map.of("name", "演示乙"));
-            tx.createObject("TagDefinition", "tag", Map.of("name", "重点领域岗位"));
+            tx.createObject("Person", "p1", Map.of("name", "演示甲", "status", "ACTIVE", "identityStatus", "PENDING"));
+            tx.createObject("Person", "p2", Map.of("name", "演示乙", "status", "ACTIVE", "identityStatus", "PENDING"));
+            tx.createObject("TagDefinition", "tag", Map.of("code", "WORK", "name", "重点领域岗位", "status", "ACTIVE", "dimension", "WORK", "scope", "LONG_TERM", "level", 1));
             for (String id : new String[]{"c1", "c2"}) {
-                var candidate = tx.createObject("TagCandidate", id, Map.of("state", "PENDING"));
+                var candidate = tx.createObject("TagCandidate", id, Map.of("state", "PENDING", "source", "AI", "reason", "测试候选依据", "createdAt", NOW));
                 tx.createLink("TagCandidateForPerson", id, candidate.key(), new EntityKey("Person", "p1"), Map.of());
-                var content = tx.createObject("ReminderContent", id, Map.of("title", id));
+                var content = tx.createObject("ReminderContent", id, Map.of("title", id, "category", "专项", "state", "ACTIVE"));
                 tx.createLink("ContentSuggestsTag", id, content.key(), new EntityKey("TagDefinition", "tag"), Map.of());
-                var risk = tx.createObject("RiskEvent", id, Map.of("state", "OPEN"));
+                var risk = tx.createObject("RiskEvent", id, Map.of("state", "OPEN", "category", "TEST_SIGNAL", "severity", "UNKNOWN", "occurredAt", NOW));
                 tx.createLink("RiskInvolvesPerson", id, risk.key(), new EntityKey("Person", "p1"), Map.of());
             }
-            var task = tx.createObject("ReminderTask", "task", Map.of("state", "ALL_SUCCESS"));
+            var task = tx.createObject("ReminderTask", "task", Map.of("state", "ALL_SUCCESS", "sendMode", "IMMEDIATE", "readingWindow", "1d", "createdAt", NOW));
             var recipient = tx.createObject("RecipientRecord", "r1", Map.of("taskId", "task", "personId", "p1",
                     "firstDeliveredAt", "2026-09-26T08:00:00Z", "deadlineAt", deadline));
             tx.createLink("TaskHasRecipient", "task-r1", task.key(), recipient.key(), Map.of());
             tx.createLink("RecipientForPerson", "r1-p1", recipient.key(), new EntityKey("Person", "p1"), Map.of());
             for (String id : new String[]{"v1", "v2"}) {
-                var version = tx.createObject("ReminderTaskVersion", id, Map.of("taskId", "task", "state", "PUBLISHED"));
+                var version = tx.createObject("ReminderTaskVersion", id, Map.of("taskId", "task", "state", "PUBLISHED", "version", id, "titleSnapshot", "测试提醒", "bodySnapshot", "测试正文", "readingWindow", "1d"));
                 tx.createLink("VersionTargetsRecipient", id, version.key(), recipient.key(), Map.of());
-                var reading = tx.createObject("RecipientVersionState", id, Map.of("state", id.equals("v1") ? "READ" : "UNREAD"));
+                var reading = tx.createObject("RecipientVersionState", id, Map.of("state", id.equals("v1") ? "READ" : "UNREAD", "publishedAt", NOW, "updatedAt", NOW));
                 tx.createLink("VersionStateForRecipient", id, reading.key(), recipient.key(), Map.of());
                 tx.createLink("VersionStateForVersion", id, reading.key(), version.key(), Map.of());
             }
@@ -135,17 +136,17 @@ class BusinessPackVerificationTest {
         var context = RequestContext.system("tenant", "fixture");
         storage.applySchema(context, pack.ontology().schema());
         try (var tx = storage.beginTransaction(context)) {
-            var person = tx.createObject("Person", "p", Map.of("name", "演示甲"));
-            var issue = tx.createObject("TagProcessingIssue", "missing-birth-date", Map.of("state", "OPEN"));
+            var person = tx.createObject("Person", "p", Map.of("name", "演示甲", "status", "ACTIVE", "identityStatus", "PENDING"));
+            var issue = tx.createObject("TagProcessingIssue", "missing-birth-date", Map.of("state", "OPEN", "category", "RULE_UNCOMPUTABLE", "reason", "出生日期缺失", "detectedAt", NOW));
             tx.createLink("TagIssueForPerson", "issue-person", issue.key(), person.key(), Map.of());
             tx.commit();
         }
         assertTrue(storage.queryObjects(context, "PersonTagAssignment", QueryOptions.defaults()).isEmpty());
         try (var tx = storage.beginTransaction(context)) {
-            var tag = tx.createObject("PersonTagAssignment", "tag", Map.of("state", "ACTIVE"));
+            var tag = tx.createObject("PersonTagAssignment", "tag", Map.of("state", "ACTIVE", "source", "STAGE", "tagVersion", "stage-v1", "effectiveFrom", NOW, "manualSuppressed", false));
             for (String id : new String[]{"A", "B"}) {
-                var stage = tx.createObject("MatterStage", id, Map.of("name", id, "state", "ACTIVE"));
-                var contribution = tx.createObject("TagContribution", id, Map.of("state", "ACTIVE", "source", "STAGE"));
+                var stage = tx.createObject("MatterStage", id, Map.of("name", id, "state", "ACTIVE", "sequence", 1));
+                var contribution = tx.createObject("TagContribution", id, Map.of("state", "ACTIVE", "source", "STAGE", "sourceReference", id, "effectiveFrom", NOW));
                 tx.createLink("AssignmentHasContribution", id, tag.key(), contribution.key(), Map.of());
                 tx.createLink("ContributionFromStage", id, contribution.key(), stage.key(), Map.of());
             }

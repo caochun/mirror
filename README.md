@@ -20,7 +20,7 @@
 
 基础 Domain Pack 只描述对象、关系和生命周期。标签计算、风险判断、廉洁提醒、鹿路通送达和具体监督流程在本业务仓库扩展，Foundry 不包含这些政务业务语义。
 
-业务定义已复核为 [Domain Pack 0.2.8](domain-pack/README.md)，补充动作契约、来源依据、专项事项与版本追溯。人工标签、确定性规则预览/发布/停用及持久清理已接入；[运行契约登记](business-spec/runtime-contracts.md)区分定义与实现。可单独运行 `mvn -pl business-verification -am test` 验证定义；数据库迁移边界见 [MIGRATION.md](domain-pack/MIGRATION.md)。
+业务定义已复核为 [Domain Pack 0.2.9](domain-pack/README.md)，补充动作契约、来源依据、专项事项与版本追溯。人工标签、确定性规则预览/发布/停用及持久清理已接入；[运行契约登记](business-spec/runtime-contracts.md)区分定义与实现。可单独运行 `mvn -pl business-verification -am test` 验证定义；数据库迁移边界见 [MIGRATION.md](domain-pack/MIGRATION.md)。
 
 ## 获取和验证 Foundry
 
@@ -30,13 +30,13 @@ cd mirror/foundry
 mvn test
 ```
 
-Foundry及上游参考版本均通过submodule固定。当前参考上游v0.3.0；[平台覆盖审计](platform-review/foundry-vs-open-foundry.md)区分已有、部分实现、缺失及有意差异。Java版尚非完整等价重制；[首批治理修复](platform-review/governance-repair.md)已接通注册Action鉴权、字段策略及进程内幂等隔离，[时间转换修复](platform-review/temporal-repair.md)已支持普通历史查询和顺序迟到事实，旧历史迁移、任意区间更正和持久幂等等仍待完成。更新平台版本时，在本仓库更新submodule指针并运行业务验证。
+Foundry及上游参考版本均通过submodule固定。当前参考上游v0.3.0；[平台覆盖审计](platform-review/foundry-vs-open-foundry.md)区分已有、部分实现、缺失及有意差异。Java版尚非完整等价重制；[首批治理修复](platform-review/governance-repair.md)已接通注册Action鉴权、字段策略及进程内幂等隔离，[时间转换修复](platform-review/temporal-repair.md)已支持普通历史查询和顺序迟到事实，[属性约束修复](platform-review/property-validation-repair.md)已接通对象/关系必填、类型、枚举、唯一及不可变校验；旧历史迁移、任意区间更正和持久幂等等仍待完成。更新平台版本时，在本仓库更新submodule指针并运行业务验证。
 
 ## 当前可运行版本
 
 已接通账号登录、组织权限、人员查询、档案基础信息、标签目录及人工添加/删除/恢复与历史；内容示例、受控配图、提醒草稿、选人、逐图确认、提交及独立审核已可操作。持久发送作业、逐人结果和失败/未知重试已接通显式Mock；接收端H5已接通Mock身份、受控图片和首次阅读，管理端可查看当前范围内未读/逾期清单；已发布提醒可保存修订、逐图确认、独立复审并后台发布；已发送消息可逐人撤回并重试失败/未知结果；确定性规则已接通预览、发布和批次重算；映射维护、AI复核和正式渠道仍在开发。完整进度见 [业务任务清单](business-spec/tasks.md)。
 
-当前目标是基于复核后的Domain Pack完成完整系统，包括Dashboard；实施进度见[任务清单](business-spec/tasks.md)。`http://127.0.0.1:8080/dashboard`已改为按账号权限读取实际入库记录的业务大屏；匿名只能看到登录提示，Mock来源持续标识。
+当前目标是完整重制Java Foundry核心并覆盖固定上游版本；Mirror暂以兼容验证为主，业务功能计划仍保留在[任务清单](business-spec/tasks.md)。`http://127.0.0.1:8080/dashboard`已改为按账号权限读取实际入库记录的业务大屏；匿名只能看到登录提示，Mock来源持续标识。
 
 本地需要 JDK 21+、Maven、Node.js 22.12+（建议当前 LTS）。从仓库根目录运行：
 
