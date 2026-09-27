@@ -94,5 +94,6 @@ function Menu({ to, children }: { to: string; children: ReactNode }) {
   return <NavLink to={to} className={({ isActive }) => `block rounded-lg px-4 py-3 text-sm ${isActive ? 'bg-blue-50 font-semibold text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>{children}</NavLink>;
 }
 function Workbench() {
-  return <Dashboard />;
+  const { actor } = useSession();
+  return actor.role === 'REVIEWER' ? <Navigate to="/reminders" replace /> : <Dashboard />;
 }

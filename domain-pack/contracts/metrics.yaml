@@ -10,6 +10,7 @@ common:
     - "tagVersion"
     - "contentCategorySnapshot"
     - "taskId"
+    - "includeWithdrawn"
   output:
     - "value"
     - "numerator"
@@ -22,7 +23,11 @@ common:
   zeroDenominator: "null / 不适用，不返回0%冒充观测结果"
   missingInput: "unknown / 待同步，不假造0"
   privacy: "统计与下钻用同一权限范围，敏感字段仍脱敏"
-  history: "业务阅读只查询当前发布版；旧版阅读走审计"
+  history: "业务阅读只查询当前发布版；旧版阅读走审计。短期查询快照供同次统计下钻，权限/当前归属或相关任务发布版本变化后拒绝旧快照。"
+  runtimeFilters: "organizationId为当前对象单位；creatorOrganization为可见任务创建单位；recipientOrganization为发送时单位；tagId按当前目录（含下级），tagVersionId为提醒中末级标签版本；category/taskId/from/to影响提醒与对接。"
+  timeBasis: "对象/资格/标签为当前快照；提醒按任务首次发布，未发布的已批准名单按创建时间；问题/重试按发生或申请时间。"
+  withdrawal: "默认包含撤回历史，可选择只看未撤回目标；逾期始终排除已撤回。送达、阅读和撤回不互斥。"
+  provenance: "按实际入库业务事实聚合；Mock与普通记录分开标识，不以运行环境开关掩盖旧Mock记录。未知阅读/送达/历史标签依据不充当零。"
 metrics:
   -
     code: "effectivePeople"
@@ -60,7 +65,7 @@ metrics:
     code: "tagSourceDistribution"
     grain: "CONTRIBUTION"
     object: "TagContribution"
-    definition: "RULE/MANUAL/AI_REVIEWED/STAGE贡献分类；另列各来源去重人数，来源人数可重叠"
+    definition: "仅当前有效逻辑标签的有效RULE/MANUAL/AI_REVIEWED/STAGE贡献分类；人工抑制或目录停用不计当前来源分布。另列各来源去重人数，来源人数可重叠。"
     numerator: "active contributions by source"
     denominator: "none"
     organizationBasis: "source organization + current person organization"
@@ -73,7 +78,7 @@ metrics:
       - "TagProcessingIssue"
       - "PersonTagAssignment"
     definition: "待复核、无法判断、调用失败、无法计算、人工抑制分别统计当前人员+标签项，并同时返回各类涉及的去重人数；同人多标签或多批次异常不能冒充多人。类别人数可重叠，历史已解决问题不计当前待处理。不能合并为整人同步异常。"
-    numerator: "distinct current person-tag pairs by category/state; affectedPeople = distinct person IDs per category"
+    numerator: "distinct person-tag pairs overall; separate distinct pairs and affectedPeople per category (category counts may overlap)"
     counts:
       items: "PERSON_TAG"
       affectedPeople: "PERSON"
@@ -83,7 +88,7 @@ metrics:
     code: "targetRecipients"
     grain: "TASK_PERSON"
     object: "RecipientRecord"
-    definition: "跨任务为人次；单任务按稳定接收记录，不按版本重复计算。取当前有效审核/发布版本的VersionTargetsRecipient成员；历次驳回或撤回审核的历史接收名单不加入当前目标总数。"
+    definition: "跨任务为人次；单任务按稳定接收记录，不按版本重复计算。取当前有效审核/发布版本的VersionTargetsRecipient成员；历次驳回或撤回审核的历史接收名单不加入当前目标总数。标签筛选使用每个VersionTargetsRecipient冻结的标签版本，不用当前标签替代。"
     numerator: "count stable task-person members of the current effective snapshot"
     denominator: "none"
     organizationBasis: "task owner + recipient organization snapshot"
@@ -91,7 +96,7 @@ metrics:
     code: "deliveryRate"
     grain: "TASK_PERSON"
     object: "RecipientRecord"
-    definition: "成功/失败/未知/已提交分别显示；重试不增加目标人数，已提交含得到结果的请求"
+    definition: "成功/失败/未知/已提交分别显示；重试不增加目标人数，已提交含得到结果的请求；状态或首次成功依据缺失时标为待核实"
     numerator: "delivered stable records"
     denominator: "submitted stable records"
     organizationBasis: "task owner + recipient organization snapshot"
@@ -115,8 +120,9 @@ metrics:
     code: "overdueUnread"
     grain: "TASK_PERSON"
     object: "OverdueRecord"
-    definition: "最新版本OPEN且仍UNREAD，有合法首次送达起点和已过截止；同时展示去重人数"
-    numerator: "latest-version open overdue records"
+    sourceObjects: ["RecipientRecord", "RecipientVersionState", "ReadReceipt", "OverdueRecord"]
+    definition: "以当前发布版未读、有合法首次送达起点及已到截止判定，排除已撤回；同时展示去重人数。OverdueRecord记录预警历史，扫描延迟不能把实际到期人数显示为0。"
+    numerator: "latest-version delivered unread recipients past deadline, excluding withdrawn"
     denominator: "none"
     organizationBasis: "current supervisor organization"
   -

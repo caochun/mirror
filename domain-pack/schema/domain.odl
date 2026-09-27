@@ -1,4 +1,4 @@
-extend schema @namespace(name: "gov.object-library", version: "0.2.4")
+extend schema @namespace(name: "gov.object-library", version: "0.2.5")
 
 type Person @objectType {
   id: ID! @primary
@@ -522,6 +522,7 @@ type TaskHasVersion @linkType(from: "ReminderTask", to: "ReminderTaskVersion", c
 
 type VersionTargetsRecipient @linkType(from: "ReminderTaskVersion", to: "RecipientRecord", cardinality: MANY_TO_MANY) {
   id: ID! @primary
+  tagVersionIdsJson: String
 }
 
 type RecipientHasDeliveryAttempt @linkType(from: "RecipientRecord", to: "DeliveryAttempt", cardinality: ONE_TO_MANY) {

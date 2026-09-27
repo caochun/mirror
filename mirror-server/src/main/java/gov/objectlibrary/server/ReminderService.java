@@ -267,6 +267,11 @@ public class ReminderService {
             tx.createLink("ReviewForTask", "task-" + roundId, round.key(), task.key(), Map.of());
             tx.createLink("ReviewForVersion", "version-" + roundId, round.key(), version.key(), Map.of());
             tx.createLink("ReviewOwnedByOrganization", "org-" + roundId, round.key(), new EntityKey("Organization", actor.organizationId()), Map.of());
+            var frozenTagVersions = new java.util.TreeSet<>(tagVersions(actor, resolved.filter().tagIds()));
+            resolved.included().forEach(person -> frozenTagVersions.addAll(person.tagVersionIds()));
+            for (String tagVersion : frozenTagVersions) {
+                tx.createLink("TaskVersionUsesTagVersion", version.id() + "-tag-" + tagVersion, version.key(), new EntityKey("TagVersion", tagVersion), Map.of());
+            }
             for (var person : resolved.included()) {
                 String recipientId = "recipient-" + BusinessCommands.hash(taskId + "/" + person.personId());
                 var existing = storage.getObject(actor.context(), "RecipientRecord", recipientId);
@@ -284,7 +289,8 @@ public class ReminderService {
                             "organizationIdSnapshot", person.organizationId(), "organizationNameSnapshot", person.organizationName(),
                             "readingWindow", text(task, "readingWindow"), "eligibilitySnapshotJson", encode(person)), existing.version());
                 }
-                tx.createLink("VersionTargetsRecipient", version.id() + "-" + recipientId, version.key(), recipientKey, Map.of());
+                tx.createLink("VersionTargetsRecipient", version.id() + "-" + recipientId, version.key(), recipientKey,
+                        Map.of("tagVersionIdsJson", encode(person.tagVersionIds())));
             }
             contracts.requireTransition("ReminderTask", "state", text(task, "state"), "PENDING_REVIEW", action);
             var changed = tx.updateObject(task.type(), task.id(), values("state", "PENDING_REVIEW", "reviewRound", roundNumber,
@@ -539,7 +545,14 @@ public class ReminderService {
     }
 
     private ReminderSelection.Result currentSelection(Accounts.Actor actor, ObjectRecord selection) {
-        return selections.resolve(actor, decodeFilter(text(selection, "criteriaJson")));
+        var filter = decodeFilter(text(selection, "criteriaJson"));
+        try {
+            List<String> saved = json.readValue(text(selection, "tagVersionIdsJson"), new TypeReference<List<String>>() {});
+            if (!tagVersions(actor, filter.tagIds()).equals(saved)) throw new BusinessConflict("筛选标签版本已变化，请保存草稿并重新确认");
+        } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
+            throw new BusinessConflict("原筛选标签依据不完整，请保存草稿并重新确认");
+        }
+        return selections.resolve(actor, filter);
     }
 
     private void requireConfirmedInput(ObjectRecord selection, ReminderSelection.Result resolved, String providedDigest, int count) {

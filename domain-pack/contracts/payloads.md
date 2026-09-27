@@ -26,3 +26,7 @@
 对外渠道调用不能与本地数据库伪装成单一事务：先提交发送/撤回意图和outbox，再由适配层执行，回执通过受控系统动作确认。此定义不选择队列、数据库品牌或Web框架。
 
 组织、人员、账号授权各自保存来源版本和有效历史。迟到来源事件不能用记录时间覆盖更新的业务事实；历史更正由可信来源显式给出更正版本及生效时间，保留更正前后证据。来源序列不可比较时记录待核实，不能按版本字符串字典序猜先后。
+
+统计HTTP过滤映射：organizationId=当前对象单位（含下级），creatorOrganization=可见任务创建单位，recipientOrganization=发送时单位，tagId=当前目录含下级，tagVersionId=末级标签历史版本，category/taskId/from/to用于提醒及对接；includeWithdrawn默认true保留撤回历史。对象/质量基数不受任务时间或标签版本影响。来源条数、人员标签项、账号数和任务人次分别标单位。
+
+VersionTargetsRecipient.tagVersionIdsJson为该人当时有效标签定义版本ID数组；空数组是已确认无标签，缺字段为旧数据未知。它与ReminderTaskVersion的标签版本关联及冻结名单同时提交，不接收统计客户端改写。

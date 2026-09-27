@@ -6,7 +6,7 @@ async function login(page: Page, username: string) {
   await page.getByLabel('账号', { exact: true }).fill(username);
   await page.getByLabel('密码', { exact: true }).fill('TestOnlyE2e-2026');
   await page.getByRole('button', { name: '进入工作空间' }).click();
-  await expect(page.getByRole('heading', { name: '政务系统对象库 · 核心价值总览', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: username === 'reviewer' ? '审核工作台' : '政务系统对象库 · 核心价值总览', exact: true })).toBeVisible();
 }
 test('real login, server-scoped pages, search, history and logout', async ({ page }) => {
   await login(page, 'unit');

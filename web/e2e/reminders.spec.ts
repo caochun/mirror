@@ -148,6 +148,19 @@ test('unit creator freezes a task, an independent reviewer approves it, and Mock
   await expect(delivery.getByRole('heading', { name: '撤回记录', exact: true })).toBeVisible();
   await expect(delivery.getByText('浏览器逐人撤回验证', { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('withdrawal-results.png'), fullPage: true });
+  await page.goto('/dashboard');
+  await page.getByRole('combobox', { name: '提醒任务', exact: true }).selectOption(taskId);
+  await page.getByRole('button', { name: '应用筛选', exact: true }).click();
+  await expect(page.getByRole('button', { name: '查看提醒目标明细', exact: true }).locator('strong')).toHaveText('16');
+  await expect(page.getByRole('button', { name: '查看送达者最新版本阅读率明细', exact: true }).locator('strong')).toHaveText('6.3%');
+  await page.getByRole('button', { name: '查看提醒目标明细', exact: true }).click();
+  await expect(page.getByText('明细共 16 条', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '关闭明细', exact: true }).click();
+  await page.screenshot({ path: testInfo.outputPath('reminder-business-dashboard.png'), fullPage: true });
+  await page.getByRole('combobox', { name: '提醒历史范围', exact: true }).selectOption('false');
+  await page.getByRole('button', { name: '应用筛选', exact: true }).click();
+  await expect(page.getByRole('button', { name: '查看提醒目标明细', exact: true }).locator('strong')).toHaveText('0');
+  await expect(page.getByRole('button', { name: '查看送达者最新版本阅读率明细', exact: true }).locator('strong')).toHaveText('—');
 });
 
 test('draft edits invalidate confirmation and explicit exclusion survives a saved edit', async ({ page }) => {

@@ -62,9 +62,12 @@ public class ReminderSelection {
             } while (changed);
             tagGroups.put(id, descendants);
         }
+        var catalogById = tagCatalog.stream().collect(java.util.stream.Collectors.toMap(ObjectRecord::id, tag -> tag));
         Map<String, Set<String>> tags = new HashMap<>();
         for (var tag : directory.all(actor, "PersonTagAssignment")) {
-            if ("ACTIVE".equals(text(tag, "state")) && !Boolean.TRUE.equals(tag.properties().get("manualSuppressed"))) {
+            var definition = catalogById.get(text(tag, "tagDefinitionId"));
+            if (definition != null && "ACTIVE".equals(text(definition, "status")) && "ACTIVE".equals(text(tag, "state"))
+                    && !Boolean.TRUE.equals(tag.properties().get("manualSuppressed"))) {
                 tags.computeIfAbsent(text(tag, "personId"), ignored -> new HashSet<>()).add(text(tag, "tagDefinitionId"));
             }
         }
@@ -97,9 +100,12 @@ public class ReminderSelection {
                     if (!"ELIGIBLE".equals(text(eligibility, "state"))) reason = "非对象账号或资格待核实";
                 }
             }
+            var tagVersions = personTags.stream().map(catalogById::get).filter(java.util.Objects::nonNull)
+                    .map(tag -> text(tag, "currentVersionId")).filter(id -> !id.isBlank()).sorted().toList();
+            evidence.addAll(tagVersions);
             entries.add(new Entry(person.id(), text(person, "name"), orgId,
                     organization == null ? "待核实单位" : text(organization, "name"), matched, explicit, excluded,
-                    reason, BusinessCommands.hash(String.join("|", new TreeSet<>(evidence))), person.version()));
+                    reason, BusinessCommands.hash(String.join("|", new TreeSet<>(evidence))), person.version(), tagVersions));
         }
         entries.sort(java.util.Comparator.comparing(Entry::personId));
         return new Result(filter, List.copyOf(entries));
@@ -125,7 +131,7 @@ public class ReminderSelection {
 
     public record Entry(String personId, String name, String organizationId, String organizationName,
                         boolean matchedByCondition, boolean explicitlyIncluded, boolean manuallyExcluded,
-                        String ineligibleReason, String eligibilityDigest, long personVersion) {
+                        String ineligibleReason, String eligibilityDigest, long personVersion, List<String> tagVersionIds) {
         public boolean included() {
             return (matchedByCondition || explicitlyIncluded) && !manuallyExcluded && ineligibleReason.isEmpty();
         }

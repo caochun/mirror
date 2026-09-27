@@ -317,3 +317,28 @@ scenarios:
       - "恢复复用原请求标识和首次渠道结果，成功者不重复撤回"
       - "消息撤回终止未发布修订，不能在撤回后被旧发布作业复活"
       - "迟到失败不降级成功，但原始失败回执保留在历史中"
+  -
+    id: "S27"
+    name: "统计快照、权限与正确分母"
+    given: "单位A两条提醒接收记录，其中一条已读但送达未知；操作者只获A及下级范围"
+    actions:
+      - "QueryBusinessMetrics"
+      - "RecordFirstRead"
+      - "SynchronizePersonFacts"
+    expect:
+      - "送达者阅读率分子只含送达且读，零分母为不适用；全目标覆盖率可含送达未知已读"
+      - "同次明细使用同一统计快照和范围，重复任务按人次，另列去重人数"
+      - "权限/人员归属变化后拒绝旧快照，不能利用缓存跨范围；不输出敏感原值"
+  -
+    id: "S28"
+    name: "历史逐人标签筛选与记录来源"
+    given: "任务两人，发送时只有P1带标签T v1，之后T更名或被人工抑制"
+    actions:
+      - "SubmitReminderReview"
+      - "PublishTagDefinition"
+      - "RemovePersonTag"
+      - "QueryBusinessMetrics"
+    expect:
+      - "按发送时T v1筛选只得到P1，不把整份任务名单算作该标签接收人"
+      - "任务修订保留原逐人标签依据；旧记录缺依据标未知，不用今天的标签回填"
+      - "Mock记录明确标识；自动规则/AI未产生记录不等于无业务问题"

@@ -29,7 +29,7 @@ public class DomainContracts {
             "DispatchReminder", "RecordDeliveryReceipt", "RetryFailedRecipients", "ReadOwnReminder", "RecordFirstRead",
             "EvaluateOverdue", "RecordIntegrationIssue", "ReadOverdueList",
             "SaveReminderRevision", "SubmitReminderRevision", "PublishReminderRevision",
-            "RequestReminderWithdrawal", "DispatchReminderWithdrawal", "RecordWithdrawalResult", "RetryWithdrawal");
+            "RequestReminderWithdrawal", "DispatchReminderWithdrawal", "RecordWithdrawalResult", "RetryWithdrawal", "QueryBusinessMetrics");
 
     private static final Set<String> RECIPIENT_ACTIONS = Set.of("ReadOwnReminder", "RecordFirstRead");
 
