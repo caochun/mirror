@@ -182,6 +182,7 @@ public class ReferenceProbe {
         connectionData.setURL("jdbc:h2:mem:audit_connections;DB_CLOSE_DELAY=-1");
         connections.put("jdbc_h2", connectionProbe(new JdbcStorageProvider(connectionData, DatabaseDialect.h2())));
         observations.put("connection_pagination", connections);
+        observations.put("persistent_schema_registry", registryProbe());
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -248,6 +249,35 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> registryProbe() {
+        var data = new JdbcDataSource();
+        data.setURL("jdbc:h2:mem:audit_registry;DB_CLOSE_DELAY=-1");
+        var registry = new JdbcSchemaRegistry(data, DatabaseDialect.h2());
+        var source = """
+                extend schema @namespace(name: "registry", version: "1.0.0")
+                type Item @objectType { id: ID! @primary name: String }
+                type Move @actionType(permission: "can_move") { first: Item! @param second: Item! @param }
+                """;
+        var schema = new OdlParser().parse(source);
+        int initial = registry.applyIfChanged(schema, null).version();
+        int restarted = new JdbcSchemaRegistry(data, DatabaseDialect.h2()).applyIfChanged(schema, null).version();
+        var changed = new OdlParser().parse(source.replace("first: Item! @param second: Item! @param", "second: Item! @param first: Item! @param"));
+        boolean drift = false;
+        try { registry.requireCurrent(changed); } catch (SchemaDriftException expected) { drift = true; }
+        boolean breakingRejected = false;
+        try { registry.apply(changed, null, initial); } catch (SchemaValidationException expected) { breakingRejected = true; }
+        var plan = new MigrationPlan("Review changed Action authorization target; registry records evidence only", true);
+        var approved = registry.apply(changed, plan, initial);
+        boolean staleRejected = false;
+        try { registry.apply(changed, plan, initial); } catch (SchemaVersionConflictException expected) { staleRejected = true; }
+        var reloaded = new JdbcSchemaRegistry(data, DatabaseDialect.h2());
+        return Map.of("initial_version", initial, "unchanged_restart_version", restarted,
+                "action_parameter_order_drift_rejected", drift, "breaking_without_approval_rejected", breakingRejected,
+                "approved_version", approved.version(), "stale_version_rejected", staleRejected,
+                "persisted_plan", reloaded.history().getLast().migrationPlan().description(),
+                "old_snapshot_preserved", reloaded.atVersion(1).equals(schema));
     }
 
     static Map<String, Object> connectionProbe(StorageProvider storage) {

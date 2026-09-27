@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry持久Schema Registry
+
+Foundry提交e4e1f08：新增JDBC完整模型版本、diff/审批证据持久保存、原子expectedVersion、启动去重和配置漂移检查。注册表指纹保留Action参数顺序，旧编译摘要/回执不改。常规根reactor529项，其中Foundry419项，全通过，新增17项内存/JDBC/独立JVM恢复测试。独立探针确认重建不重复登记、漂移/未批准变更/过期版本拒绝且旧快照保留，见[阶段报告](../platform-review/persistent-schema-registry.md)。
+
+注册表尚未绑定JdbcStorageProvider.applySchema和在途写入，也未执行数据迁移；存储激活/写入版本门禁列为下一重点。Mirror运行库与服务JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry默认Connection与双向分页
 
 Foundry提交17b7bcd：默认GraphQL复数字段采用上游Connection，显式保留LEGACY_LIST；接通first/after/last/before/零条及授权后双向分页，REST共用页模型。常规根reactor512项，其中Foundry402项，全通过，新增19项memory/H2及接口测试。独立探针确认末页、before边界、可见总数和旧数组兼容，见[阶段报告](../platform-review/connection-pagination.md)。

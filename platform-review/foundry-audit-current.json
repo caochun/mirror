@@ -28,54 +28,54 @@
   "string_to_int_migration_class" : "BREAKING",
   "upstream_library_load" : "composed schema/actions/assets with core dependency",
   "upstream_library_assets" : {
+    "field_policy_types" : [ "Member" ],
     "permission_sources" : 1,
-    "seed_files" : 1,
-    "field_policy_types" : [ "Member" ]
+    "seed_files" : 1
   },
   "upstream_library_workflow" : {
     "memory" : {
-      "replay_same_result" : true,
-      "authorization_mode" : "ONTOLOGY_TARGETS",
-      "book_after_borrow" : "ON_LOAN",
-      "book_after_return" : "AVAILABLE",
-      "return_status" : "COMPLETED",
       "event_count" : 1,
       "event_data" : {
         "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
         "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
       },
       "borrow_status" : "COMPLETED",
-      "active_loans_after_return" : 0
+      "active_loans_after_return" : 0,
+      "replay_same_result" : true,
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "book_after_borrow" : "ON_LOAN",
+      "book_after_return" : "AVAILABLE",
+      "return_status" : "COMPLETED"
     },
     "jdbc_h2" : {
-      "replay_same_result" : true,
-      "authorization_mode" : "ONTOLOGY_TARGETS",
-      "book_after_borrow" : "ON_LOAN",
-      "book_after_return" : "AVAILABLE",
-      "return_status" : "COMPLETED",
       "event_count" : 1,
       "event_data" : {
         "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
         "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
       },
       "borrow_status" : "COMPLETED",
-      "active_loans_after_return" : 0
+      "active_loans_after_return" : 0,
+      "replay_same_result" : true,
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "book_after_borrow" : "ON_LOAN",
+      "book_after_return" : "AVAILABLE",
+      "return_status" : "COMPLETED"
     }
   },
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
   "upstream_book_navigation_fields" : [ {
-    "target" : "Member",
     "name" : "borrower",
     "history" : false,
     "linkType" : "BorrowedBy",
-    "direction" : "OUTBOUND"
+    "direction" : "OUTBOUND",
+    "target" : "Member"
   } ],
   "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : false,
   "upstream_borrow_side_effects" : [ {
-    "attempts" : 3,
     "failurePolicy" : "ROLLBACK_ALL",
     "name" : "emitBorrowedEvent",
-    "type" : "event"
+    "type" : "event",
+    "attempts" : 3
   } ],
   "upstream_return_manifest" : {
     "from" : "book",
@@ -86,37 +86,36 @@
   },
   "consumer_delivery_recovery" : {
     "memory" : {
-      "completed_duplicate_suppressed" : true,
-      "failed_delivery_retried" : true
+      "failed_delivery_retried" : true,
+      "completed_duplicate_suppressed" : true
     },
     "jdbc_h2" : {
-      "completed_duplicate_suppressed" : true,
-      "failed_delivery_retried" : true
+      "failed_delivery_retried" : true,
+      "completed_duplicate_suppressed" : true
     }
   },
   "upstream_ward_computed_fields" : [ {
-    "function" : "countLinks",
     "name" : "currentOccupancy",
-    "cache" : "LAZY"
+    "cache" : "LAZY",
+    "function" : "countLinks"
   } ],
   "computed_read_behavior" : {
     "memory" : {
-      "source_version" : 1,
-      "after_delete" : 1,
       "hidden_endpoint_count" : 0,
       "initial" : 2,
-      "stored_attribute" : false
+      "stored_attribute" : false,
+      "source_version" : 1,
+      "after_delete" : 1
     },
     "jdbc_h2" : {
-      "source_version" : 1,
-      "after_delete" : 1,
       "hidden_endpoint_count" : 0,
       "initial" : 2,
-      "stored_attribute" : false
+      "stored_attribute" : false,
+      "source_version" : 1,
+      "after_delete" : 1
     }
   },
   "typed_action_graphql" : {
-    "accepted_errors" : [ ],
     "version_after_rejected" : 1,
     "invalid_enum_rejected" : true,
     "stored_state" : "DONE",
@@ -129,26 +128,29 @@
           "changeType" : "UPDATED"
         } ]
       }
-    }
+    },
+    "accepted_errors" : [ ]
   },
   "governed_object_queries" : {
     "memory" : {
+      "first_visible_id" : "visible-b",
+      "visible_total" : 2,
       "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
       "has_next_page" : true,
-      "hidden_predicate_rejected" : true,
-      "first_visible_id" : "visible-b",
-      "visible_total" : 2
+      "hidden_predicate_rejected" : true
     },
     "jdbc_h2" : {
+      "first_visible_id" : "visible-b",
+      "visible_total" : 2,
       "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
       "has_next_page" : true,
-      "hidden_predicate_rejected" : true,
-      "first_visible_id" : "visible-b",
-      "visible_total" : 2
+      "hidden_predicate_rejected" : true
     }
   },
   "governed_aggregates" : {
     "memory" : {
+      "hidden_metric_rejected" : true,
+      "total_visible_groups" : 2,
       "first_group_keys" : {
         "category" : "A"
       },
@@ -162,11 +164,11 @@
         "count_*" : 2,
         "sum_amount" : 4.0,
         "avg_amount" : 2.0
-      },
-      "hidden_metric_rejected" : true,
-      "total_visible_groups" : 2
+      }
     },
     "jdbc_h2" : {
+      "hidden_metric_rejected" : true,
+      "total_visible_groups" : 2,
       "first_group_keys" : {
         "category" : "A"
       },
@@ -180,33 +182,32 @@
         "count_*" : 2,
         "sum_amount" : 4.0,
         "avg_amount" : 2.0
-      },
-      "hidden_metric_rejected" : true,
-      "total_visible_groups" : 2
+      }
     }
   },
   "governed_search" : {
     "memory" : {
-      "highlights_exclude_secret" : true,
-      "has_next_page" : true,
-      "visible_total" : 2,
       "first_id" : "a",
       "hidden_field_rejected" : true,
       "phrase_scores" : [ 1.0, 1.0 ],
-      "first_term_score" : 3.0
+      "first_term_score" : 3.0,
+      "highlights_exclude_secret" : true,
+      "has_next_page" : true,
+      "visible_total" : 2
     },
     "jdbc_h2" : {
-      "highlights_exclude_secret" : true,
-      "has_next_page" : true,
-      "visible_total" : 2,
       "first_id" : "a",
       "hidden_field_rejected" : true,
       "phrase_scores" : [ 1.0, 1.0 ],
-      "first_term_score" : 3.0
+      "first_term_score" : 3.0,
+      "highlights_exclude_secret" : true,
+      "has_next_page" : true,
+      "visible_total" : 2
     }
   },
   "connection_pagination" : {
     "memory" : {
+      "default_tail_errors" : [ ],
       "legacy_data" : {
         "items" : [ {
           "id" : "a0"
@@ -233,10 +234,10 @@
       },
       "zero_edges" : 0,
       "bounded_before_ids" : [ "a0" ],
-      "visible_total" : 7,
-      "default_tail_errors" : [ ]
+      "visible_total" : 7
     },
     "jdbc_h2" : {
+      "default_tail_errors" : [ ],
       "legacy_data" : {
         "items" : [ {
           "id" : "a0"
@@ -263,9 +264,18 @@
       },
       "zero_edges" : 0,
       "bounded_before_ids" : [ "a0" ],
-      "visible_total" : 7,
-      "default_tail_errors" : [ ]
+      "visible_total" : 7
     }
+  },
+  "persistent_schema_registry" : {
+    "stale_version_rejected" : true,
+    "old_snapshot_preserved" : true,
+    "breaking_without_approval_rejected" : true,
+    "persisted_plan" : "Review changed Action authorization target; registry records evidence only",
+    "action_parameter_order_drift_rejected" : true,
+    "unchanged_restart_version" : 1,
+    "approved_version" : 2,
+    "initial_version" : 1
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],
