@@ -1,5 +1,5 @@
 {
-  "memory" : {
+  "jdbc_h2" : {
     "missing_required_name_accepted" : false,
     "wrong_scalar_type_accepted" : false,
     "duplicate_unique_value_accepted" : false,
@@ -7,7 +7,7 @@
     "earlier_valid_time_seen_with_current_recorded_time" : "before",
     "asof_list_name" : "before"
   },
-  "jdbc_h2" : {
+  "memory" : {
     "missing_required_name_accepted" : false,
     "wrong_scalar_type_accepted" : false,
     "duplicate_unique_value_accepted" : false,
@@ -29,20 +29,30 @@
   "upstream_library_load" : "Unsupported Action field: sideEffects",
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
   "upstream_book_navigation_fields" : [ {
+    "name" : "borrower",
     "history" : false,
     "linkType" : "BorrowedBy",
     "direction" : "OUTBOUND",
-    "target" : "Member",
-    "name" : "borrower"
+    "target" : "Member"
   } ],
   "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : false,
   "upstream_borrow_manifest_rejection" : "Unsupported Action field: sideEffects",
   "upstream_return_manifest" : {
+    "from" : "book",
     "expect" : "ALL",
     "linkType" : "BorrowedBy",
     "failurePolicy" : "ROLLBACK_ALL",
-    "action" : "ReturnBook",
-    "from" : "book"
+    "action" : "ReturnBook"
+  },
+  "consumer_delivery_recovery" : {
+    "memory" : {
+      "failed_delivery_retried" : true,
+      "completed_duplicate_suppressed" : true
+    },
+    "jdbc_h2" : {
+      "failed_delivery_retried" : true,
+      "completed_duplicate_suppressed" : true
+    }
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],

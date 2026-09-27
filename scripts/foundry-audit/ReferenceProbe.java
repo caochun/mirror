@@ -117,6 +117,27 @@ public class ReferenceProbe {
         var deleteLoan = (ActionManifest.DeleteLink) returned.effects().getLast();
         observations.put("upstream_return_manifest", Map.of("action", returned.action(), "failurePolicy", returned.onSideEffectFailure().name(),
                 "linkType", deleteLoan.linkType(), "from", deleteLoan.filter().from(), "expect", deleteLoan.expect().name()));
+        var recoveryData = new JdbcDataSource();
+        recoveryData.setURL("jdbc:h2:mem:audit_event_recovery;DB_CLOSE_DELAY=-1");
+        var deliveryRecovery = new LinkedHashMap<String, Object>();
+        for (String provider : List.of("memory", "jdbc_h2")) {
+            var calls = new java.util.concurrent.atomic.AtomicInteger();
+            org.openfoundry.foundation.events.EventSink callback = event -> {
+                if (calls.incrementAndGet() == 1) throw new IllegalStateException("injected callback failure");
+            };
+            org.openfoundry.foundation.events.EventSink sink = provider.equals("memory")
+                    ? new org.openfoundry.foundation.events.IdempotentEventSink(callback)
+                    : new org.openfoundry.foundation.events.JdbcIdempotentEventSink(recoveryData, callback);
+            var event = new org.openfoundry.foundation.events.CloudEvent("1.0", "retry", "audit", "test", "subject",
+                    Instant.parse("2030-01-01T00:00:00Z"), "tenant", "tx", Map.of());
+            try { sink.publish(event); } catch (IllegalStateException expected) { }
+            sink.publish(event);
+            int afterRetry = calls.get();
+            sink.publish(event);
+            deliveryRecovery.put(provider, Map.of("failed_delivery_retried", afterRetry == 2,
+                    "completed_duplicate_suppressed", afterRetry == 2 && calls.get() == afterRetry));
+        }
+        observations.put("consumer_delivery_recovery", deliveryRecovery);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());

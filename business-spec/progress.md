@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry事件租约与消费恢复
+
+Foundry提交6e2e400：outbox领取、续租、退避及token确认；消费按tenant/consumer/source/id记录成功回执，失败不再误记为完成。独立JVM领取/回调边界中断恢复、两个JVM竞争、单连接池和旧回执审查边界均已验证。最终根reactor321项，其中Foundry211项，全部通过，详见[事件恢复报告](../platform-review/event-delivery-recovery.md)。
+
+Mirror业务命令事件改用已生成的JSON响应，修复事件值不可变约束下的页面record兼容问题。旧运行数据未迁移；Action副作用任务、失败策略和补偿仍未接通，完整上游覆盖目标保持active。
+
 ## 2026-09-28：Foundry事务筛选删除与上游ReturnBook
 
 Foundry提交19ce518：Action可在事务内按端点筛选并删除关系，支持ONE/ALL、所有匹配目标及端点授权；重放对原affected重新验权，不删除后来的替代关系。补齐简单属性表达式与共享now，保留旧回执指纹兼容。上游未修改的ReturnBook已通过memory/H2单连接池验证。

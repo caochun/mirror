@@ -81,7 +81,7 @@ public class BusinessCommands {
             tx.createObject("BusinessCommandReceipt",receiptId,Map.of("action",action,"actorId",actor.username(),
                     "requestHash",fingerprint,"responseJson",responseJson));
             String eventId=UUID.randomUUID().toString();
-            var detail=Map.<String,Object>of("action",action,"organizationId",actor.organizationId(),"result",result);
+            var detail=Map.<String,Object>of("action",action,"organizationId",actor.organizationId(),"result",response);
             tx.appendAudit(new AuditEntry("audit-"+eventId,Instant.now(),actor.tenantId(),actor.username(),
                     "business",null,null,action,tx.transactionId(),"success",detail));
             tx.enqueueOutbox(new OutboxEntry("event-"+eventId,actor.tenantId(),eventType,action,
