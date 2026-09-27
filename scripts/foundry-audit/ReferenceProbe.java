@@ -113,6 +113,10 @@ public class ReferenceProbe {
             observations.put("upstream_borrow_manifest_accepted_with_sideeffects_unrepresented", false);
             observations.put("upstream_borrow_manifest_rejection", unsupported.getMessage());
         }
+        var returned = new ActionManifestParser().parse(Files.readString(Path.of(args[0]).resolve("examples/library-pack/actions/return-book.yaml")));
+        var deleteLoan = (ActionManifest.DeleteLink) returned.effects().getLast();
+        observations.put("upstream_return_manifest", Map.of("action", returned.action(), "failurePolicy", returned.onSideEffectFailure().name(),
+                "linkType", deleteLoan.linkType(), "from", deleteLoan.filter().from(), "expect", deleteLoan.expect().name()));
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());

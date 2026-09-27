@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry事务筛选删除与上游ReturnBook
+
+Foundry提交19ce518：Action可在事务内按端点筛选并删除关系，支持ONE/ALL、所有匹配目标及端点授权；重放对原affected重新验权，不删除后来的替代关系。补齐简单属性表达式与共享now，保留旧回执指纹兼容。上游未修改的ReturnBook已通过memory/H2单连接池验证。
+
+根reactor298项，其中Foundry188项，全部通过。BorrowBook仍缺事件副作用，完整Library借还、失败策略和补偿尚未完成；详见[阶段报告](../platform-review/filtered-link-actions.md)。Mirror只更新引用及验证证据，完整目标保持active。
+
 ## 2026-09-28：Foundry关系字段与受控导航
 
 Foundry提交f20138d：保留ODL关系字段及继承，GraphQL/REST可沿关系双向读取对象或关系记录；源、边、目标与字段权限共用治理，分页按可见结果计算，history字段可查已结束关系。上游Library原始schema已纳入兼容测试。根reactor276项，其中Foundry166项，全部通过；详见[关系导航报告](../platform-review/relationship-navigation.md)。
