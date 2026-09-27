@@ -1,6 +1,6 @@
 # Java Foundry 与 Open Foundry 覆盖对照
 
-日期：2026-09-27。**以下矩阵及探针结果为ff944f7的审计基线，后续修复见[治理修复记录](governance-repair.md)、[时间修复报告](temporal-repair.md)、[属性约束修复](property-validation-repair.md)、[持久回执修复](transactional-receipts.md)、[声明模型修复](declarative-model-repair.md)、[关系导航](relationship-navigation.md)、[事务筛选删除](filtered-link-actions.md)、[事件恢复](event-delivery-recovery.md)、[Action副作用与补偿](action-side-effects.md)、[本体权限映射](ontology-authorization.md)、[组合Pack](pack-bundles.md)、[计算字段](computed-fields.md)、[类型化Action API](typed-action-api.md)、[受控对象查询](governed-object-queries.md)及[受控聚合](governed-aggregations.md)；不要将历史缺陷表当成当前全部状态。** 本次比较平台能力，不把Mirror的标签规则、廉洁提醒或政务流程作为Foundry应实现的功能。
+日期：2026-09-27。**以下矩阵及探针结果为ff944f7的审计基线，后续修复见[治理修复记录](governance-repair.md)、[时间修复报告](temporal-repair.md)、[属性约束修复](property-validation-repair.md)、[持久回执修复](transactional-receipts.md)、[声明模型修复](declarative-model-repair.md)、[关系导航](relationship-navigation.md)、[事务筛选删除](filtered-link-actions.md)、[事件恢复](event-delivery-recovery.md)、[Action副作用与补偿](action-side-effects.md)、[本体权限映射](ontology-authorization.md)、[组合Pack](pack-bundles.md)、[计算字段](computed-fields.md)、[类型化Action API](typed-action-api.md)、[受控对象查询](governed-object-queries.md)、[受控聚合](governed-aggregations.md)及[受控搜索](governed-search.md)；不要将历史缺陷表当成当前全部状态。** 本次比较平台能力，不把Mirror的标签规则、廉洁提醒或政务流程作为Foundry应实现的功能。
 
 ## 固定比较基线
 

@@ -170,6 +170,12 @@ public class ReferenceProbe {
         aggregateData.setURL("jdbc:h2:mem:audit_aggregates;DB_CLOSE_DELAY=-1");
         aggregates.put("jdbc_h2", aggregateProbe(new JdbcStorageProvider(aggregateData, DatabaseDialect.h2())));
         observations.put("governed_aggregates", aggregates);
+        var searches = new LinkedHashMap<String, Object>();
+        searches.put("memory", searchProbe(new InMemoryStorageProvider()));
+        var searchData = new JdbcDataSource();
+        searchData.setURL("jdbc:h2:mem:audit_search;DB_CLOSE_DELAY=-1");
+        searches.put("jdbc_h2", searchProbe(new JdbcStorageProvider(searchData, DatabaseDialect.h2())));
+        observations.put("governed_search", searches);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -236,6 +242,33 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> searchProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name: "search", version: "1.0.0")
+                type Entry @objectType { id: ID! @primary title: String! secret: String @sensitive }
+                """);
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Entry", "hidden", Map.of("title", "alpha ".repeat(100)));
+            tx.createObject("Entry", "a", Map.of("title", "alpha alpha river"));
+            tx.createObject("Entry", "b", Map.of("title", "alpha river", "secret", "alpha ".repeat(100)));
+            tx.createObject("Entry", "c", Map.of("title", "quiet", "secret", "alpha"));
+            tx.commit();
+        }
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> !key.id().equals("hidden")),
+                new ActionExecutor(), schema, Map.of(), Map.of());
+        var terms = app.searchObjects(CTX, PRINCIPAL, "Entry", new SearchQuery("alpha river", null, Map.of(), SearchQuery.Mode.TERMS, 1, 0, null, null, false));
+        var phrase = app.searchObjects(CTX, PRINCIPAL, "Entry", new SearchQuery("alpha river", null, Map.of(), SearchQuery.Mode.PHRASE, 20, 0, null, null, false));
+        boolean hiddenRejected = false;
+        try { app.searchObjects(CTX, PRINCIPAL, "Entry", new SearchQuery("alpha", List.of("secret"), Map.of())); }
+        catch (SecurityException expected) { hiddenRejected = true; }
+        return Map.of("visible_total", terms.totalCount(), "first_id", terms.hits().getFirst().node().id(),
+                "first_term_score", terms.hits().getFirst().score(), "has_next_page", terms.hasNextPage(),
+                "phrase_scores", phrase.hits().stream().map(SearchResult.Hit::score).toList(),
+                "hidden_field_rejected", hiddenRejected,
+                "highlights_exclude_secret", phrase.hits().stream().noneMatch(hit -> hit.highlights().containsKey("secret")));
     }
 
     static Map<String, Object> aggregateProbe(StorageProvider storage) {

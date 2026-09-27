@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry受控文本搜索
+
+Foundry提交47c966a：接通TERMS/PHRASE两种固定上游搜索规则、可见对象/字段评分及高亮、过滤分页和REST/GraphQL入口；Java/REST支持双时间搜索。常规根reactor493项，其中Foundry383项，全部通过，新增21项memory/H2及接口测试。独立探针确认两种Provider可见命中数/评分一致，隐藏文本不进入评分或高亮，见[阶段报告](../platform-review/governed-search.md)。
+
+原生Storage SPI搜索及数据库/授权下推、资源预算、Consent、ObjectSet、反向分页和生产规模验收仍待继续。Mirror更新平台引用及证据，运行库未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry受控对象聚合
 
 Foundry提交5a73285：接通COUNT/SUM/AVG/MIN/MAX、分组/组排序/分页及totalGroups，提供REST/GraphQL聚合；隐藏对象及字段不能影响统计结果。常规根reactor472项，其中Foundry362项，全部通过，新增23项memory/H2及接口测试。独立探针确认可见总数及SUM/AVG正确、隐藏组不出现、分页不改变总组数，见[阶段报告](../platform-review/governed-aggregations.md)。
