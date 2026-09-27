@@ -90,9 +90,10 @@ public class ReferenceProbe {
         var changedType = new OdlParser().parse(SDL.replace("name: String!", "name: Int!"));
         observations.put("string_to_int_migration_class", new SchemaDiffer().diff(schema, changedType).classification().name());
         try {
-            var packs = new DomainPackLoader().loadAll(List.of(Path.of(args[0]).resolve("domain-packs/core"), Path.of(args[0]).resolve("examples/library-pack")));
-            var library = packs.stream().filter(pack -> pack.manifest().name().equals("library")).findFirst().orElseThrow();
-            observations.put("upstream_library_load", "schema/actions accepted with core dependency");
+            var library = new DomainPackLoader().loadBundle(List.of(Path.of(args[0]).resolve("domain-packs/core"), Path.of(args[0]).resolve("examples/library-pack")));
+            observations.put("upstream_library_load", "composed schema/actions/assets with core dependency");
+            observations.put("upstream_library_assets", Map.of("field_policy_types", library.assets().fieldPolicies().keySet().stream().sorted().toList(),
+                    "permission_sources", library.assets().permissions().size(), "seed_files", library.assets().seeds().size()));
             var workflows = new LinkedHashMap<String, Object>();
             workflows.put("memory", libraryWorkflow(library, new InMemoryStorageProvider()));
             var libraryData = new JdbcDataSource();
@@ -161,31 +162,31 @@ public class ReferenceProbe {
         System.out.println(encoded);
     }
 
-    static Map<String, Object> libraryWorkflow(org.openfoundry.foundation.pack.LoadedDomainPack library, StorageProvider storage) {
+    static Map<String, Object> libraryWorkflow(org.openfoundry.foundation.pack.LoadedPackBundle library, StorageProvider storage) {
         storage.applySchema(CTX, library.ontology().schema());
-        try (var tx = storage.beginTransaction(CTX)) {
-            tx.createObject("Book", "book", Map.of("title", "Audit", "author", "Fixture", "status", "AVAILABLE"));
-            tx.createObject("Member", "member", Map.of("name", "Reader"));
-            tx.commit();
-        }
+        var seeder = new org.openfoundry.foundation.pack.PackSeeder();
+        var seeded = seeder.apply(CTX, library, storage);
+        var book = seeded.references().get("example.library:book-dune");
+        var member = seeded.references().get("example.library:member-ada");
         var events = new ArrayList<org.openfoundry.foundation.events.CloudEvent>();
         var executor = new ActionExecutor().withSideEffects(new StandardSideEffectHandler(events::add));
-        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> switch (key.type()) {
+        var app = ApplicationService.fromBundle(storage, new AuthorizationService((principal, relation, key) -> switch (key.type()) {
             case "Book" -> Set.of("viewer", "editor", "can_borrow", "can_return").contains(relation);
             case "Member" -> Set.of("viewer", "editor").contains(relation);
             default -> false;
-        }), executor, library.ontology().schema(), library.actions(), Map.of(), AuthorizationMode.ONTOLOGY_TARGETS);
+        }), executor, library, AuthorizationMode.ONTOLOGY_TARGETS);
         var principal = new SecurityPrincipal(CTX.actorId(), CTX.tenantId(), Set.of("librarian"));
         var borrow = library.actions().get("BorrowBook");
-        var parameters = Map.<String, Object>of("book", "book", "member", "member");
+        var parameters = Map.<String, Object>of("book", book.id(), "member", member.id());
         var result = app.execute(borrow, CTX, principal, parameters, "borrow");
         var replay = app.execute(borrow, CTX, principal, parameters, "borrow");
-        String borrowedStatus = storage.getObject(CTX, "Book", "book").properties().get("status").toString();
-        var returned = app.execute(library.actions().get("ReturnBook"), CTX, principal, Map.of("book", "book"), "return");
+        String borrowedStatus = storage.getObject(CTX, "Book", book.id()).properties().get("status").toString();
+        var returned = app.execute(library.actions().get("ReturnBook"), CTX, principal, Map.of("book", book.id()), "return");
+        if (seeder.apply(CTX, library, storage).createdObjects() != 0) throw new IllegalStateException("Seed replay created duplicate objects");
         return Map.of("authorization_mode", "ONTOLOGY_TARGETS", "borrow_status", result.status(), "book_after_borrow", borrowedStatus,
                 "event_count", events.size(), "event_data", events.getFirst().data(), "replay_same_result", result.equals(replay),
-                "return_status", returned.status(), "book_after_return", storage.getObject(CTX, "Book", "book").properties().get("status"),
-                "active_loans_after_return", storage.getLinks(CTX, new EntityKey("Book", "book"), "BorrowedBy", StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).size());
+                "return_status", returned.status(), "book_after_return", storage.getObject(CTX, "Book", book.id()).properties().get("status"),
+                "active_loans_after_return", storage.getLinks(CTX, book, "BorrowedBy", StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).size());
     }
 
     static void create(StorageProvider storage, String id, Map<String, Object> values) {

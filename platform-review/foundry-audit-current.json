@@ -1,5 +1,5 @@
 {
-  "jdbc_h2" : {
+  "memory" : {
     "missing_required_name_accepted" : false,
     "wrong_scalar_type_accepted" : false,
     "duplicate_unique_value_accepted" : false,
@@ -7,7 +7,7 @@
     "earlier_valid_time_seen_with_current_recorded_time" : "before",
     "asof_list_name" : "before"
   },
-  "memory" : {
+  "jdbc_h2" : {
     "missing_required_name_accepted" : false,
     "wrong_scalar_type_accepted" : false,
     "duplicate_unique_value_accepted" : false,
@@ -26,67 +26,72 @@
   },
   "unscoped_idempotency_returns_other_tenant_result" : false,
   "string_to_int_migration_class" : "BREAKING",
-  "upstream_library_load" : "schema/actions accepted with core dependency",
+  "upstream_library_load" : "composed schema/actions/assets with core dependency",
+  "upstream_library_assets" : {
+    "permission_sources" : 1,
+    "seed_files" : 1,
+    "field_policy_types" : [ "Member" ]
+  },
   "upstream_library_workflow" : {
     "memory" : {
       "active_loans_after_return" : 0,
-      "borrow_status" : "COMPLETED",
-      "event_data" : {
-        "bookId" : "book",
-        "memberId" : "member"
-      },
-      "event_count" : 1,
-      "return_status" : "COMPLETED",
-      "book_after_return" : "AVAILABLE",
-      "book_after_borrow" : "ON_LOAN",
+      "replay_same_result" : true,
       "authorization_mode" : "ONTOLOGY_TARGETS",
-      "replay_same_result" : true
+      "book_after_borrow" : "ON_LOAN",
+      "book_after_return" : "AVAILABLE",
+      "return_status" : "COMPLETED",
+      "event_count" : 1,
+      "event_data" : {
+        "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
+        "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
+      },
+      "borrow_status" : "COMPLETED"
     },
     "jdbc_h2" : {
       "active_loans_after_return" : 0,
-      "borrow_status" : "COMPLETED",
-      "event_data" : {
-        "bookId" : "book",
-        "memberId" : "member"
-      },
-      "event_count" : 1,
-      "return_status" : "COMPLETED",
-      "book_after_return" : "AVAILABLE",
-      "book_after_borrow" : "ON_LOAN",
+      "replay_same_result" : true,
       "authorization_mode" : "ONTOLOGY_TARGETS",
-      "replay_same_result" : true
+      "book_after_borrow" : "ON_LOAN",
+      "book_after_return" : "AVAILABLE",
+      "return_status" : "COMPLETED",
+      "event_count" : 1,
+      "event_data" : {
+        "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
+        "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
+      },
+      "borrow_status" : "COMPLETED"
     }
   },
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
   "upstream_book_navigation_fields" : [ {
     "linkType" : "BorrowedBy",
-    "history" : false,
-    "name" : "borrower",
+    "direction" : "OUTBOUND",
     "target" : "Member",
-    "direction" : "OUTBOUND"
+    "name" : "borrower",
+    "history" : false
   } ],
   "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : false,
   "upstream_borrow_side_effects" : [ {
     "name" : "emitBorrowedEvent",
-    "failurePolicy" : "ROLLBACK_ALL",
+    "type" : "event",
     "attempts" : 3,
-    "type" : "event"
+    "failurePolicy" : "ROLLBACK_ALL"
   } ],
   "upstream_return_manifest" : {
-    "failurePolicy" : "ROLLBACK_ALL",
     "linkType" : "BorrowedBy",
-    "expect" : "ALL",
+    "failurePolicy" : "ROLLBACK_ALL",
+    "action" : "ReturnBook",
     "from" : "book",
-    "action" : "ReturnBook"
+    "expect" : "ALL"
   },
   "consumer_delivery_recovery" : {
     "memory" : {
-      "failed_delivery_retried" : true,
-      "completed_duplicate_suppressed" : true
+      "completed_duplicate_suppressed" : true,
+      "failed_delivery_retried" : true
     },
     "jdbc_h2" : {
-      "failed_delivery_retried" : true,
-      "completed_duplicate_suppressed" : true
+      "completed_duplicate_suppressed" : true,
+      "failed_delivery_retried" : true
     }
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],

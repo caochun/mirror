@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry组合Pack、资产与事务种子
+
+Foundry提交e3104da：loadBundle统一编译依赖可见的声明，加载字段权限、FGA源文件、种子和连接器声明；显式事务种子初始化可重放，保留后续业务修改。ApplicationService.fromBundle接通字段策略，虚拟关系不被存储字段策略误隐藏。常规根reactor396项，其中Foundry286项；另外9项真实OpenFGA测试全部通过，见[阶段报告](../platform-review/pack-bundles.md)。
+
+原始Library已使用组合模型和自动种子运行，运行库未改动。FGA模型部署、连接器执行、完整ODL、注册表、同步与实际生产集成仍待完成，完整目标保持active。
+
 ## 2026-09-28：Foundry权限目标映射与真实OpenFGA
 
 Foundry提交3473b4b：新增ONTOLOGY_TARGETS模式，区分动作主目标、参与者、额外已有修改目标和本动作创建的资源；关系按端点权限处理。旧严格模式保留，新模式使用服务模型验证及snake_case类型映射。常规根reactor378项，其中Foundry268项；另外9项真实OpenFGA 1.21.0集成全部通过，见[阶段报告](../platform-review/ontology-authorization.md)。
