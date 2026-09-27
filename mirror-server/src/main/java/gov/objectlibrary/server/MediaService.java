@@ -111,6 +111,16 @@ public class MediaService {
         return new ImageBytes(asset.mimeType(), bytes);
     }
 
+    ImageBytes readReceiverVersion(Accounts.Actor actor, ObjectRecord version, String id) throws IOException {
+        boolean referenced = directory.links(actor, version.key(), "TaskVersionUsesMedia", StorageProvider.Direction.OUTBOUND)
+                .stream().anyMatch(link -> link.to().equals(new EntityKey("MediaAsset", id)));
+        if (!referenced) throw new AccessDeniedException("图片不属于本次提醒");
+        Asset asset = asset(required(actor, id));
+        byte[] bytes = Files.readAllBytes(path(actor, id));
+        if (!hash(bytes).equals(asset.digest())) throw new BusinessConflict("媒体内容校验失败");
+        return new ImageBytes(asset.mimeType(), bytes);
+    }
+
     /** A frozen version owns its immutable references even if the source example is later disabled. */
     public List<Asset> taskAssets(Accounts.Actor actor, ObjectRecord version) {
         var task = storage.getObject(actor.context(), "ReminderTask", text(version, "taskId"));

@@ -1640,6 +1640,7 @@ actions:
       - "保存回执及尝试结果，成功首次设置firstDeliveredAt/deadlineAt"
       - "重复/乱序回执不覆盖已确认首次成功"
       - "回执与已读不一致另记异常"
+      - "可信送达成功自动解除该接收记录的阅读/送达不一致异常，保存回执依据；不删除原异常或改写首次阅读"
       - "可信迟到成功重算任务送达汇总；发送未结束不提前完成，撤回中的主状态不回退"
     idempotency: "tenant+channel+externalEventId"
     output:

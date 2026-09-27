@@ -68,6 +68,27 @@ test('unit creator freezes a task, an independent reviewer approves it, and Mock
   await page.reload();
   await expect(delivery.getByText(/目标 16 人 · 已送达 16 人/)).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('mock-delivery-results.png'), fullPage: true });
+  const popup = page.waitForEvent('popup');
+  await delivery.getByRole('button', { name: '演示人员01 的本人阅读演示', exact: true }).click();
+  const receiver = await popup;
+  await receiver.setViewportSize({ width: 390, height: 844 });
+  await expect(receiver.getByRole('heading', { name: title, exact: true })).toBeVisible();
+  await expect(receiver.getByText(/已记录本版本首次阅读/)).toBeVisible();
+  await expect(receiver.getByText('本提醒仅向本人展示，请勿截图外传。', { exact: true })).toBeVisible();
+  await expect(receiver.getByRole('link', { name: '人员与组织', exact: true })).toHaveCount(0);
+  const firstRead = await receiver.getByText(/已记录本版本首次阅读/).textContent();
+  await receiver.reload();
+  await expect(receiver.getByText(/已记录本版本首次阅读/)).toHaveText(firstRead!);
+  await receiver.screenshot({ path: testInfo.outputPath('receiver-mobile.png'), fullPage: true });
+  await receiver.close();
+  await delivery.getByRole('button', { name: '刷新结果', exact: true }).click();
+  await expect(delivery.getByText(/最新版本已读 1 人/)).toBeVisible();
+  await page.getByRole('link', { name: '阅读与逾期', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '阅读与逾期', exact: true })).toBeVisible();
+  await page.getByLabel('姓名或当前单位', { exact: true }).fill('演示人员01');
+  await expect(page.getByRole('row').filter({ hasText: title })).toHaveCount(0);
+  await page.getByRole('combobox', { name: '状态', exact: true }).selectOption('OVERDUE');
+  await expect(page.getByText('当前条件下没有未读提醒。', { exact: true })).toBeVisible();
 });
 
 test('draft edits invalidate confirmation and explicit exclusion survives a saved edit', async ({ page }) => {

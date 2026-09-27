@@ -238,6 +238,16 @@ public class DeliveryService {
                 tx.updateObject(recipient.type(), recipientId, updates, recipient.version());
             }
             var task = require(worker, "ReminderTask", text(recipient, "taskId"));
+            if (result.state().equals("DELIVERED")) {
+                for (var link : directory.links(worker, recipient.key(), "IntegrationIssueForRecipient", StorageProvider.Direction.INBOUND)) {
+                    var issue = require(worker, "IntegrationIssue", link.from().id());
+                    if (text(issue, "category").equals("READ_WITHOUT_DELIVERY") && text(issue, "state").equals("OPEN")) {
+                        contracts.requireTransition(issue.type(), "state", "OPEN", "RESOLVED", "RecordDeliveryReceipt");
+                        tx.updateObject(issue.type(), issue.id(), values("state", "RESOLVED", "resolvedAt", clock.instant().toString(),
+                                "resolvedBy", worker.username(), "resolution", "DELIVERY_CONFIRMED:" + receiptId), issue.version());
+                    }
+                }
+            }
             if (Set.of("ALL_FAILED", "PARTIAL_FAILED").contains(text(task, "state"))) {
                 String summary = taskSummary(worker, task, recipientId, updates);
                 contracts.requireTransition(task.type(), "state", text(task, "state"), summary, "RecordDeliveryReceipt");

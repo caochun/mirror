@@ -26,12 +26,17 @@ public class DomainContracts {
             "UpdateRecipientSelection", "ConfirmRecipientSelection", "ConfirmReminderContent", "SubmitReminderReview",
             "DecideReminderReview", "WithdrawReminderReview", "CancelScheduledReminder", "ExpireReminderReview",
             "RegisterMediaAsset", "SaveContentExample", "SetContentAvailability",
-            "DispatchReminder", "RecordDeliveryReceipt", "RetryFailedRecipients");
+            "DispatchReminder", "RecordDeliveryReceipt", "RetryFailedRecipients", "ReadOwnReminder", "RecordFirstRead",
+            "EvaluateOverdue", "RecordIntegrationIssue", "ReadOverdueList");
+
+    private static final Set<String> RECIPIENT_ACTIONS = Set.of("ReadOwnReminder", "RecordFirstRead");
 
     private static final Map<String, String> SYSTEM_ACTIONS = Map.of(
             "ExpireReminderReview", "scheduler",
             "DispatchReminder", "delivery-worker",
-            "RecordDeliveryReceipt", "channel-adapter");
+            "RecordDeliveryReceipt", "channel-adapter",
+            "EvaluateOverdue", "scheduler",
+            "RecordIntegrationIssue", "channel-or-receiver-adapter");
 
     private final Map<String, Map<String, Object>> actions = new LinkedHashMap<>();
     private final Map<String, Map<String, Object>> states = new LinkedHashMap<>();
@@ -72,6 +77,14 @@ public class DomainContracts {
         }
     }
 
+    void authorizeRecipient(String action) {
+        var definition = requireConnected(action);
+        if (!RECIPIENT_ACTIONS.contains(action) || !text(definition.get("actor")).equals("recipient")) {
+            throw new org.springframework.security.access.AccessDeniedException("Not a recipient action");
+        }
+        // ReceiverService must validate its bound session and current version before invoking this path.
+    }
+
     public String eventType(String action) {
         return text(requireConnected(action).get("event"));
     }
@@ -82,7 +95,7 @@ public class DomainContracts {
 
     public void authorize(Accounts.Actor actor, String action) {
         var definition = requireConnected(action);
-        if (SYSTEM_ACTIONS.containsKey(action)) {
+        if (SYSTEM_ACTIONS.containsKey(action) || RECIPIENT_ACTIONS.contains(action)) {
             throw new org.springframework.security.access.AccessDeniedException("Internal actions cannot be invoked by an account");
         }
         // Reload the principal so a retained Java Actor cannot bypass a disabled account or changed role.

@@ -616,6 +616,7 @@ models:
         from: "OPEN"
         to: "RESOLVED"
         action: "ResolveIntegrationIssue"
+      - {from: "OPEN", to: "RESOLVED", action: "RecordDeliveryReceipt"}
     notes: "记录恢复依据；技术恢复不自动改阅读状态。"
   -
     object: "AssistantActionCard"

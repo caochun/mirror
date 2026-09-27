@@ -29,6 +29,7 @@ export function ReminderDelivery({ task, canWrite, canRetry, refresh }: {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(0);
+  const [entry, setEntry] = useState('');
   const pending = useRef<{ request: string; key: string } | null>(null);
   useEffect(() => {
     let active = true;
@@ -37,6 +38,19 @@ export function ReminderDelivery({ task, canWrite, canRetry, refresh }: {
     }).catch(e => { if (active) setError(e.message); });
     return () => { active = false; };
   }, [task.id, task.version]);
+
+  async function refreshResults() {
+    setBusy(true);
+    setError('');
+    try {
+      setData(await api<Delivery>(`/reminders/${task.id}/delivery`));
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function run(path: 'mock-dispatch' | 'retry') {
     const prompt = path === 'retry' ? '仅重试原名单中发送失败或结果未知的人员，确认继续？'
@@ -58,18 +72,36 @@ export function ReminderDelivery({ task, canWrite, canRetry, refresh }: {
     finally { setBusy(false); }
   }
 
+
+  async function openReceiver(recipient: Recipient) {
+    const popup = window.open('about:blank', '_blank');
+    if (popup) popup.opener = null;
+    setError('');
+    try {
+      const result = await api<{ url: string }>(`/reminders/${task.id}/recipients/${recipient.id}/mock-entry`, { method: 'POST' });
+      if (popup) popup.location.replace(result.url);
+      else setEntry(result.url);
+    } catch (e) {
+      popup?.close();
+      setError((e as Error).message);
+    }
+  }
+
   return <section className="panel mb-6 p-6" aria-label="送达与阅读结果">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h2 className="font-semibold">送达与阅读</h2>
-      <button className="secondary" onClick={refresh} disabled={busy}>刷新结果</button>
+      <button className="secondary" onClick={refreshResults} disabled={busy}>刷新结果</button>
     </div>
-    {error && <div className="mt-3"><ErrorBox message={error} retry={refresh} /></div>}
+    {error && <div className="mt-3"><ErrorBox message={error} retry={refreshResults} /></div>}
     {!data && !error && <p role="status" className="muted mt-3">正在加载结果…</p>}
+    {entry && <a href={entry} target="_blank" rel="noopener noreferrer" className="mt-3 block text-blue-700">打开本人阅读演示</a>}
     {data && <>
       <p className="muted mt-3">
         {data.mode === 'mock' ? 'Mock 演示渠道 · 当前送达结果为模拟数据，未向外部人员发送消息。'
           : data.mode === 'disabled' ? '发送渠道未启用，审核通过的任务保留在队列中。' : '送达结果由渠道确认。'}
       </p>
+      {data.mode !== 'mock' && data.recipients.some(recipient => recipient.channelMode === 'mock') &&
+        <p className="mt-2 text-sm text-amber-800">此任务包含 Mock 演示结果，不代表真实渠道送达。</p>}
       <div className="mt-4 flex flex-wrap gap-3">
         {canWrite && data.mockEnabled && ['APPROVED_WAITING', 'SENDING'].includes(task.state) &&
           <button className="secondary" disabled={busy} onClick={() => run('mock-dispatch')}>执行 Mock 发送</button>}
@@ -85,7 +117,7 @@ export function ReminderDelivery({ task, canWrite, canRetry, refresh }: {
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b text-slate-500">
               <th className="p-2">姓名</th><th className="p-2">发送时单位</th><th className="p-2">送达</th>
-              <th className="p-2">最新版本阅读</th><th className="p-2">首次送达</th><th className="p-2">阅读截止</th>
+              <th className="p-2">最新版本阅读</th><th className="p-2">首次送达</th><th className="p-2">阅读截止</th>{canWrite && data.mockEnabled && <th className="p-2">演示</th>}
             </tr></thead>
             <tbody>{data.recipients.slice(page * 20, (page + 1) * 20).map(recipient => <tr key={recipient.id} className="border-b border-slate-100">
               <td className="p-2">{recipient.name}</td><td className="p-2">{recipient.organization}</td>
@@ -93,6 +125,8 @@ export function ReminderDelivery({ task, canWrite, canRetry, refresh }: {
               <td className="p-2">{recipient.readState === 'READ' ? '已读' : '未读'}</td>
               <td className="whitespace-nowrap p-2">{time(recipient.firstDeliveredAt)}</td>
               <td className="whitespace-nowrap p-2">{time(recipient.deadlineAt)}</td>
+              {canWrite && data.mockEnabled && <td className="p-2"><button className="secondary whitespace-nowrap"
+                aria-label={`${recipient.name} 的本人阅读演示`} onClick={() => openReceiver(recipient)}>模拟本人阅读</button></td>}
             </tr>)}</tbody>
           </table>
         </div>

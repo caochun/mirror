@@ -33,6 +33,26 @@ public class BusinessCommands {
         return executeWithEvent(actor, action, key, request, authorize, body, eventType);
     }
 
+    /** Only use for handlers whose body has no non-transactional side effects. Authorization is rechecked on every retry. */
+    public Map<String, Object> executeDefinedWithRetry(Accounts.Actor actor, String action, String key, Object request,
+                                                       Runnable authorize, Function<Transaction, Map<String, Object>> body,
+                                                       String eventType) {
+        for (int attempt = 0; ; attempt++) {
+            try {
+                return executeDefined(actor, action, key, request, authorize, body, eventType);
+            } catch (ConcurrentWrite conflict) {
+                if (attempt >= 4 || Thread.currentThread().isInterrupted()) throw conflict;
+                java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(10L * (attempt + 1)));
+            }
+        }
+    }
+
+    static final class ConcurrentWrite extends BusinessConflict {
+        ConcurrentWrite() {
+            super("数据已变化，请刷新后重试");
+        }
+    }
+
     private Map<String, Object> executeWithEvent(Accounts.Actor actor, String action, String key, Object request,
                                                 Runnable authorize, Function<Transaction, Map<String, Object>> body,
                                                 String eventType) {
@@ -73,10 +93,10 @@ public class BusinessCommands {
             // Map genuine optimistic/duplicate conflicts; surface other storage failures as server errors.
             String message=exception.getMessage();
             if(message!=null && (message.contains("version conflict") || message.contains("already exists")))
-                throw new BusinessConflict("数据已变化，请刷新后重试");
+                throw new ConcurrentWrite();
             for(Throwable cause=exception.getCause();cause!=null;cause=cause.getCause())
                 if(cause instanceof java.sql.SQLException sql && java.util.Set.of("23505","40001","40P01").contains(sql.getSQLState()))
-                    throw new BusinessConflict("数据已变化，请刷新后重试");
+                    throw new ConcurrentWrite();
             throw exception;
         }
     }

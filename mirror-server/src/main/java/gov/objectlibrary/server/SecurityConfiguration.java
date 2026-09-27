@@ -24,7 +24,7 @@ class SecurityConfiguration {
         return http.securityContext(c -> c.securityContextRepository(contexts))
                 .authorizeHttpRequests(a -> a.requestMatchers("/", "/index.html", "/dashboard.html", "/receiver.html", "/assets/**", "/favicon.ico",
                                 "/dashboard", "/workbench", "/people", "/people/**", "/tags", "/content-examples", "/reminders", "/reminders/**", "/r/**",
-                                "/api/health", "/api/auth/csrf", "/api/auth/login").permitAll()
+                                "/reading", "/api/receiver/**", "/api/health", "/api/auth/csrf", "/api/auth/login").permitAll()
                         .requestMatchers("/api/**").authenticated().anyRequest().denyAll())
                 .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
                     res.setStatus(401); res.setContentType("application/json;charset=UTF-8");

@@ -64,4 +64,18 @@ DispatchReminder、RecordDeliveryReceipt和RetryFailedRecipients由DeliveryServi
 
 新增投影字段：作业leaseOwner/leaseUntil/recipientIdsJson、接收记录channelMode/latestAttemptId、尝试taskVersionId/channelMode/受保护identityReference、回执channelMode。它们与已有对象关系一致；没有把发送状态写成阅读状态。HTTP提供任务delivery、retry和受控mock-dispatch，React显示逐人送达/阅读/首次成功/截止及失败重试。
 
-H5仍未接通，当前UNREAD不会由发送自动转为READ。正式渠道幂等/回执签名、修订/撤回、接收身份和50k查询性能仍须后续实现与验证。
+H5本人阅读已由下述处理器接通；发送不会自动产生READ。正式渠道幂等/回执签名、修订/撤回、正式身份适配和50k查询性能仍须后续实现与验证。
+
+## 接收端、首次阅读与逾期
+
+ReadOwnReminder、RecordFirstRead由ReceiverService/ReceiverSessions和ReadingService接入；EvaluateOverdue、ReadOverdueList由ReadingService接入；RecordIntegrationIssue由受校验的接收端异常路径接入。DomainContracts区分内部调度/适配动作、本人动作和管理账号动作；账号不能直接调用本人写入来代读。
+
+Mock入口只允许demo+mock、任务创建单位且有REMINDER_WRITE的操作者，为mock人员签发120秒一次性随机票据。数据库只保存票据摘要，绑定HttpSession ID；交换后每条提醒获得独立15分钟授权，保存在该服务端会话中。登录轮换会话ID、退出、账号停用/上下文变更或权限撤销使授权失效。票据置于URL fragment，避免明文人员标识及票据进入请求URL；每次内容/图片/阅读请求仍校验授权和当前发布版本。真实外部身份入口尚不存在，这不是生产鹿路通免登实现。
+
+正文响应不带人员名单、标签、审核、风险或联系方式；图片仅允许当前版本的TaskVersionUsesMedia成员，响应no-store。服务端返回5分钟渲染确认随机值，绑定当前版本和内容摘要；前端正文DOM挂载后提交bodyRendered确认。该协议证明已授权正文曾被服务端返回且客户端确认显示，不证明人的注意力或学习程度，不采集停留/滚动/点击。单张图片失败不阻断正文阅读，正文失败不发阅读请求；异常只接收页面/正文/图片类别，每会话每版本每类/媒体去重。
+
+首次阅读按recipient+version唯一，通过同一Foundry事务保存ReadReceipt、RecipientVersionState、逾期解除及审计/outbox，重试不覆盖第一次时间。渠道未确认时阅读仍有效，同时创建READ_WITHOUT_DELIVERY异常；可信迟到成功在回执事务中解除该异常，保留原证据。
+
+读取/诊断等幂等处理器通过executeDefinedWithRetry对明确的事务竞争最多执行5次；身份、当前版本或业务规则拒绝不在重试范围内。每次都重新执行授权，外部调用不在此重试体中。浏览器图片失败与正文阅读并发已覆盖，避免将可恢复的锁竞争展示成永久阅读失败。
+
+逾期扫描只处理当前发布名单、有真实成功起点和已到截止且当前版本未读的记录。预警产生时主管组织保存为历史，查询与下钻范围按人员当前组织重新判定。ReadOverdueList写访问审计，分条数/人数，按截止排序和分页；没有手机号标为空缺状态，受保护引用不直接当作号码输出。当前查询仍使用完整SPI分页后过滤，尚未达到5万级性能验收；正式联系方式解析、接收会话多节点存储及真实身份对接仍待完成。
