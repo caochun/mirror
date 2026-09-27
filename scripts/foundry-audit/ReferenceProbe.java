@@ -90,8 +90,15 @@ public class ReferenceProbe {
         var changedType = new OdlParser().parse(SDL.replace("name: String!", "name: Int!"));
         observations.put("string_to_int_migration_class", new SchemaDiffer().diff(schema, changedType).classification().name());
         try {
-            new DomainPackLoader().load(Path.of(args[0]).resolve("examples/library-pack"));
-            observations.put("upstream_library_load", "accepted");
+            var packs = new DomainPackLoader().loadAll(List.of(Path.of(args[0]).resolve("domain-packs/core"), Path.of(args[0]).resolve("examples/library-pack")));
+            var library = packs.stream().filter(pack -> pack.manifest().name().equals("library")).findFirst().orElseThrow();
+            observations.put("upstream_library_load", "schema/actions accepted with core dependency");
+            var workflows = new LinkedHashMap<String, Object>();
+            workflows.put("memory", libraryWorkflow(library, new InMemoryStorageProvider()));
+            var libraryData = new JdbcDataSource();
+            libraryData.setURL("jdbc:h2:mem:audit_library;DB_CLOSE_DELAY=-1");
+            workflows.put("jdbc_h2", libraryWorkflow(library, new JdbcStorageProvider(libraryData, DatabaseDialect.h2())));
+            observations.put("upstream_library_workflow", workflows);
         } catch (RuntimeException failure) {
             Throwable cause = failure;
             while (cause.getCause() != null) cause = cause.getCause();
@@ -108,7 +115,9 @@ public class ReferenceProbe {
                 "direction", field.direction().name(), "history", field.history())).toList());
         try {
             var borrowed = new ActionManifestParser().parse(Files.readString(Path.of(args[0]).resolve("examples/library-pack/actions/borrow-book.yaml")));
-            observations.put("upstream_borrow_manifest_accepted_with_sideeffects_unrepresented", borrowed.action().equals("BorrowBook"));
+            observations.put("upstream_borrow_manifest_accepted_with_sideeffects_unrepresented", borrowed.sideEffects().isEmpty());
+            observations.put("upstream_borrow_side_effects", borrowed.sideEffects().stream().map(effect -> Map.of(
+                    "name", effect.name(), "type", effect.type(), "attempts", effect.retries(), "failurePolicy", borrowed.onSideEffectFailure().name())).toList());
         } catch (ActionParseException unsupported) {
             observations.put("upstream_borrow_manifest_accepted_with_sideeffects_unrepresented", false);
             observations.put("upstream_borrow_manifest_rejection", unsupported.getMessage());
@@ -150,6 +159,30 @@ public class ReferenceProbe {
         String encoded = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(observations);
         if (args.length > 1) Files.writeString(Path.of(args[1]), encoded + "\n");
         System.out.println(encoded);
+    }
+
+    static Map<String, Object> libraryWorkflow(org.openfoundry.foundation.pack.LoadedDomainPack library, StorageProvider storage) {
+        storage.applySchema(CTX, library.ontology().schema());
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Book", "book", Map.of("title", "Audit", "author", "Fixture", "status", "AVAILABLE"));
+            tx.createObject("Member", "member", Map.of("name", "Reader"));
+            tx.commit();
+        }
+        var events = new ArrayList<org.openfoundry.foundation.events.CloudEvent>();
+        var executor = new ActionExecutor().withSideEffects(new StandardSideEffectHandler(events::add));
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> true), executor,
+                library.ontology().schema(), library.actions(), Map.of());
+        var principal = new SecurityPrincipal(CTX.actorId(), CTX.tenantId(), Set.of("librarian"));
+        var borrow = library.actions().get("BorrowBook");
+        var parameters = Map.<String, Object>of("book", "book", "member", "member");
+        var result = app.execute(borrow, CTX, principal, parameters, "borrow");
+        var replay = app.execute(borrow, CTX, principal, parameters, "borrow");
+        String borrowedStatus = storage.getObject(CTX, "Book", "book").properties().get("status").toString();
+        var returned = app.execute(library.actions().get("ReturnBook"), CTX, principal, Map.of("book", "book"), "return");
+        return Map.of("borrow_status", result.status(), "book_after_borrow", borrowedStatus,
+                "event_count", events.size(), "event_data", events.getFirst().data(), "replay_same_result", result.equals(replay),
+                "return_status", returned.status(), "book_after_return", storage.getObject(CTX, "Book", "book").properties().get("status"),
+                "active_loans_after_return", storage.getLinks(CTX, new EntityKey("Book", "book"), "BorrowedBy", StorageProvider.Direction.OUTBOUND, QueryOptions.defaults()).size());
     }
 
     static void create(StorageProvider storage, String id, Map<String, Object> values) {

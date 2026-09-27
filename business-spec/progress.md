@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry持久副作用、恢复与补偿
+
+Foundry提交3dad99f：业务effect与持久任务/补偿依据同事务，提交后执行事件或webhook；接通三种失败策略、版本/关联保护的本地补偿和HTTP续执行。独立JVM提交/回调/补偿边界中断恢复、原始Library借还及失败补偿验证通过。根reactor361项，其中Foundry251项，全部通过，详见[阶段报告](../platform-review/action-side-effects.md)。
+
+测试使用受控授权。已确认Java对所有引用使用同一动作关系，与原Library Member权限定义存在差异，下一阶段需修正权限目标映射；Pack组合、完整ODL/API/查询/同步和真实集成等仍未完成。Mirror只更新平台引用与证据，完整目标保持active。
+
 ## 2026-09-28：Foundry事件租约与消费恢复
 
 Foundry提交6e2e400：outbox领取、续租、退避及token确认；消费按tenant/consumer/source/id记录成功回执，失败不再误记为完成。独立JVM领取/回调边界中断恢复、两个JVM竞争、单连接池和旧回执审查边界均已验证。最终根reactor321项，其中Foundry211项，全部通过，详见[事件恢复报告](../platform-review/event-delivery-recovery.md)。
