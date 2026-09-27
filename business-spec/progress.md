@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry声明属性和接口继承
+
+Foundry完成字面量默认值、只读审计字段、字段/类型CEL约束、单Schema普通接口继承及GraphQL声明输出。Java模型直接提交也受继承校验；memory/H2共享规则，旧记录不回填。根reactor259项，其中Foundry149项，全部通过；探针确认接口主键继承问题消失。见[声明模型修复](../platform-review/declarative-model-repair.md)。
+
+Foundry提交878b4f1，Mirror仅更新平台引用。跨Pack组合、link/computed字段、类型化Action及完整副作用等仍是明确缺口；完整上游覆盖目标保持active。
+
 ## 2026-09-28：Foundry事务命令回执
 
 继续核心重制：Storage SPI支持事务回执、事务内读取和写入边界；JDBC回执与业务/历史/审计/outbox同事务，两个独立JVM同键只提交一次，提交前后强制退出恢复通过。等待锁后再授权、单连接池关系删除回放及失败重试均已验证。Foundry122项、Mirror232项通过，详见[持久回执报告](../platform-review/transactional-receipts.md)。
