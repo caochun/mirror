@@ -1,4 +1,4 @@
-extend schema @namespace(name: "gov.object-library", version: "0.2.3")
+extend schema @namespace(name: "gov.object-library", version: "0.2.4")
 
 type Person @objectType {
   id: ID! @primary
@@ -349,6 +349,8 @@ type RecipientRecord @objectType {
   eligibilitySnapshotJson: String
   channelMode: String
   latestAttemptId: String
+  latestWithdrawalId: String
+  withdrawnAt: DateTime
 }
 
 type DeliveryAttempt @objectType {
@@ -401,6 +403,17 @@ type OverdueRecord @objectType {
 }
 
 type WithdrawalRecord @objectType {
+  lastResultState: String
+  lastResultAt: DateTime
+  lastEventId: String
+  lastErrorCode: String
+  taskId: String @indexed
+  taskVersionId: String
+  deliveryRequestKeysJson: String
+  channelMode: String
+  leaseOwner: String
+  leaseUntil: DateTime
+  externalEventId: String
   id: ID! @primary
   recipientId: String! @indexed
   state: String!

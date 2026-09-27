@@ -33,3 +33,7 @@
 ## 0.2.2 → 0.2.3
 
 新增ReminderTask.revisionState（缺省NONE）和ReminderTaskVersion.basePublishedVersionId可选字段。已发送任务修订不重置主任务状态，不更换接收记录。新增SaveReminderRevision用于保存可独立确认的修订草稿，再由既有SubmitReminderRevision冻结提交。批准与发布分为两个持久事务；发布按内容版本幂等。旧冻结版本和已读/逾期历史继续保留，旧发送作业恢复不得覆盖最新发布指针。
+
+## 0.2.3 → 0.2.4
+
+新增撤回派发契约及WithdrawalRecord状态模型；接收记录增加latestWithdrawalId/withdrawnAt，撤回记录增加任务/版本/原发送请求/渠道/租约及最近原始回执投影。缺历史渠道或请求标识的旧尝试拒绝自动撤回，不能猜测第三方标识。撤回以原完整名单汇总，并结束未发布修订；失败/未知仍可正常阅读和产生逾期。V7只新增Mock账本/权限及旧账本可空错误码，未执行任何真实渠道迁移。新元数据字段与对象历史一起保存，不物理删除原发送/阅读/审核记录。

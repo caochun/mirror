@@ -149,7 +149,7 @@ class ReadingService {
             var scope = directory.scope(actor);
             List<UnreadView> rows = new ArrayList<>();
             for (var recipient : directory.all(actor, "RecipientRecord")) {
-                if (!text(recipient, "deliveryState").equals("DELIVERED") || !text(recipient, "withdrawalState").equals("NONE")
+                if (!text(recipient, "deliveryState").equals("DELIVERED") || text(recipient, "withdrawalState").equals("WITHDRAWN")
                         || text(recipient, "firstDeliveredAt").isEmpty()) continue;
                 String personId = text(recipient, "personId");
                 String organizationId = currentOrganization(actor, personId);
@@ -183,7 +183,7 @@ class ReadingService {
     }
 
     private String dueVersion(Accounts.Actor actor, ObjectRecord recipient) {
-        if (!text(recipient, "deliveryState").equals("DELIVERED") || !text(recipient, "withdrawalState").equals("NONE")
+        if (!text(recipient, "deliveryState").equals("DELIVERED") || text(recipient, "withdrawalState").equals("WITHDRAWN")
                 || text(recipient, "firstDeliveredAt").isEmpty() || text(recipient, "deadlineAt").isEmpty()
                 || Instant.parse(text(recipient, "deadlineAt")).isAfter(clock.instant())) return "";
         var task = storage.getObject(actor.context(), "ReminderTask", text(recipient, "taskId"));

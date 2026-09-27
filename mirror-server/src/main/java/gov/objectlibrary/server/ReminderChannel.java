@@ -7,6 +7,25 @@ public interface ReminderChannel {
     String mode();
     Result send(Request request);
 
+    default WithdrawalResult withdraw(WithdrawalRequest request) {
+        throw new UnsupportedOperationException("Channel withdrawal is not configured");
+    }
+
+    record WithdrawalRequest(String tenantId, String requestKey, String recipientId,
+                             java.util.List<String> deliveryRequestKeys, String reason) {
+        public WithdrawalRequest {
+            deliveryRequestKeys = java.util.List.copyOf(deliveryRequestKeys);
+        }
+    }
+
+    record WithdrawalResult(String state, String eventId, Instant occurredAt, String errorCode) {
+        public WithdrawalResult {
+            if (!java.util.Set.of("WITHDRAWN", "FAILED", "UNKNOWN").contains(state) || eventId == null || eventId.isBlank()
+                    || eventId.length() > 200 || occurredAt == null) throw new IllegalArgumentException("Invalid withdrawal result");
+            if (errorCode == null) errorCode = "";
+        }
+    }
+
     record Request(String tenantId, String requestKey, String recipientId, String identityReference,
                    String taskVersionId, String title) {}
     record Result(String state, String eventId, Instant occurredAt, String errorCode) {

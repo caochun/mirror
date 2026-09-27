@@ -3,6 +3,20 @@ schemaVersion: 1
 status: "definition-only"
 models:
   -
+    object: "WithdrawalRecord"
+    field: "state"
+    values: ["REQUESTED", "RUNNING", "WITHDRAWN", "FAILED", "UNKNOWN"]
+    transitions:
+      - {from: "REQUESTED", to: "RUNNING", action: "DispatchReminderWithdrawal"}
+      - {from: "REQUESTED", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "RUNNING", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "RUNNING", to: "FAILED", action: "RecordWithdrawalResult"}
+      - {from: "RUNNING", to: "UNKNOWN", action: "RecordWithdrawalResult"}
+      - {from: "FAILED", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "UNKNOWN", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "UNKNOWN", to: "FAILED", action: "RecordWithdrawalResult"}
+    notes: "每次重试创建新撤回尝试；租约恢复复用原请求。成功为终态，迟到失败只保留事件不降级。"
+  -
     object: "ReminderTask"
     field: "revisionState"
     values: ["NONE", "DRAFT", "PENDING_REVIEW", "REJECTED", "WITHDRAWN", "APPROVED"]
@@ -15,6 +29,15 @@ models:
       - {from: "PENDING_REVIEW", to: "WITHDRAWN", action: "WithdrawReminderReview"}
       - {from: "PENDING_REVIEW", to: "APPROVED", action: "DecideReminderReview"}
       - {from: "APPROVED", to: "NONE", action: "PublishReminderRevision"}
+      - {from: "DRAFT", to: "WITHDRAWN", action: "RequestReminderWithdrawal"}
+      - {from: "PENDING_REVIEW", to: "WITHDRAWN", action: "RequestReminderWithdrawal"}
+      - {from: "APPROVED", to: "WITHDRAWN", action: "RequestReminderWithdrawal"}
+      - {from: "DRAFT", to: "WITHDRAWN", action: "RetryWithdrawal"}
+      - {from: "PENDING_REVIEW", to: "WITHDRAWN", action: "RetryWithdrawal"}
+      - {from: "APPROVED", to: "WITHDRAWN", action: "RetryWithdrawal"}
+      - {from: "DRAFT", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "PENDING_REVIEW", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "APPROVED", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
     notes: "修订流程与主任务送达汇总正交；NONE或缺省表示无活动修订，旧发布版持续可读直到新版本原子发布。"
   -
     object: "Organization"
@@ -338,6 +361,9 @@ models:
         from: "PENDING"
         to: "EXPIRED"
         action: "ExpireReminderReview"
+      - {from: "PENDING", to: "WITHDRAWN", action: "RequestReminderWithdrawal"}
+      - {from: "PENDING", to: "WITHDRAWN", action: "RetryWithdrawal"}
+      - {from: "PENDING", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
     notes: "终态不回退；修改或再次提交创建新round，保留旧快照。"
   -
     object: "ReminderTask"
@@ -456,6 +482,8 @@ models:
       - {from: "WITHDRAW_FAILED", to: "PARTIAL_WITHDRAWN", action: "RecordWithdrawalResult"}
       - {from: "WITHDRAW_FAILED", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
       - {from: "PARTIAL_WITHDRAWN", to: "WITHDRAWN", action: "RecordWithdrawalResult"}
+      - {from: "PARTIAL_WITHDRAWN", to: "WITHDRAWING", action: "RequestReminderWithdrawal"}
+      - {from: "WITHDRAW_FAILED", to: "WITHDRAWING", action: "RequestReminderWithdrawal"}
     notes: "发布内容版本与发送汇总正交；修订不将已送达主任务改回DRAFT。公开最新内容由currentPublishedVersionId确定，待审修订由pendingVersionId确定。"
   -
     object: "ReminderTaskVersion"

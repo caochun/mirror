@@ -6,6 +6,18 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 class PublicationConfiguration {
+    @Bean("withdrawalExecutor")
+    ThreadPoolTaskExecutor withdrawalExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(20);
+        executor.setThreadNamePrefix("reminder-withdrawal-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(10);
+        return executor;
+    }
+
     @Bean("revisionPublicationExecutor")
     ThreadPoolTaskExecutor revisionPublicationExecutor() {
         var executor = new ThreadPoolTaskExecutor();

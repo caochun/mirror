@@ -1802,6 +1802,7 @@ actions:
     actor: "channel-adapter"
     permission: "WITHDRAWAL_RESULT"
     objects:
+      - "ReviewRound"
       - "WithdrawalRecord"
       - "RecipientRecord"
       - "ReminderTask"
@@ -1822,6 +1823,7 @@ actions:
     effects:
       - "记录逐人结果、汇总全部/部分/失败"
       - "成功后本人正文不可读，不改旧审计"
+      - "迟到成功使全任务撤回时，也结束其间新产生的未发布修订，原批准事件仍保留"
     idempotency: "tenant+channel+externalEventId"
     output:
       affectedIds: "ID[]"
@@ -2391,3 +2393,34 @@ actions:
       recordedAt: "DateTime"
     event: "gov.object-library.SaveReminderRevision"
     failure: "失败不写部分草稿；不通过普通保存草稿动作改写已发送任务"
+  -
+    name: "DispatchReminderWithdrawal"
+    source: "TSRW_XDCH"
+    status: "definition-only"
+    scope: "core"
+    actor: "withdrawal-worker"
+    permission: "WITHDRAWAL_DISPATCH"
+    objects:
+      - "WithdrawalRecord"
+      - "RecipientRecord"
+    inputs:
+      withdrawalId: "WithdrawalRecord"
+      expectedVersion: "Int"
+      evaluatedAt: "DateTime"
+    rules:
+      - "WITHDRAWAL"
+      - "DELIVERY"
+      - "AUDIT"
+      - "REFERENCES"
+    preconditions:
+      - "有效的已提交撤回意图，待处理或租约过期；渠道模式与原发送尝试一致"
+    effects:
+      - "领取持久撤回尝试，在事务外调用渠道，重启复用同一请求标识"
+      - "原请求尚在途也应按请求标识取消，不能因暂未发现已送达消息而伪报撤回成功"
+      - "从未提交渠道的接收人可在确认不会再发送后本地取消，不伪造外部成功"
+    idempotency: "tenant+withdrawal+requestKey"
+    output:
+      result: "JSON"
+      recordedAt: "DateTime"
+    event: "gov.object-library.DispatchReminderWithdrawal"
+    failure: "超时为UNKNOWN；渠道成功而本地中断时重放同一请求，不能创建重复撤回"

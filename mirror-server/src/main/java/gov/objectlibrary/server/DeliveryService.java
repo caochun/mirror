@@ -100,7 +100,7 @@ public class DeliveryService {
             var job = require(worker, "ReminderSendJob", observed.id());
             if (job.version() != observed.version()) throw new BusinessConflict("作业已被其他worker领取");
             var task = require(worker, "ReminderTask", text(job, "taskId"));
-            if (!Set.of("APPROVED_WAITING", "SENDING").contains(text(task, "state"))) throw new BusinessConflict("任务不允许发送");
+            if (!canDispatch(task)) throw new BusinessConflict("任务不允许发送");
             var version = require(worker, "ReminderTaskVersion", text(job, "snapshotId"));
             var approved = directory.links(worker, version.key(), "ReviewForVersion", StorageProvider.Direction.INBOUND).stream()
                     .map(link -> require(worker, "ReviewRound", link.from().id()))
@@ -118,8 +118,9 @@ public class DeliveryService {
                 contracts.requireTransition(version.type(), "state", "APPROVED", "PUBLISHED", "DispatchReminder");
                 tx.updateObject(version.type(), version.id(), values("state", "PUBLISHED", "publishedAt", clock.instant().toString()), version.version());
             }
-            contracts.requireTransition(task.type(), "state", text(task, "state"), "SENDING", "DispatchReminder");
-            var taskChanges = values("state", "SENDING");
+            String sendingState = hasWithdrawalSummary(task) ? text(task, "state") : "SENDING";
+            contracts.requireTransition(task.type(), "state", text(task, "state"), sendingState, "DispatchReminder");
+            var taskChanges = values("state", sendingState);
             if (text(task, "currentPublishedVersionId").isEmpty()) taskChanges.put("currentPublishedVersionId", version.id());
             tx.updateObject(task.type(), task.id(), taskChanges, task.version());
             tx.updateObject(job.type(), job.id(), values("state", "RUNNING", "leaseOwner", lease,
@@ -149,7 +150,7 @@ public class DeliveryService {
                     if (text(current, "deliveryState").equals("DELIVERED") || !text(current, "withdrawalState").equals("NONE")) {
                         return Map.of("skipped", true);
                     }
-                    if (!text(require(worker, "ReminderTask", text(job, "taskId")), "state").equals("SENDING")) {
+                    if (!canDispatch(require(worker, "ReminderTask", text(job, "taskId")))) {
                         throw new BusinessConflict("任务已停止发送");
                     }
                     if (!text(current, "taskId").equals(text(job, "taskId"))) throw new BusinessConflict("接收记录与任务不一致");
@@ -265,10 +266,11 @@ public class DeliveryService {
                 () -> contracts.authorizeSystem("DispatchReminder"), tx -> {
             var job = require(worker, "ReminderSendJob", jobId);
             if (!lease.equals(text(job, "leaseOwner"))) throw new BusinessConflict("发送租约已变化");
-            var recipients = roster.stream().map(id -> require(worker, "RecipientRecord", id)).toList();
+            var recipients = roster.stream().map(id -> require(worker, "RecipientRecord", id))
+                    .filter(r -> text(r, "withdrawalState").equals("NONE")).toList();
             boolean pending = recipients.stream().anyMatch(r -> Set.of("PENDING", "SUBMITTED").contains(text(r, "deliveryState")));
             long delivered = recipients.stream().filter(r -> text(r, "deliveryState").equals("DELIVERED")).count();
-            String jobState = pending ? "QUEUED" : delivered == recipients.size() ? "SUCCEEDED" : delivered == 0 ? "FAILED" : "PARTIAL_FAILED";
+            String jobState = recipients.isEmpty() ? "CANCELLED" : pending ? "QUEUED" : delivered == recipients.size() ? "SUCCEEDED" : delivered == 0 ? "FAILED" : "PARTIAL_FAILED";
             tx.updateObject(job.type(), job.id(), values("state", jobState, "leaseUntil", null, "leaseOwner", null), job.version());
             var task = require(worker, "ReminderTask", text(job, "taskId"));
             List<String> all = directory.links(worker, new EntityKey("ReminderTaskVersion", text(job, "snapshotId")),
@@ -280,7 +282,8 @@ public class DeliveryService {
                 contracts.requireTransition(task.type(), "state", "SENDING", taskState, "RecordDeliveryReceipt");
                 tx.updateObject(task.type(), task.id(), Map.of("state", taskState), task.version());
             }
-            return Map.of("jobId", jobId, "state", jobState, "delivered", delivered, "total", roster.size(), "mode", channel.mode());
+            return Map.of("jobId", jobId, "state", jobState, "delivered", delivered, "total", roster.size(),
+                    "cancelled", roster.size() - recipients.size(), "mode", channel.mode());
         }, contracts.eventType("DispatchReminder"));
     }
 
@@ -301,7 +304,7 @@ public class DeliveryService {
                 () -> contracts.authorizeSystem("DispatchReminder"), tx -> {
             var job = require(worker, "ReminderSendJob", jobId);
             var task = require(worker, "ReminderTask", text(job, "taskId"));
-            if (!lease.equals(text(job, "leaseOwner")) || !text(task, "state").equals("SENDING")) {
+            if (!lease.equals(text(job, "leaseOwner")) || !canDispatch(task)) {
                 throw new BusinessConflict("发送作业已停止或租约已变化");
             }
             tx.updateObject(job.type(), job.id(), Map.of("leaseUntil", clock.instant().plusSeconds(60).toString()), job.version());
@@ -316,9 +319,13 @@ public class DeliveryService {
             reminders.getTaskForOperator(actor, taskId, true);
         }, tx -> {
             var task = require(actor, "ReminderTask", taskId);
-            if (task.version() != expectedVersion || !Set.of("PARTIAL_FAILED", "ALL_FAILED").contains(text(task, "state"))) {
+            if (task.version() != expectedVersion || !Set.of("PARTIAL_FAILED", "ALL_FAILED", "PARTIAL_WITHDRAWN", "WITHDRAW_FAILED").contains(text(task, "state"))) {
                 throw new BusinessConflict("任务状态已变化或仍在发送中");
             }
+            boolean activeJob = directory.links(actor, task.key(), "SendJobForTask", StorageProvider.Direction.INBOUND).stream()
+                    .map(link -> require(actor, "ReminderSendJob", link.from().id()))
+                    .anyMatch(job -> Set.of("QUEUED", "RUNNING").contains(text(job, "state")));
+            if (activeJob) throw new BusinessConflict("原发送作业尚未结束，请等待后再重试");
             String versionId = text(task, "currentPublishedVersionId");
             var ids = directory.links(actor, new EntityKey("ReminderTaskVersion", versionId), "VersionTargetsRecipient",
                     StorageProvider.Direction.OUTBOUND).stream().map(l -> require(actor, "RecipientRecord", l.to().id()))
@@ -331,8 +338,9 @@ public class DeliveryService {
                     "state", "QUEUED", "dueAt", clock.instant().toString(), "createdAt", clock.instant().toString(), "recipientIdsJson", encode(ids)));
             tx.createLink("SendJobForTask", "task-" + jobId, job.key(), task.key(), Map.of());
             tx.createLink("SendJobForVersion", "version-" + jobId, job.key(), new EntityKey("ReminderTaskVersion", versionId), Map.of());
-            contracts.requireTransition("ReminderTask", "state", text(task, "state"), "SENDING", action);
-            var changed = tx.updateObject(task.type(), task.id(), Map.of("state", "SENDING"), task.version());
+            String state = hasWithdrawalSummary(task) ? text(task, "state") : "SENDING";
+            contracts.requireTransition("ReminderTask", "state", text(task, "state"), state, action);
+            var changed = tx.updateObject(task.type(), task.id(), Map.of("state", state), task.version());
             return Map.of("id", taskId, "version", changed.version(), "retryCount", ids.size());
         }, contracts.eventType(action));
     }
@@ -345,10 +353,20 @@ public class DeliveryService {
         return directory.links(actor, new EntityKey("ReminderTaskVersion", versionId), "VersionTargetsRecipient", StorageProvider.Direction.OUTBOUND).stream()
                 .map(link -> require(actor, "RecipientRecord", link.to().id())).map(r -> {
                     var reading = storage.getObject(actor.context(), "RecipientVersionState", readingStateId(r.id(), versionId));
+                    var withdrawal = storage.getObject(actor.context(), "WithdrawalRecord", text(r, "latestWithdrawalId"));
                     return new RecipientView(r.id(), text(r, "personNameSnapshot"), text(r, "organizationNameSnapshot"),
                             text(r, "deliveryState"), reading == null ? "UNREAD" : text(reading, "state"), text(r, "firstDeliveredAt"),
-                            text(r, "deadlineAt"), text(r, "channelMode"));
+                            text(r, "deadlineAt"), text(r, "channelMode"), text(r, "withdrawalState"), text(r, "latestWithdrawalId"),
+                            withdrawal == null ? "" : text(withdrawal, "errorCode"));
                 }).toList();
+    }
+
+    private static boolean canDispatch(ObjectRecord task) {
+        return Set.of("APPROVED_WAITING", "SENDING", "WITHDRAWING", "PARTIAL_WITHDRAWN", "WITHDRAW_FAILED").contains(text(task, "state"));
+    }
+
+    private static boolean hasWithdrawalSummary(ObjectRecord task) {
+        return Set.of("WITHDRAWING", "PARTIAL_WITHDRAWN", "WITHDRAW_FAILED").contains(text(task, "state"));
     }
 
     private List<String> roster(Accounts.Actor worker, ObjectRecord job) {
@@ -402,5 +420,6 @@ public class DeliveryService {
         return values;
     }
     public record RecipientView(String id, String name, String organization, String deliveryState, String readState,
-                                String firstDeliveredAt, String deadlineAt, String channelMode) {}
+                                String firstDeliveredAt, String deadlineAt, String channelMode, String withdrawalState,
+                                String withdrawalId, String withdrawalError) {}
 }

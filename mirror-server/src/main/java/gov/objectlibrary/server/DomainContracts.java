@@ -28,7 +28,8 @@ public class DomainContracts {
             "RegisterMediaAsset", "SaveContentExample", "SetContentAvailability",
             "DispatchReminder", "RecordDeliveryReceipt", "RetryFailedRecipients", "ReadOwnReminder", "RecordFirstRead",
             "EvaluateOverdue", "RecordIntegrationIssue", "ReadOverdueList",
-            "SaveReminderRevision", "SubmitReminderRevision", "PublishReminderRevision");
+            "SaveReminderRevision", "SubmitReminderRevision", "PublishReminderRevision",
+            "RequestReminderWithdrawal", "DispatchReminderWithdrawal", "RecordWithdrawalResult", "RetryWithdrawal");
 
     private static final Set<String> RECIPIENT_ACTIONS = Set.of("ReadOwnReminder", "RecordFirstRead");
 
@@ -38,6 +39,8 @@ public class DomainContracts {
             "RecordDeliveryReceipt", "channel-adapter",
             "EvaluateOverdue", "scheduler",
             "PublishReminderRevision", "publication-worker",
+            "DispatchReminderWithdrawal", "withdrawal-worker",
+            "RecordWithdrawalResult", "channel-adapter",
             "RecordIntegrationIssue", "channel-or-receiver-adapter");
 
     private final Map<String, Map<String, Object>> actions = new LinkedHashMap<>();

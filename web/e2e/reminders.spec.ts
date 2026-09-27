@@ -127,7 +127,27 @@ test('unit creator freezes a task, an independent reviewer approves it, and Mock
   await expect(revisedReceiver.getByText(/已记录本版本首次阅读/)).toBeVisible();
   await revisedReceiver.setViewportSize({ width: 390, height: 844 });
   await revisedReceiver.screenshot({ path: testInfo.outputPath('revision-receiver.png'), fullPage: true });
+  await delivery.getByRole('checkbox', { name: '选择撤回 演示人员01', exact: true }).check();
+  await delivery.getByRole('button', { name: '撤回所选 1 人', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('撤回原因', { exact: true }).fill('浏览器逐人撤回验证');
+  await page.getByRole('button', { name: '确认提交撤回', exact: true }).click();
+  await expect(page.getByText(/部分撤回 · 创建单位/)).toBeVisible();
+  await expect(delivery.getByRole('cell', { name: '已撤回', exact: true })).toHaveCount(1);
+  await revisedReceiver.reload();
+  await expect(revisedReceiver.getByText('本提醒已撤回', { exact: true })).toBeVisible();
+  await expect(revisedReceiver.getByText('这是经过再次审核的新版本，请核对最新内容。', { exact: true })).toHaveCount(0);
+  await revisedReceiver.screenshot({ path: testInfo.outputPath('withdrawn-receiver.png'), fullPage: true });
   await revisedReceiver.close();
+  await delivery.getByRole('button', { name: '选择全部未申请人员', exact: true }).click();
+  await delivery.getByRole('button', { name: '撤回所选 15 人', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('撤回原因', { exact: true }).fill('撤回剩余人员验证');
+  await page.getByRole('button', { name: '确认提交撤回', exact: true }).click();
+  await expect(page.getByText(/全部撤回 · 创建单位/)).toBeVisible();
+  await expect(delivery.getByRole('cell', { name: '已撤回', exact: true })).toHaveCount(16);
+  await delivery.getByRole('button', { name: '查看撤回记录', exact: true }).click();
+  await expect(delivery.getByRole('heading', { name: '撤回记录', exact: true })).toBeVisible();
+  await expect(delivery.getByText('浏览器逐人撤回验证', { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('withdrawal-results.png'), fullPage: true });
 });
 
 test('draft edits invalidate confirmation and explicit exclusion survives a saved edit', async ({ page }) => {

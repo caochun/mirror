@@ -217,7 +217,8 @@ export function ReminderTaskDetail() {
             审核已通过，发送作业已排队。{task.sendMode === 'SCHEDULED' ? '等待计划时间。' : '等待发送执行。'}
           </p>}
           {task.reviewRound > 0 && permissions.includes('OVERDUE_READ') && <ReminderDelivery task={task} canWrite={canWrite}
-            canRetry={permissions.includes('REMINDER_RETRY') && actor.organizationId === task.organizationId} refresh={load} />}
+            canRetry={permissions.includes('REMINDER_RETRY') && actor.organizationId === task.organizationId}
+            canWithdraw={permissions.includes('REMINDER_WITHDRAW') && actor.organizationId === task.organizationId} refresh={load} />}
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
             <section className="panel p-6">
               <h2 className="mb-4 font-semibold">最终内容预览</h2>
@@ -367,7 +368,7 @@ export function ReminderTaskDetail() {
             <ol className="mt-4 space-y-3">
               {detail.rounds.map((r) => (
                 <li key={r.id} className="text-sm">
-                  第 {r.roundNumber} 轮 · {reminderStates[r.state] ?? r.state} · 提交人 {r.submittedBy}
+                  第 {r.roundNumber} 轮 · {r.state === 'WITHDRAWN' ? '审核已撤回' : reminderStates[r.state] ?? r.state} · 提交人 {r.submittedBy}
                   {r.decidedBy && ` · 处理人 ${r.decidedBy}`}
                   {r.comment && <p className="muted">{r.comment}</p>}
                 </li>

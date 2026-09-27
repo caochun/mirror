@@ -63,7 +63,10 @@ export const reminderStates: Record<string, string> = {
   PARTIAL_FAILED: '部分失败',
   ALL_FAILED: '全部失败',
   APPROVED: '已通过',
-  WITHDRAWN: '已撤回审核',
+  WITHDRAWN: '全部撤回',
+  WITHDRAWING: '撤回中',
+  PARTIAL_WITHDRAWN: '部分撤回',
+  WITHDRAW_FAILED: '撤回失败',
   EXPIRED: '已过期',
   PENDING: '待审核',
 };

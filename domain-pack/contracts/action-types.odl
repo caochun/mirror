@@ -487,3 +487,9 @@ type SaveReminderRevision @actionType {
   title: String! @param
   body: JSON! @param
 }
+
+type DispatchReminderWithdrawal @actionType {
+  withdrawalId: WithdrawalRecord! @param
+  expectedVersion: Int! @param
+  evaluatedAt: DateTime! @param
+}

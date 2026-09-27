@@ -290,3 +290,30 @@ scenarios:
       - "修订只改变revisionState，原任务发送汇总与发布指针在审核前保持不变"
       - "重启根据持久批准记录发布一次，不新增接收人、不重置原截止、不重发成功者"
       - "旧发送作业恢复仍用其审核快照，但不得把当前发布指针改回已被替代的版本"
+  -
+    id: "S25"
+    name: "在途发送与逐人撤回隔离"
+    given: "P1已登记发送但渠道未处理，P2尚未登记，P3无需撤回"
+    actions:
+      - "DispatchReminder"
+      - "RequestReminderWithdrawal"
+      - "DispatchReminderWithdrawal"
+      - "RecordWithdrawalResult"
+    expect:
+      - "P1必须按原请求标识撤回，渠道不能因暂未看到消息而伪报成功"
+      - "P2可本地取消，不伪造送达或第三方响应；P3继续原发送作业"
+      - "两人撤回不将三人任务汇总成全部撤回"
+  -
+    id: "S26"
+    name: "撤回恢复、迟到回执和待发布修订"
+    given: "渠道撤回已成功但本地尚未记回执，另有已批准未发布修订"
+    actions:
+      - "RequestReminderWithdrawal"
+      - "DispatchReminderWithdrawal"
+      - "RecordWithdrawalResult"
+      - "RetryWithdrawal"
+      - "PublishReminderRevision"
+    expect:
+      - "恢复复用原请求标识和首次渠道结果，成功者不重复撤回"
+      - "消息撤回终止未发布修订，不能在撤回后被旧发布作业复活"
+      - "迟到失败不降级成功，但原始失败回执保留在历史中"
