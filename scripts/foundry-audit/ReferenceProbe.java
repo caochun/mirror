@@ -99,7 +99,13 @@ public class ReferenceProbe {
         }
         String bookSource = Files.readString(Path.of(args[0]).resolve("examples/library-pack/schema/book.odl"));
         var bookSchema = new OdlParser().parse(bookSource);
-        observations.put("upstream_book_fields_retained", bookSchema.objectTypes().getFirst().properties().stream().map(PropertyDefinition::name).toList());
+        var bookType = bookSchema.objectTypes().getFirst();
+        observations.put("upstream_book_fields_retained", java.util.stream.Stream.concat(
+                bookType.properties().stream().map(PropertyDefinition::name),
+                bookType.linkFields().stream().map(field -> field.name())).toList());
+        observations.put("upstream_book_navigation_fields", bookType.linkFields().stream().map(field -> Map.of(
+                "name", field.name(), "target", field.targetType(), "linkType", field.linkType(),
+                "direction", field.direction().name(), "history", field.history())).toList());
         try {
             var borrowed = new ActionManifestParser().parse(Files.readString(Path.of(args[0]).resolve("examples/library-pack/actions/borrow-book.yaml")));
             observations.put("upstream_borrow_manifest_accepted_with_sideeffects_unrepresented", borrowed.action().equals("BorrowBook"));

@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry关系字段与受控导航
+
+Foundry提交f20138d：保留ODL关系字段及继承，GraphQL/REST可沿关系双向读取对象或关系记录；源、边、目标与字段权限共用治理，分页按可见结果计算，history字段可查已结束关系。上游Library原始schema已纳入兼容测试。根reactor276项，其中Foundry166项，全部通过；详见[关系导航报告](../platform-review/relationship-navigation.md)。
+
+完整Library借还、跨Pack、计算字段、关系写入声明约束与时间一致API仍待完成。Mirror仅更新平台引用和验证证据，完整上游覆盖目标保持active。
+
 ## 2026-09-28：Foundry声明属性和接口继承
 
 Foundry完成字面量默认值、只读审计字段、字段/类型CEL约束、单Schema普通接口继承及GraphQL声明输出。Java模型直接提交也受继承校验；memory/H2共享规则，旧记录不回填。根reactor259项，其中Foundry149项，全部通过；探针确认接口主键继承问题消失。见[声明模型修复](../platform-review/declarative-model-repair.md)。
