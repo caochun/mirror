@@ -152,11 +152,16 @@ class RuleBatchService {
             String evaluationId = "evaluation-" + BusinessCommands.hash(batchId + "/" + index);
             var evaluation = tx.createObject("TagEvaluation", evaluationId, values("personId", personId, "ruleId", rule.id(), "ruleVersionId", versionId,
                     "tagVersionId", tagVersionId, "batchId", batchId, "state", result.outcome(), "inputDigest", input.digest(),
-                    "reason", result.reason(), "evidenceJson", encode(Map.of("references", input.references(), "fields", input.fields())), "evaluatedAt", clock.instant().toString()));
+                    "reason", result.reason(), "evidenceJson", encode(Map.of("references", input.references(), "fields", input.fields(), "mappings", input.mappings())), "evaluatedAt", clock.instant().toString()));
             tx.createLink("EvaluationForPerson", "person-" + evaluationId, evaluation.key(), person.key(), Map.of());
             tx.createLink("EvaluationForTagVersion", "tag-" + evaluationId, evaluation.key(), new EntityKey("TagVersion", tagVersionId), Map.of());
             tx.createLink("EvaluationUsesRuleVersion", "rule-" + evaluationId, evaluation.key(), version.key(), Map.of());
             tx.createLink("EvaluationInBatch", "batch-" + evaluationId, evaluation.key(), batch.key(), Map.of());
+            for (var mapping : input.mappings()) {
+                tx.createLink("EvaluationUsesMapping", evaluationId + "-mapping-" + mapping.id(), evaluation.key(),
+                        new EntityKey("ClassificationMapping", mapping.id()), Map.of("mappingVersion", Long.toString(mapping.version()),
+                                "mappingSnapshotJson", encode(mapping)));
+            }
             String change = "SKIPPED";
             if (!stale) {
                 change = reconcile(actor, tx, person, rule, version, tag, tagVersionId, evaluation, input, result);
@@ -190,7 +195,7 @@ class RuleBatchService {
                 other |= activity.contributionActive(actor, contribution);
                 continue;
             }
-            if (matched && text(contribution, "ruleVersionId").equals(version.id()) && text(contribution, "sourceReference").equals(tagVersionId)) keep = true;
+            if (matched && text(contribution, "ruleVersionId").equals(version.id()) && text(contribution, "sourceReference").equals(tagVersionId) && text(contribution, "inputDigest").equals(input.digest())) keep = true;
             else tx.updateObject(contribution.type(), contribution.id(), values("state", "EXPIRED", "effectiveTo", clock.instant().toString(),
                     "reason", result.outcome().equals("UNKNOWN") ? "本规则缺少可靠输入，暂停本来源" : "规则不再命中或版本已替换"), contribution.version());
         }
@@ -215,7 +220,7 @@ class RuleBatchService {
         if (matched && !keep) {
             String contributionId = "rule-source-" + evaluation.id();
             var contribution = tx.createObject("TagContribution", contributionId, values("ruleId", rule.id(), "ruleVersionId", version.id(),
-                    "source", "RULE", "sourceReference", tagVersionId, "state", "ACTIVE", "effectiveFrom", clock.instant().toString(),
+                    "source", "RULE", "sourceReference", tagVersionId, "inputDigest", input.digest(), "state", "ACTIVE", "effectiveFrom", clock.instant().toString(),
                     "actorId", actor.username(), "organizationId", input.organizationId(), "reason", result.reason()));
             tx.createLink("AssignmentHasContribution", "assignment-" + contributionId, assignment.key(), contribution.key(), Map.of());
             tx.createLink("ContributionUsesVersion", "tag-" + contributionId, contribution.key(), new EntityKey("TagVersion", tagVersionId), Map.of());

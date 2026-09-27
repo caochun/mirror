@@ -25,6 +25,11 @@ type AuthorityGrant @objectType {
 }
 
 type ClassificationMapping @objectType {
+  targetTagId: String
+  targetTagVersionId: String
+  targetTagNameSnapshot: String
+  organizationIdsJson: String
+  organizationNamesJson: String
   id: ID! @primary
   kind: String!
   sourceCode: String!
@@ -37,6 +42,14 @@ type ClassificationMapping @objectType {
 
 # Proposed configuration and its impact; never an active classification source.
 type MappingImpactPreview @objectType {
+  sourceStamp: String
+  evaluatedDate: String
+  processedCount: Int
+  totalCount: Int
+  leaseOwner: String
+  leaseUntil: DateTime
+  error: String
+  batchId: String
   id: ID! @primary
   mappingId: String!
   expectedMappingVersion: Int!
@@ -132,6 +145,7 @@ type TagEvaluation @objectType {
 }
 
 type TagContribution @objectType {
+  inputDigest: String
   ruleId: String
   ruleVersionId: String
   id: ID! @primary

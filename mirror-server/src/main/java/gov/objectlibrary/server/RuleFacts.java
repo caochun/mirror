@@ -29,16 +29,23 @@ class RuleFacts {
     private final DirectoryService directory;
     private final ObjectMapper json;
     private final Clock clock;
+    private final ClassificationMappings mappings;
     private final ZoneId zone = ZoneId.of("Asia/Shanghai");
 
-    RuleFacts(StorageProvider storage, DirectoryService directory, ObjectMapper json, Clock clock) {
+    RuleFacts(StorageProvider storage, DirectoryService directory, ObjectMapper json, Clock clock, ClassificationMappings mappings) {
         this.storage = storage;
         this.directory = directory;
         this.json = json;
         this.clock = clock;
+        this.mappings = mappings;
     }
 
     Input load(Accounts.Actor actor, ObjectRecord person, Set<String> fields) {
+        var catalog = fields.stream().anyMatch(ClassificationMappings.FIELDS::containsValue) ? mappings.load(actor) : null;
+        return load(actor, person, fields, catalog);
+    }
+
+    Input load(Accounts.Actor actor, ObjectRecord person, Set<String> fields, ClassificationMappings.Snapshot catalog) {
         Map<String, Object> values = new HashMap<>();
         var evidence = new TreeSet<String>();
         evidence.add("person:" + person.id() + ":" + person.version());
@@ -88,6 +95,9 @@ class RuleFacts {
         Set<String> positions = new TreeSet<>();
         boolean missingPosition = false;
         boolean principal = false;
+        boolean principalUnknown = false;
+        Set<String> principalPositions = new TreeSet<>();
+        Set<String> unknownPrincipalPositions = new TreeSet<>();
         if (fields.contains("positionCode") || fields.contains("roleLevel") || fields.contains("positionDomain")) {
             for (var link : directory.links(actor, person.key(), "PersonHasAssignment", StorageProvider.Direction.OUTBOUND)) {
                 var assignment = storage.getObject(actor.context(), "Assignment", link.to().id());
@@ -96,82 +106,34 @@ class RuleFacts {
                 if (org == null || assignmentOrgs.size() != 1 || !assignmentOrgs.getFirst().to().id().equals(org.id())) continue;
                 evidence.add("assignment:" + assignment.id() + ":" + assignment.version());
                 principal |= Boolean.TRUE.equals(assignment.properties().get("isPrincipal"));
+                principalUnknown |= assignment.properties().get("isPrincipal") == null;
                 var links = directory.links(actor, assignment.key(), "AssignmentUsesPosition", StorageProvider.Direction.OUTBOUND);
                 if (links.size() != 1) { missingPosition = true; continue; }
                 var position = storage.getObject(actor.context(), "Position", links.getFirst().to().id());
                 if (position == null || position.isDeleted() || text(position, "standardCode").isEmpty()) missingPosition = true;
                 else {
                     evidence.add("position:" + position.id() + ":" + position.version());
-                    positions.add(text(position, "standardCode"));
+                    String code = text(position, "standardCode");
+                    positions.add(code);
+                    if (Boolean.TRUE.equals(assignment.properties().get("isPrincipal"))) principalPositions.add(code);
+                    if (assignment.properties().get("isPrincipal") == null) unknownPrincipalPositions.add(code);
                 }
             }
             if (!positions.isEmpty()) values.put("positionCode", new PartialValues(java.util.Collections.unmodifiableSet(new TreeSet<>(positions)), !missingPosition));
         }
-        if (fields.contains("organizationNature") && org != null) organizationMapping(actor, org, values, evidence);
-        if (fields.contains("roleLevel") || fields.contains("positionDomain")) {
-            List<ObjectRecord> matches = new ArrayList<>();
-            for (var mapping : directory.all(actor, "ClassificationMapping")) {
-                if (!text(mapping, "state").equals("ACTIVE")) continue;
-                String kind = text(mapping, "kind");
-                if (!Set.of("ROLE_LEVEL", "POSITION_DOMAIN").contains(kind)) continue;
-                evidence.add("mapping:" + mapping.id() + ":" + mapping.version());
-                if ((!rank.isEmpty() && text(mapping, "sourceCode").equals("RANK:" + rank))
-                        || positions.stream().anyMatch(code -> text(mapping, "sourceCode").equals("POSITION:" + code))) matches.add(mapping);
-            }
-            Set<String> domains = new TreeSet<>();
-            List<ObjectRecord> levels = new ArrayList<>();
-            boolean uncertainPrincipal = false;
-            for (var mapping : matches) {
-                var targets = directory.links(actor, mapping.key(), "MappingForTag", StorageProvider.Direction.OUTBOUND);
-                if (targets.size() != 1) continue;
-                String target = targets.getFirst().to().id();
-                var tag = storage.getObject(actor.context(), "TagDefinition", target);
-                if (tag == null || tag.isDeleted() || !text(tag, "status").equals("ACTIVE")) continue;
-                evidence.add("mapping-tag:" + tag.id() + ":" + tag.version());
-                if (text(mapping, "kind").equals("POSITION_DOMAIN")) domains.add(target);
-                else {
-                    if (text(tag, "code").equals("PRINCIPAL")) {
-                        if (person.properties().get("managedCadre") == null || org == null || org.properties().get("managedUnit") == null) { uncertainPrincipal = true; continue; }
-                        if (!Boolean.TRUE.equals(person.properties().get("managedCadre")) || !Boolean.TRUE.equals(org.properties().get("managedUnit")) || !principal) continue;
-                    }
-                    levels.add(mapping);
-                }
-            }
-            if (!domains.isEmpty()) values.put("positionDomain", new PartialValues(java.util.Collections.unmodifiableSet(new TreeSet<>(domains)), !missingPosition));
-            if (!missingPosition && !uncertainPrincipal && !levels.isEmpty()) {
-                int priority = levels.stream().mapToInt(mapping -> ((Number) mapping.properties().getOrDefault("priority", 0)).intValue()).max().orElse(0);
-                Set<String> winners = new TreeSet<>();
-                for (var mapping : levels) if (((Number) mapping.properties().getOrDefault("priority", 0)).intValue() == priority) {
-                    winners.add(directory.links(actor, mapping.key(), "MappingForTag", StorageProvider.Direction.OUTBOUND).getFirst().to().id());
-                }
-                if (winners.size() == 1) values.put("roleLevel", winners.iterator().next());
-            }
+        Map<String, ClassificationMappings.Entry> mappingEvidence = new java.util.TreeMap<>();
+        if (catalog != null && org != null) {
+            catalog.classify(fields, org.id(), rank, positions, missingPosition, principalPositions, unknownPrincipalPositions,
+                    principal, principalUnknown, person.properties().get("managedCadre"), org.properties().get("managedUnit"), values, mappingEvidence);
         }
+        mappingEvidence.values().forEach(entry -> evidence.add("mapping:" + entry.id() + ":" + entry.version()));
         Map<String, Object> used = new HashMap<>();
         for (String field : fields) if (values.containsKey(field)) used.put(field, values.get(field));
-        String digest = BusinessCommands.hash(encode(used) + "/" + eligible);
+        String digest = BusinessCommands.hash(encode(used) + "/" + eligible + "/" + encode(mappingEvidence));
         return new Input(person.id(), text(person, "name"), org == null ? "" : org.id(), org == null ? "单位待核实" : text(org, "name"),
-                eligible, Map.copyOf(used), digest, List.copyOf(evidence));
+                eligible, Map.copyOf(used), digest, List.copyOf(evidence), List.copyOf(mappingEvidence.values()));
     }
 
-    private void organizationMapping(Accounts.Actor actor, ObjectRecord org, Map<String, Object> values, Set<String> evidence) {
-        Set<String> seen = new HashSet<>();
-        String current = org.id();
-        while (!current.isEmpty() && seen.add(current)) {
-            Set<String> targets = new HashSet<>();
-            for (var link : directory.links(actor, new EntityKey("Organization", current), "MappingForOrganization", StorageProvider.Direction.INBOUND)) {
-                var mapping = storage.getObject(actor.context(), "ClassificationMapping", link.from().id());
-                if (mapping == null || mapping.isDeleted() || !text(mapping, "state").equals("ACTIVE") || !text(mapping, "kind").equals("ORGANIZATION_NATURE")) continue;
-                evidence.add("mapping:" + mapping.id() + ":" + mapping.version());
-                if (!current.equals(org.id()) && !Boolean.TRUE.equals(mapping.properties().get("inherited"))) continue;
-                directory.links(actor, mapping.key(), "MappingForTag", StorageProvider.Direction.OUTBOUND).forEach(target -> targets.add(target.to().id()));
-            }
-            if (!targets.isEmpty()) { if (targets.size() == 1) values.put("organizationNature", targets.iterator().next()); return; }
-            var parent = directory.links(actor, new EntityKey("Organization", current), "OrganizationParent", StorageProvider.Direction.OUTBOUND);
-            evidence.addAll(parent.stream().map(link -> "parent:" + link.id() + ":" + link.version()).toList());
-            current = parent.size() == 1 ? parent.getFirst().to().id() : "";
-        }
-    }
     private boolean validInterval(ObjectRecord assignment) {
         try {
             String start = text(assignment, "startedAt");
@@ -192,6 +154,11 @@ class RuleFacts {
         catch (Exception invalid) { throw new IllegalArgumentException(invalid); }
     }
     record Input(String personId, String name, String organizationId, String organizationName, boolean eligible,
-                 Map<String, Object> fields, String digest, List<String> references) {}
+                 Map<String, Object> fields, String digest, List<String> references, List<ClassificationMappings.Entry> mappings) {
+        Input(String personId, String name, String organizationId, String organizationName, boolean eligible,
+              Map<String, Object> fields, String digest, List<String> references) {
+            this(personId, name, organizationId, organizationName, eligible, fields, digest, references, List.of());
+        }
+    }
     record PartialValues(Set<String> values, boolean complete) {}
 }

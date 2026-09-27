@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 /** Lets the single Spring HTTP endpoint serve both Vite-built applications and their client routes. */
 @Controller
 class SpaController {
-    @GetMapping({"/", "/workbench", "/people", "/people/{id}", "/tags", "/rules", "/content-examples", "/reading", "/reminders", "/reminders/new", "/reminders/{id}", "/reminders/{id}/edit", "/reminders/{id}/revision"})
+    @GetMapping({"/", "/workbench", "/people", "/people/{id}", "/tags", "/rules", "/mappings", "/content-examples", "/reading", "/reminders", "/reminders/new", "/reminders/{id}", "/reminders/{id}/edit", "/reminders/{id}/revision"})
     String admin() { return "forward:/index.html"; }
 
     @GetMapping("/dashboard")

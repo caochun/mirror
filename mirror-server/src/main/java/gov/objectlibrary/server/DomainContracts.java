@@ -30,7 +30,7 @@ public class DomainContracts {
             "EvaluateOverdue", "RecordIntegrationIssue", "ReadOverdueList",
             "SaveReminderRevision", "SubmitReminderRevision", "PublishReminderRevision",
             "RequestReminderWithdrawal", "DispatchReminderWithdrawal", "RecordWithdrawalResult", "RetryWithdrawal", "QueryBusinessMetrics", "CreateTagRule", "PreviewRuleChange", "PublishRuleVersion",
-            "StartTagBatch", "ApplyRuleEvaluation", "CompleteTagBatch", "DeactivateTagRule");
+            "StartTagBatch", "ApplyRuleEvaluation", "CompleteTagBatch", "DeactivateTagRule", "PreviewClassificationMapping", "PublishClassificationMapping");
 
     private static final Set<String> RECIPIENT_ACTIONS = Set.of("ReadOwnReminder", "RecordFirstRead");
 
@@ -47,7 +47,8 @@ public class DomainContracts {
             Map.entry("PreviewRuleChange", "system-or-configuration-admin"),
             Map.entry("ApplyRuleEvaluation", "rule-worker"),
             Map.entry("CompleteTagBatch", "batch-worker"),
-            Map.entry("DeactivateTagRule", "system-or-configuration-admin"));
+            Map.entry("DeactivateTagRule", "system-or-configuration-admin"),
+            Map.entry("PreviewClassificationMapping", "system-or-configuration-admin"));
 
     private final Map<String, Map<String, Object>> actions = new LinkedHashMap<>();
     private final Map<String, Map<String, Object>> states = new LinkedHashMap<>();
@@ -106,7 +107,7 @@ public class DomainContracts {
 
     public void authorize(Accounts.Actor actor, String action) {
         var definition = requireConnected(action);
-        if ((SYSTEM_ACTIONS.containsKey(action) && !Set.of("StartTagBatch", "PreviewRuleChange", "DeactivateTagRule").contains(action)) || RECIPIENT_ACTIONS.contains(action)) {
+        if ((SYSTEM_ACTIONS.containsKey(action) && !Set.of("StartTagBatch", "PreviewRuleChange", "DeactivateTagRule", "PreviewClassificationMapping").contains(action)) || RECIPIENT_ACTIONS.contains(action)) {
             throw new org.springframework.security.access.AccessDeniedException("Internal actions cannot be invoked by an account");
         }
         // Reload the principal so a retained Java Actor cannot bypass a disabled account or changed role.
