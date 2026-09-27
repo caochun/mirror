@@ -2486,7 +2486,7 @@ actions:
     scope: "core"
     actor: "system-or-configuration-admin"
     permission: "TAG_CONFIGURE"
-    objects: ["TagRule", "RuleVersion", "TagBatch", "TagContribution", "PersonTagAssignment"]
+    objects: ["TagRule", "RuleVersion", "TagBatch", "TagContribution", "PersonTagAssignment", "TagProcessingIssue"]
     inputs:
       ruleId: "TagRule"
       expectedVersion: "Int"
@@ -2498,6 +2498,7 @@ actions:
       - "规则改为INACTIVE；已发布条件和历史引用保留，不停用目录或其他规则"
       - "同事务登记持久清理批次，结束该规则贡献；生效标签查询立即排除该停用规则，即使清理尚未结束"
       - "尚未提交的旧规则评估不得继续产生贡献，记录SKIPPED；其他人工/规则/AI/专项来源保留，SUPPRESSED不解除"
+      - "冻结并关闭停用前本规则的局部待处理项，保留原问题与关闭原因，不声称原始资料已补齐；清理不能结束重新启用后的新来源或新问题"
       - "再次启用须通过PreviewRuleChange和PublishRuleVersion，重新核验当前输入并重算，不复活旧贡献，不产生提醒"
     idempotency: "tenant+actor+commandId"
     output:

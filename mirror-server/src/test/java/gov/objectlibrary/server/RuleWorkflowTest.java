@@ -30,6 +30,9 @@ class RuleWorkflowTest {
     @Autowired Accounts accounts;
     @Autowired StorageProvider storage;
     @Autowired RuleFacts facts;
+    @Autowired RuleDeactivationService deactivations;
+    @Autowired ReminderSelection selection;
+    @Autowired BusinessMetricsService metrics;
     @Autowired DeliveryWorkflowTest.TestClock clock;
 
     @BeforeEach void time() { clock.now = Instant.parse("2035-01-01T00:00:00Z"); }
@@ -182,6 +185,142 @@ class RuleWorkflowTest {
             tx.commit();
         }
         assertFalse(facts.load(admin(), person, java.util.Set.of("positionCode")).fields().containsKey("positionCode"));
+    }
+
+    @Test
+    void deactivationImmediatelyChangesCurrentTagsSelectionAndMetricsBeforeCleanup() {
+        var fixture = fixture();
+        finish(publish(fixture, 40));
+        String assignmentId = TagService.assignmentId(fixture.known(), fixture.tag());
+        var assignment = object("PersonTagAssignment", assignmentId);
+        var source = batches.activeContributions(admin(), assignment).getFirst();
+        var stopped = deactivations.deactivate(admin(), fixture.rule(),
+                new RuleDeactivationService.Deactivate(object("TagRule", fixture.rule()).version(), true), key());
+        assertEquals("ACTIVE", text(object("TagContribution", source.id()), "state"), "Cleanup has not run yet");
+        assertEquals("ACTIVE", text(object("PersonTagAssignment", assignmentId), "state"), "Read projection must not depend on cleanup timing");
+        assertEquals("EXPIRED", tags.personTags(admin(), fixture.known()).stream().filter(t -> t.tagId().equals(fixture.tag())).findFirst().orElseThrow().state());
+        assertTrue(selection.resolve(admin(), new ReminderSelection.Filter(List.of(), List.of(fixture.tag()), "ANY", List.of(), List.of())).included().isEmpty());
+        var report = metrics.query(admin(), new BusinessMetricsService.Filter(fixture.org(), "", "", fixture.tag(), "", "", "", null, null, true));
+        assertEquals(0, report.metrics().stream().filter(m -> m.code().equals("tagCoverage")).findFirst().orElseThrow().numerator());
+        assertTrue(report.sources().isEmpty(), "Stopped sources cannot remain in a current source distribution");
+        assertEquals(0L, report.counts().getOrDefault("tagsWithoutEvidence", 0L), "Intentional deactivation is not missing evidence");
+        assertTrue(report.pending().isEmpty(), "A stopped rule cannot keep generating active work");
+        assertThrows(BusinessConflict.class, () -> batches.start(admin(), List.of(fixture.rule()), List.of(), key()));
+        assertEquals(2, deactivations.processPending(), "One source and one never-assigned person's issue are both cleaned");
+        assertEquals("EXPIRED", text(object("TagContribution", source.id()), "state"));
+        assertEquals("EXPIRED", text(object("PersonTagAssignment", assignmentId), "state"));
+        assertEquals("SUCCEEDED", text(object("TagBatch", stopped.get("batchId").toString()), "state"));
+        assertTrue(storage.getEntityHistory(CONTEXT, source.key()).size() >= 2);
+    }
+
+    @Test
+    void deactivationPreservesOtherRulesManualContributionsAndSuppression() {
+        var fixture = fixture();
+        tags.assign(unit(), fixture.tag(), new TagService.AssignmentCommand(List.of(fixture.known()), Map.of(fixture.known(), 0L), "ADD", "人工依据", 1), key());
+        finish(publish(fixture, 40));
+        String secondRule = rules.create(admin(), fixture.tag(), "另一条年龄规则", key()).get("id").toString();
+        finish(publish(new Fixture(fixture.org(), fixture.known(), fixture.missing(), fixture.tag(), secondRule), 40));
+        deactivations.deactivate(admin(), fixture.rule(), new RuleDeactivationService.Deactivate(object("TagRule", fixture.rule()).version(), true), key());
+        deactivations.processPending();
+        var assignment = object("PersonTagAssignment", TagService.assignmentId(fixture.known(), fixture.tag()));
+        assertEquals("ACTIVE", text(assignment, "state"));
+        assertEquals(2, batches.activeContributions(admin(), assignment).size());
+        assertTrue(batches.activeContributions(admin(), assignment).stream().anyMatch(c -> secondRule.equals(text(c, "ruleId"))));
+        tags.assign(unit(), fixture.tag(), new TagService.AssignmentCommand(List.of(fixture.known()), Map.of(fixture.known(), assignment.version()), "REMOVE", "", 1), key());
+        deactivations.deactivate(admin(), secondRule, new RuleDeactivationService.Deactivate(object("TagRule", secondRule).version(), true), key());
+        deactivations.processPending();
+        assertEquals("SUPPRESSED", text(object("PersonTagAssignment", assignment.id()), "state"));
+        assertEquals(List.of("MANUAL"), batches.activeContributions(admin(), object("PersonTagAssignment", assignment.id())).stream().map(c -> text(c, "source")).toList());
+    }
+
+    @Test
+    void inFlightOldBatchesSkipAndDelayedCleanupCannotEndReenabledRuleSources() {
+        var fixture = fixture();
+        finish(publish(fixture, 40));
+        String pending = batches.start(admin(), List.of(fixture.rule()), List.of(fixture.known()), key()).get("id").toString();
+        deactivations.deactivate(admin(), fixture.rule(), new RuleDeactivationService.Deactivate(object("TagRule", fixture.rule()).version(), true), key());
+        finish(pending);
+        assertEquals(1, RuleBatchService.number(object("TagBatch", pending), "skippedCount"));
+        assertEquals(0, RuleBatchService.number(object("TagBatch", pending), "successCount"));
+        finish(publish(fixture, 40));
+        String activeVersion = text(object("TagRule", fixture.rule()), "currentVersionId");
+        deactivations.processPending();
+        var assignment = object("PersonTagAssignment", TagService.assignmentId(fixture.known(), fixture.tag()));
+        assertEquals("ACTIVE", text(assignment, "state"));
+        var sources = batches.activeContributions(admin(), assignment);
+        assertEquals(1, sources.size());
+        assertEquals(activeVersion, text(sources.getFirst(), "ruleVersionId"));
+        assertTrue(selection.resolve(admin(), new ReminderSelection.Filter(List.of(), List.of(fixture.tag()), "ANY", List.of(), List.of())).included()
+                .stream().anyMatch(p -> p.personId().equals(fixture.known())));
+    }
+
+    @Test
+    void stoppingIsAuthorizedConfirmedVersionedIdempotentAndInvalidatesEarlierPreview() {
+        var fixture = fixture();
+        finish(publish(fixture, 40));
+        String previewId = rules.preview(admin(), fixture.rule(), condition(fixture, 40), key()).get("id").toString();
+        rules.processPreviews();
+        var preview = rules.previewDetail(admin(), previewId, 0, 100);
+        long version = object("TagRule", fixture.rule()).version();
+        var input = new RuleDeactivationService.Deactivate(version, true);
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, () -> deactivations.deactivate(unit(), fixture.rule(), input, key()));
+        assertThrows(IllegalArgumentException.class, () -> deactivations.deactivate(admin(), fixture.rule(), new RuleDeactivationService.Deactivate(version, false), key()));
+        assertThrows(BusinessConflict.class, () -> deactivations.deactivate(admin(), fixture.rule(), new RuleDeactivationService.Deactivate(version - 1, true), key()));
+        String request = key();
+        var result = deactivations.deactivate(admin(), fixture.rule(), input, request);
+        assertEquals(result, deactivations.deactivate(admin(), fixture.rule(), input, request));
+        assertThrows(BusinessConflict.class, () -> rules.publish(admin(), fixture.rule(), new RuleConfigurationService.Publish(previewId,
+                object("TagRule", fixture.rule()).version(), preview.get("digest").toString()), key()));
+        deactivations.processPending();
+    }
+
+    @Test
+    void manualAddDuringCleanupCreatesIndependentEvidenceDespiteStaleActiveProjection() {
+        var fixture = fixture();
+        finish(publish(fixture, 40));
+        deactivations.deactivate(admin(), fixture.rule(), new RuleDeactivationService.Deactivate(object("TagRule", fixture.rule()).version(), true), key());
+        String assignmentId = TagService.assignmentId(fixture.known(), fixture.tag());
+        tags.assign(unit(), fixture.tag(), new TagService.AssignmentCommand(List.of(fixture.known()),
+                Map.of(fixture.known(), object("PersonTagAssignment", assignmentId).version()), "ADD", "停用后人工判断", 1), key());
+        deactivations.processPending();
+        var assignment = object("PersonTagAssignment", assignmentId);
+        assertEquals("ACTIVE", text(assignment, "state"));
+        assertEquals(List.of("MANUAL"), batches.activeContributions(admin(), assignment).stream().map(c -> text(c, "source")).toList());
+    }
+
+    @Test
+    void enablingDirectoryDoesNotSilentlyReactivatePreviouslyStoppedRules() {
+        var fixture = fixture();
+        finish(publish(fixture, 40));
+        tags.edit(admin(), fixture.tag(), new TagService.EditTag("目录停用验证", "", "INACTIVE", 1), key());
+        assertEquals("INACTIVE", text(object("TagRule", fixture.rule()), "status"));
+        tags.edit(admin(), fixture.tag(), new TagService.EditTag("目录停用验证", "", "ACTIVE", 2), key());
+        assertEquals("INACTIVE", text(object("TagRule", fixture.rule()), "status"));
+        batches.scheduleChangedInputs();
+        assertThrows(BusinessConflict.class, () -> batches.start(admin(), List.of(fixture.rule()), List.of(), key()));
+        deactivations.processPending();
+        assertEquals("EXPIRED", text(object("PersonTagAssignment", TagService.assignmentId(fixture.known(), fixture.tag())), "state"));
+    }
+
+    @Test
+    void brokenSourceIsReportedPerItemWithoutBlockingTheRestOfDeactivation() {
+        var fixture = fixture();
+        finish(publish(fixture, 40));
+        try (var tx = storage.beginTransaction(CONTEXT)) {
+            tx.createObject("TagContribution", "broken-" + key(), Map.of("source", "RULE", "state", "ACTIVE",
+                    "ruleId", fixture.rule(), "ruleVersionId", text(object("TagRule", fixture.rule()), "currentVersionId"),
+                    "sourceReference", fixture.tag(), "effectiveFrom", clock.instant().toString()));
+            tx.commit();
+        }
+        String batchId = deactivations.deactivate(admin(), fixture.rule(),
+                new RuleDeactivationService.Deactivate(object("TagRule", fixture.rule()).version(), true), key()).get("batchId").toString();
+        deactivations.processPending();
+        var batch = object("TagBatch", batchId);
+        assertEquals("PARTIAL_FAILED", text(batch, "state"));
+        assertEquals(3, RuleBatchService.number(batch, "cursor"));
+        assertEquals(1, RuleBatchService.number(batch, "failureCount"));
+        assertEquals(2, RuleBatchService.number(batch, "successCount"));
+        assertTrue(batches.results(admin(), batchId, 0, 20).items().stream().anyMatch(row -> "FAILED".equals(row.get("outcome"))));
     }
 
     private record Fixture(String org, String known, String missing, String tag, String rule) {}

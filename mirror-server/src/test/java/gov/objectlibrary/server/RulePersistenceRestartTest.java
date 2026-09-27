@@ -24,6 +24,8 @@ class RulePersistenceRestartTest {
                 "--logging.level.root=WARN", "--debug=false"};
         var context = RequestContext.system("mirror", "fixture");
         String batchId;
+        String ruleId;
+        String stopBatchId;
         try (var app = new SpringApplicationBuilder(MirrorApplication.class).run(args)) {
             var storage = app.getBean(StorageProvider.class);
             try (var tx = storage.beginTransaction(context)) {
@@ -36,7 +38,7 @@ class RulePersistenceRestartTest {
             var actor = app.getBean(Accounts.class).actor("admin");
             String tagId = app.getBean(TagService.class).create(actor, new TagService.CreateTag("RESTART_RULE_TAG", "批次恢复标签", "", "PERSON", ""), "restart-rule-tag").get("id").toString();
             var rules = app.getBean(RuleConfigurationService.class);
-            String ruleId = rules.create(actor, tagId, "恢复规则", "restart-rule-create").get("id").toString();
+            ruleId = rules.create(actor, tagId, "恢复规则", "restart-rule-create").get("id").toString();
             String previewId = rules.preview(actor, ruleId, Map.of("field", "organizationId", "operator", "EQ", "value", "demo-a"), "restart-rule-preview").get("id").toString();
             rules.processPreviews();
             var preview = rules.previewDetail(actor, previewId, 0, 20);
@@ -56,6 +58,24 @@ class RulePersistenceRestartTest {
             assertEquals(134, RuleBatchService.number(batch, "cursor"));
             assertEquals(134, storage.queryObjects(context, "TagEvaluation", new QueryOptions(200, 0, null, null, false)).size());
             assertEquals(118, storage.queryObjects(context, "TagContribution", new QueryOptions(200, 0, null, null, false)).size());
+            var actor = app.getBean(Accounts.class).actor("admin");
+            var stop = app.getBean(RuleDeactivationService.class);
+            var rule = storage.getObject(context, "TagRule", ruleId);
+            stopBatchId = stop.deactivate(actor, ruleId, new RuleDeactivationService.Deactivate(rule.version(), true), "restart-stop").get("batchId").toString();
+            assertEquals(100, stop.processPending());
+            assertEquals(100, RuleBatchService.number(storage.getObject(context, "TagBatch", stopBatchId), "cursor"));
+        }
+        try (var app = new SpringApplicationBuilder(MirrorApplication.class).run(args)) {
+            var stop = app.getBean(RuleDeactivationService.class);
+            assertEquals(18, stop.processPending());
+            assertEquals(0, stop.processPending());
+            var storage = app.getBean(StorageProvider.class);
+            assertEquals("SUCCEEDED", text(storage.getObject(context, "TagBatch", stopBatchId), "state"));
+            var sources = storage.queryObjects(context, "TagContribution", new QueryOptions(200, 0, null, null, false));
+            assertEquals(118, sources.size());
+            assertTrue(sources.stream().allMatch(source -> text(source, "state").equals("EXPIRED")));
+            var evaluations = storage.queryObjects(context, "TagEvaluation", new QueryOptions(500, 0, null, null, false));
+            assertEquals(252, evaluations.size(), "134 rule evaluations plus exactly 118 source endings across restarts");
         }
     }
 }

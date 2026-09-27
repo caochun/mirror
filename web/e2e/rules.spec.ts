@@ -53,4 +53,25 @@ test('administrator previews and publishes a deterministic rule and recalculatio
   const assignments = await (await page.request.get('/api/people/demo-person-001/tags')).json();
   expect(assignments.find((item: { tagId: string }) => item.tagId === tag.id).state).toBe('SUPPRESSED');
   await page.screenshot({ path: testInfo.outputPath('rule-batch-results.png'), fullPage: true });
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: '停用 浏览器单位规则', exact: true }).click();
+  await expect(page.getByRole('cell', { name: '已停用', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '处理完成', exact: true })).toHaveCount(3);
+  const stoppedTags = await (await page.request.get('/api/people/demo-person-002/tags')).json();
+  expect(stoppedTags.find((item: { tagId: string }) => item.tagId === tag.id).state).toBe('EXPIRED');
+  await page.getByRole('button', { name: '配置 浏览器单位规则', exact: true }).click();
+  await expect(page.getByText('规则已停用。核对条件后重新预览并确认发布，才会重新启用。', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '预览全库影响', exact: true }).click();
+  await expect(page.getByText('预计新增 7', { exact: true })).toBeVisible();
+  await page.getByRole('checkbox', { name: '我已核对全库影响，确认发布并开始重算', exact: true }).check();
+  await page.getByRole('button', { name: '确认发布规则', exact: true }).click();
+  await expect(page.getByRole('cell', { name: '已启用', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '处理完成', exact: true })).toHaveCount(4);
+  const reenabled = await (await page.request.get('/api/people/demo-person-001/tags')).json();
+  expect(reenabled.find((item: { tagId: string }) => item.tagId === tag.id).state).toBe('SUPPRESSED');
+  const restored = await (await page.request.get('/api/people/demo-person-002/tags')).json();
+  expect(restored.find((item: { tagId: string }) => item.tagId === tag.id).state).toBe('ACTIVE');
+  expect((await (await page.request.get('/api/reminders')).json()).length).toBe(remindersBefore.length);
+  await page.screenshot({ path: testInfo.outputPath('rule-deactivation-and-reenable.png'), fullPage: true });
+
 });

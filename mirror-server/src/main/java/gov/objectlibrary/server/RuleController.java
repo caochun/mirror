@@ -15,13 +15,15 @@ class RuleController {
     private final Accounts accounts;
     private final RuleConfigurationService rules;
     private final RuleBatchService batches;
+    private final RuleDeactivationService deactivations;
     private final TaskExecutor executor;
 
-    RuleController(Accounts accounts, RuleConfigurationService rules, RuleBatchService batches,
+    RuleController(Accounts accounts, RuleConfigurationService rules, RuleBatchService batches, RuleDeactivationService deactivations,
                    @Qualifier("ruleExecutor") TaskExecutor executor) {
         this.accounts = accounts;
         this.rules = rules;
         this.batches = batches;
+        this.deactivations = deactivations;
         this.executor = executor;
     }
 
@@ -50,6 +52,15 @@ class RuleController {
                                 @RequestBody RuleConfigurationService.Publish input) {
         var result = rules.publish(accounts.actor(principal.getName()), id, input, key);
         execute(batches::processPending);
+        return result;
+    }
+
+    @PostMapping("/{id}/deactivate")
+    Map<String, Object> deactivate(Principal principal, @PathVariable String id,
+                                   @RequestHeader("Idempotency-Key") String key,
+                                   @RequestBody RuleDeactivationService.Deactivate input) {
+        var result = deactivations.deactivate(accounts.actor(principal.getName()), id, input, key);
+        execute(deactivations::processPending);
         return result;
     }
 

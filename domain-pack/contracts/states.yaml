@@ -3,6 +3,15 @@ schemaVersion: 1
 status: "definition-only"
 models:
   -
+    object: "TagProcessingIssue"
+    field: "state"
+    values: ["OPEN", "RESOLVED"]
+    transitions:
+      - {from: "OPEN", to: "RESOLVED", action: "ResolveTagProcessingIssue"}
+      - {from: "OPEN", to: "RESOLVED", action: "ApplyRuleEvaluation"}
+      - {from: "OPEN", to: "RESOLVED", action: "DeactivateTagRule"}
+    notes: "规则停用关闭不再适用的问题，保留原始异常和关闭原因，不冒充源字段修正；再评估产生新问题。"
+  -
     object: "TagRule"
     field: "status"
     values: ["DRAFT", "ACTIVE", "INACTIVE"]

@@ -25,6 +25,7 @@ import static gov.objectlibrary.server.DeliveryService.values;
 @Service
 class RuleBatchService {
     private final StorageProvider storage;
+    private final TagActivity activity;
     private final DirectoryService directory;
     private final DomainContracts contracts;
     private final BusinessCommands commands;
@@ -35,9 +36,10 @@ class RuleBatchService {
     private final ObjectMapper json;
     private final Clock clock;
 
-    RuleBatchService(StorageProvider storage, DirectoryService directory, DomainContracts contracts, BusinessCommands commands,
+    RuleBatchService(StorageProvider storage, TagActivity activity, DirectoryService directory, DomainContracts contracts, BusinessCommands commands,
                      PersonTagCommands manualTags, RuleFacts facts, RuleInputStamp stamps, JdbcTemplate jdbc, ObjectMapper json, Clock clock) {
         this.storage = storage;
+        this.activity = activity;
         this.directory = directory;
         this.contracts = contracts;
         this.commands = commands;
@@ -141,8 +143,8 @@ class RuleBatchService {
             var person = required(actor, "Person", personId);
             var condition = condition(text(version, "conditionJson"));
             var input = facts.load(actor, person, RuleExpression.validate(condition));
-            boolean stale = !text(rule, "currentVersionId").equals(versionId) || !text(tag, "currentVersionId").equals(tagVersionId);
-            var result = stale ? new RuleExpression.Result("SKIPPED", "配置已有新版本，旧批次不再应用", List.of()) : RuleExpression.evaluate(condition, input);
+            boolean stale = !text(rule, "status").equals("ACTIVE") || !text(rule, "currentVersionId").equals(versionId) || !text(tag, "currentVersionId").equals(tagVersionId);
+            var result = stale ? new RuleExpression.Result("SKIPPED", "规则已停用或配置已有新版本，旧批次不再应用", List.of()) : RuleExpression.evaluate(condition, input);
             if (!text(tag, "status").equals("ACTIVE")) result = new RuleExpression.Result("SKIPPED", "标签目录已停用", List.of());
             contracts.validateInputs(actor, "ApplyRuleEvaluation", Map.of("personId", personId, "ruleVersionId", versionId, "batchId", batchId,
                     "outcome", result.outcome(), "inputDigest", input.digest(), "evidence", Map.of("references", input.references(), "reason", result.reason()),
@@ -184,7 +186,10 @@ class RuleBatchService {
         boolean keep = false;
         boolean other = legacy && !text(assignment, "state").equals("EXPIRED");
         for (var contribution : contributions) {
-            if (!rule.id().equals(text(contribution, "ruleId"))) { other = true; continue; }
+            if (!rule.id().equals(text(contribution, "ruleId"))) {
+                other |= activity.contributionActive(actor, contribution);
+                continue;
+            }
             if (matched && text(contribution, "ruleVersionId").equals(version.id()) && text(contribution, "sourceReference").equals(tagVersionId)) keep = true;
             else tx.updateObject(contribution.type(), contribution.id(), values("state", "EXPIRED", "effectiveTo", clock.instant().toString(),
                     "reason", result.outcome().equals("UNKNOWN") ? "本规则缺少可靠输入，暂停本来源" : "规则不再命中或版本已替换"), contribution.version());
@@ -233,7 +238,7 @@ class RuleBatchService {
         if (!result.outcome().equals("UNKNOWN")) return;
         String id = "issue-" + evaluation.id();
         var issue = tx.createObject("TagProcessingIssue", id, values("ruleId", rule.id(), "personId", person.id(), "tagVersionId", tagVersionId,
-                "batchId", batch.id(), "category", "RULE_UNCOMPUTABLE", "state", "OPEN", "field", String.join(",", result.missingFields()),
+                "batchId", batch.id(), "ruleVersionId", text(evaluation, "ruleVersionId"), "category", "RULE_UNCOMPUTABLE", "state", "OPEN", "field", String.join(",", result.missingFields()),
                 "reason", result.reason(), "detectedAt", clock.instant().toString(), "suggestedResolution", "在权威来源补齐字段或由配置管理员修正映射后局部重算"));
         tx.createLink("TagIssueForPerson", "person-" + id, issue.key(), person.key(), Map.of());
         tx.createLink("TagIssueForTagVersion", "tag-" + id, issue.key(), new EntityKey("TagVersion", tagVersionId), Map.of());
@@ -250,7 +255,7 @@ class RuleBatchService {
             String state = number(batch, "failureCount") > 0 || number(batch, "unknownCount") > 0 ? number(batch, "successCount") == 0 ? "FAILED" : "PARTIAL_FAILED" : "SUCCEEDED";
             contracts.requireTransition(batch.type(), "state", "RUNNING", state, "CompleteTagBatch");
             tx.updateObject(batch.type(), batch.id(), values("state", state, "finishedAt", clock.instant().toString(), "leaseOwner", null, "leaseUntil", null), batch.version());
-            return Map.of("id", batch.id(), "state", state, "success", number(batch, "successCount"), "unknown", number(batch, "unknownCount"), "skipped", number(batch, "skippedCount"));
+            return Map.of("id", batch.id(), "state", state, "success", number(batch, "successCount"), "unknown", number(batch, "unknownCount"), "failed", number(batch, "failureCount"), "skipped", number(batch, "skippedCount"));
         }, contracts.eventType("CompleteTagBatch"));
     }
 
@@ -287,7 +292,7 @@ class RuleBatchService {
                     commands.executeDefined(actor, "StartTagBatch", "scan-rule-" + java.util.UUID.randomUUID(), List.of(rule.id(), signature),
                             () -> contracts.authorizeSystem("StartTagBatch"), tx -> {
                         var current = required(actor, "TagRule", rule.id());
-                        if (!versionId.equals(text(current, "currentVersionId"))) throw new BusinessConflict("规则已更新");
+                        if (!text(current, "status").equals("ACTIVE") || !versionId.equals(text(current, "currentVersionId"))) throw new BusinessConflict("规则已更新");
                         tx.updateObject(current.type(), current.id(), Map.of("lastScanStamp", signature), current.version());
                         if (!people.isEmpty()) {
                             var batch = enqueue(tx, actor, List.of(version), people.stream().sorted().toList(), "INPUT_CHANGE:" + signature);
@@ -306,11 +311,11 @@ class RuleBatchService {
 
     List<Map<String, Object>> list(Accounts.Actor actor) {
         contracts.authorize(actor, "StartTagBatch");
-        return directory.all(actor, "TagBatch").stream().filter(batch -> text(batch, "kind").equals("RULE"))
+        return directory.all(actor, "TagBatch").stream().filter(batch -> Set.of("RULE", "RULE_DEACTIVATE").contains(text(batch, "kind")))
                 .sorted(java.util.Comparator.comparing(ObjectRecord::createdAt).reversed()).map(batch -> values("id", batch.id(), "state", text(batch, "state"),
                         "total", number(batch, "totalCount"), "processed", number(batch, "cursor"), "success", number(batch, "successCount"),
-                        "unknown", number(batch, "unknownCount"), "skipped", number(batch, "skippedCount"), "startedAt", text(batch, "startedAt"),
-                        "finishedAt", text(batch, "finishedAt"), "trigger", text(batch, "triggerReference"))).toList();
+                        "unknown", number(batch, "unknownCount"), "failed", number(batch, "failureCount"), "skipped", number(batch, "skippedCount"), "startedAt", text(batch, "startedAt"),
+                        "finishedAt", text(batch, "finishedAt"), "trigger", text(batch, "triggerReference"), "kind", text(batch, "kind"))).toList();
     }
 
     DirectoryService.Page<Map<String, Object>> results(Accounts.Actor actor, String batchId, int page, int size) {
@@ -321,9 +326,11 @@ class RuleBatchService {
                 .sorted(java.util.Comparator.comparing(ObjectRecord::id)).toList();
         int start = (int) Math.min((long) page * size, evaluations.size());
         var rows = evaluations.subList(start, Math.min(start + size, evaluations.size())).stream().map(evaluation -> {
-            var person = directory.person(actor, text(evaluation, "personId")).person();
+            String personId = text(evaluation, "personId");
+            var sourcePerson = storage.getObject(actor.context(), "Person", personId);
+            var person = sourcePerson == null || sourcePerson.isDeleted() ? null : directory.person(actor, personId).person();
             var rule = required(actor, "TagRule", text(evaluation, "ruleId"));
-            return values("id", evaluation.id(), "personId", person.id(), "name", person.name(), "organization", person.organizationName(),
+            return values("id", evaluation.id(), "personId", personId, "name", person == null ? "关联待核实" : person.name(), "organization", person == null ? "" : person.organizationName(),
                     "rule", text(rule, "name"), "outcome", text(evaluation, "state"), "reason", text(evaluation, "reason"), "evaluatedAt", text(evaluation, "evaluatedAt"));
         }).toList();
         return new DirectoryService.Page<>(rows, evaluations.size(), page, size);

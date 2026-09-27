@@ -23,6 +23,7 @@ import static gov.objectlibrary.server.RuleBatchService.number;
 @Service
 class RuleConfigurationService {
     private final StorageProvider storage;
+    private final TagActivity activity;
     private final DirectoryService directory;
     private final Accounts accounts;
     private final DomainContracts contracts;
@@ -33,9 +34,10 @@ class RuleConfigurationService {
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
-    RuleConfigurationService(StorageProvider storage, DirectoryService directory, Accounts accounts, DomainContracts contracts,
+    RuleConfigurationService(StorageProvider storage, TagActivity activity, DirectoryService directory, Accounts accounts, DomainContracts contracts,
                              BusinessCommands commands, RuleFacts facts, RuleInputStamp stamps, RuleBatchService batches, JdbcTemplate jdbc, Clock clock) {
         this.storage = storage;
+        this.activity = activity;
         this.directory = directory;
         this.accounts = accounts;
         this.contracts = contracts;
@@ -124,8 +126,8 @@ class RuleConfigurationService {
             var result = RuleExpression.evaluate(condition, input);
             var assignment = storage.getObject(worker.context(), "PersonTagAssignment", TagService.assignmentId(personId, text(version, "tagDefinitionId")));
             boolean masked = assignment != null && (Boolean.TRUE.equals(assignment.properties().get("manualSuppressed")) || Set.of("SUPPRESSED", "REMOVED").contains(text(assignment, "state")));
-            boolean active = assignment != null && text(assignment, "state").equals("ACTIVE");
-            boolean other = assignment != null && batches.activeContributions(worker, assignment).stream().anyMatch(c -> !rule.id().equals(text(c, "ruleId")));
+            boolean active = assignment != null && activity.state(worker, assignment).equals("ACTIVE");
+            boolean other = assignment != null && batches.activeContributions(worker, assignment).stream().anyMatch(c -> !rule.id().equals(text(c, "ruleId")) && activity.contributionActive(worker, c));
             if (assignment != null && directory.links(worker, assignment.key(), "AssignmentHasContribution", StorageProvider.Direction.OUTBOUND).isEmpty()
                     && !text(assignment, "state").equals("EXPIRED")) other = true;
             boolean after = !masked && input.eligible() && (result.outcome().equals("MATCH") || other);

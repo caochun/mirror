@@ -250,9 +250,18 @@ class BusinessMetricsService {
                 if (!effectivePeople.contains(person) || !assignment.text("state").equals("ACTIVE") || assignment.flag("manualSuppressed") || !enabledTag(tag)
                         || !validInterval(assignment, "effectiveFrom", "effectiveTo")) continue;
                 if (!tagScope.contains(tag)) continue;
-                List<Fact> contributions = to("AssignmentHasContribution", assignment.id()).stream().map(id -> fact("TagContribution", id))
-                        .filter(c -> c != null && c.text("state").equals("ACTIVE") && validInterval(c, "effectiveFrom", "effectiveTo")).toList();
-                if (contributions.isEmpty()) { addCount("tagsWithoutEvidence", 1); continue; }
+                var sourceIds = to("AssignmentHasContribution", assignment.id());
+                List<Fact> contributions = sourceIds.stream().map(id -> fact("TagContribution", id))
+                        .filter(c -> c != null && TagActivity.contributionActive(c.properties(), ruleId -> {
+                            var rule = fact("TagRule", ruleId);
+                            return rule == null ? null : rule.properties();
+                        }) && validInterval(c, "effectiveFrom", "effectiveTo")).toList();
+                if (contributions.isEmpty()) {
+                    if (sourceIds.isEmpty() || sourceIds.stream().anyMatch(id -> fact("TagContribution", id) == null)) {
+                        addCount("tagsWithoutEvidence", 1);
+                    }
+                    continue;
+                }
                 if (!tagScope.contains(tag)) continue;
                 boolean firstLogicalTag = activeTags.computeIfAbsent(person, ignored -> new HashSet<>()).add(tag);
                 String label = fact("TagDefinition", tag).text("name");
@@ -410,6 +419,11 @@ class BusinessMetricsService {
             }
             for (var issue : facts("TagProcessingIssue").values()) {
                 if (!issue.text("state").equals("OPEN")) continue;
+                if (!issue.text("ruleId").isEmpty()) {
+                    var rule = fact("TagRule", issue.text("ruleId"));
+                    if (rule == null || !rule.text("status").equals("ACTIVE")) continue;
+                    if (!issue.text("ruleVersionId").isEmpty() && !issue.text("ruleVersionId").equals(rule.text("currentVersionId"))) continue;
+                }
                 String person = single(to("TagIssueForPerson", issue.id()));
                 String version = single(to("TagIssueForTagVersion", issue.id()));
                 addPending(pending, issue, person, version, issue.text("category"));

@@ -55,3 +55,7 @@ TagEvaluation增加SKIPPED，表示对象资格或配置已不适用而跳过，
 新增MappingImpactPreview及三个证据关系，不改变已有关系基数。PublishClassificationMapping改为绑定预览ID、预期版本和确认摘要，原直接提交配置的定义签名不再有效；该动作尚无运行处理器，因此不提供旧签名兼容执行入口。历史映射版本及EvaluationUsesMapping证据保留，不伪造旧预览。
 
 新增DeactivateTagRule契约、TagRule/ClassificationMapping/MappingImpactPreview状态及相关贡献失效迁移。现有数据不因修改状态词表而自动停用；实际接通时需验证停用与在途批次隔离和中断恢复。
+
+## 0.2.7 → 0.2.8
+
+TagRule补充停用时点/批次投影；TagBatch补充停用规则、冻结贡献/问题ID；TagProcessingIssue补充ruleVersionId。已停止的规则立即不作为当前有效来源，历史状态仍保留，后台逐项结束贡献和局部问题。规则清理评价使用SKIPPED说明停止应用，不假装未命中。再次启用发布新规则版本，旧清理不修改新来源；目录重新启用不会恢复旧规则。旧贡献缺ruleId的兼容记录仍需人工核实来源，不能猜测归属后批量删除。

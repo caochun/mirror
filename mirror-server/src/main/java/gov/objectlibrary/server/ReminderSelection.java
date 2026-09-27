@@ -19,10 +19,12 @@ import java.util.TreeSet;
 @Service
 public class ReminderSelection {
     private final StorageProvider storage;
+    private final TagActivity activity;
     private final DirectoryService directory;
 
-    public ReminderSelection(StorageProvider storage, DirectoryService directory) {
+    public ReminderSelection(StorageProvider storage, TagActivity activity, DirectoryService directory) {
         this.storage = storage;
+        this.activity = activity;
         this.directory = directory;
     }
 
@@ -66,7 +68,7 @@ public class ReminderSelection {
         Map<String, Set<String>> tags = new HashMap<>();
         for (var tag : directory.all(actor, "PersonTagAssignment")) {
             var definition = catalogById.get(text(tag, "tagDefinitionId"));
-            if (definition != null && "ACTIVE".equals(text(definition, "status")) && "ACTIVE".equals(text(tag, "state"))
+            if (definition != null && "ACTIVE".equals(text(definition, "status")) && "ACTIVE".equals(activity.state(actor, tag))
                     && !Boolean.TRUE.equals(tag.properties().get("manualSuppressed"))) {
                 tags.computeIfAbsent(text(tag, "personId"), ignored -> new HashSet<>()).add(text(tag, "tagDefinitionId"));
             }

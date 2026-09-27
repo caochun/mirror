@@ -21,7 +21,7 @@ import java.util.TreeSet;
 @Component
 class MetricsSnapshotReader {
     private static final Set<String> TYPES = Set.of("Person", "Organization", "UserAccount", "PersonProfile", "ObjectEligibility",
-            "DataAssociationIssue", "TagDefinition", "TagVersion", "PersonTagAssignment", "TagContribution", "TagCandidate",
+            "DataAssociationIssue", "TagDefinition", "TagVersion", "TagRule", "PersonTagAssignment", "TagContribution", "TagCandidate",
             "TagProcessingIssue", "ReminderTask", "ReminderTaskVersion", "RecipientRecord", "RecipientVersionState",
             "ReadReceipt", "OverdueRecord", "IntegrationIssue", "DeliveryAttempt", "WithdrawalRecord");
     private static final Set<String> LINKS = Set.of("OrganizationParent", "PersonBelongsToOrganization", "ProfileForPerson",
@@ -35,7 +35,7 @@ class MetricsSnapshotReader {
             "currentPublishedVersionId", "pendingVersionId", "versionKind", "publishedAt", "categorySnapshot", "readingWindow",
             "personNameSnapshot", "organizationIdSnapshot", "organizationNameSnapshot", "deliveryState", "withdrawalState", "channelMode",
             "firstDeliveredAt", "deadlineAt", "firstReadAt", "recipientId", "taskVersionId", "readAt", "occurredAt", "detectedAt",
-            "attemptedAt", "requestedAt", "completedAt", "externalEventId");
+            "attemptedAt", "requestedAt", "completedAt", "externalEventId", "ruleId", "ruleVersionId", "currentVersionId");
     private final DataSource dataSource;
     private final ObjectMapper json;
     private final Clock clock;

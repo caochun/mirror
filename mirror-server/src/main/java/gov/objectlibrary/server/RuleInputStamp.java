@@ -17,7 +17,7 @@ class RuleInputStamp {
         try (var connection = dataSource.getConnection()) {
             var digest = MessageDigest.getInstance("SHA-256");
             String types = "'Person','Organization','Position','Assignment','PersonProfile','ObjectEligibility','ClassificationMapping','TagDefinition'"
-                    + (includeEffects ? ",'PersonTagAssignment','TagContribution'" : "");
+                    + (includeEffects ? ",'PersonTagAssignment','TagContribution','TagRule'" : "");
             try (var query = connection.prepareStatement("SELECT object_type,object_id,version,deleted_at FROM of_objects WHERE tenant_id=? AND object_type IN (" + types + ") ORDER BY object_type,object_id")) {
                 query.setString(1, tenant);
                 try (var rows = query.executeQuery()) {

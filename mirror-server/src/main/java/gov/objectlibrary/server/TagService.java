@@ -8,18 +8,22 @@ import org.springframework.stereotype.Service;
 @Service
 public class TagService {
     private final StorageProvider storage;
+    private final TagActivity activity;
     private final DirectoryService directory;
     private final Accounts accounts;
     private final BusinessCommands commands;
     private final PersonTagCommands personTags;
+    private final RuleDeactivationService deactivations;
 
-    public TagService(StorageProvider storage, DirectoryService directory, Accounts accounts,
-                      BusinessCommands commands, PersonTagCommands personTags) {
+    public TagService(StorageProvider storage, TagActivity activity, DirectoryService directory, Accounts accounts,
+                      BusinessCommands commands, PersonTagCommands personTags, RuleDeactivationService deactivations) {
         this.storage = storage;
+        this.activity = activity;
         this.directory = directory;
         this.accounts = accounts;
         this.commands = commands;
         this.personTags = personTags;
+        this.deactivations = deactivations;
     }
     public List<TagView> tags(Accounts.Actor actor) {
         accounts.requirePermission(actor,"PERSON_READ");
@@ -69,6 +73,11 @@ public class TagService {
                     tx.updateObject("TagDefinition",child.id(),Map.of("status","INACTIVE","currentVersionId",childVersionId),child.version());
                     snapshot(tx,child.id(),childVersionId,child.version()+1,text(child,"name"),text(child,"description"));
                 }
+                for (var rule : directory.all(actor, "TagRule")) {
+                    if (affected.contains(text(rule, "tagDefinitionId")) && "ACTIVE".equals(text(rule, "status"))) {
+                        deactivations.enqueue(tx, actor, rule);
+                    }
+                }
                 for(var assignment:directory.all(actor,"PersonTagAssignment"))
                     if(affected.contains(text(assignment,"tagDefinitionId"))&&"ACTIVE".equals(text(assignment,"state")))
                         tx.updateObject(assignment.type(),assignment.id(),Map.of("state","EXPIRED","effectiveTo",Instant.now().toString(),
@@ -97,7 +106,7 @@ public class TagService {
     private AssignmentView assignmentView(Accounts.Actor actor,ObjectRecord a) {
         var tag=storage.getObject(actor.context(),"TagDefinition",text(a,"tagDefinitionId"));
         return new AssignmentView(a.id(),text(a,"tagDefinitionId"),tag==null?text(a,"tagNameSnapshot"):text(tag,"name"),
-                text(a,"tagNameSnapshot"),text(a,"state"),text(a,"source"),Boolean.TRUE.equals(a.properties().get("manualSuppressed")),
+                text(a,"tagNameSnapshot"),activity.state(actor,a),text(a,"source"),Boolean.TRUE.equals(a.properties().get("manualSuppressed")),
                 text(a,"effectiveFrom"),text(a,"effectiveTo"),text(a,"tagVersion"),text(a,"note"),a.version());
     }
     private static TagView view(ObjectRecord tag,List<ObjectRecord> all) {

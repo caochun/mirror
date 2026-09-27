@@ -10,10 +10,10 @@ type Condition = Leaf | { all: Condition[] } | { any: Condition[] };
 type Rule = { id: string; version: number; name: string; tagId: string; tagName: string; state: string; condition: Condition; currentVersionId: string };
 type PreviewRow = { personId: string; name: string; organization: string; outcome: string; change: string; suppressed: boolean; reason: string; missingFields: string[] };
 type Preview = { id: string; state: string; ruleId: string; ruleVersion: number; digest: string; added: number; expired: number; unchanged: number; unknown: number; skipped: number; suppressed: number; processed: number; items: PreviewRow[]; total: number; page: number; size: number };
-type Batch = { id: string; state: string; total: number; processed: number; success: number; unknown: number; skipped: number; startedAt: string; trigger: string };
+type Batch = { kind: string; failed: number; id: string; state: string; total: number; processed: number; success: number; unknown: number; skipped: number; startedAt: string; trigger: string };
 type ResultRow = { id: string; personId: string; name: string; organization: string; rule: string; outcome: string; reason: string };
 const fields: Record<string, string> = { ageYears: '年龄（按可靠出生日期）', serviceMonths: '入职月数', organizationId: '当前单位（精确）', rank: '标准职级', positionCode: '标准岗位编码', organizationNature: '单位性质映射', roleLevel: '最高职务层级映射', positionDomain: '岗位领域映射' };
-const states: Record<string, string> = { DRAFT: '未发布', ACTIVE: '已启用', QUEUED: '排队中', RUNNING: '处理中', READY: '可确认发布', STALE: '资料已变化，须重新预览', FAILED: '未能全部完成', PARTIAL_FAILED: '部分无法计算', SUCCEEDED: '处理完成', MATCH: '命中', NO_MATCH: '未命中', UNKNOWN: '无法计算', SKIPPED: '已跳过', ADD: '预计新增', EXPIRE: '预计失效', UNCHANGED: '保持不变' };
+const states: Record<string, string> = { DRAFT: '未发布', ACTIVE: '已启用', INACTIVE: '已停用', QUEUED: '排队中', RUNNING: '处理中', READY: '可确认发布', STALE: '资料已变化，须重新预览', FAILED: '未能全部完成', PARTIAL_FAILED: '部分未完成', SUCCEEDED: '处理完成', MATCH: '命中', NO_MATCH: '未命中', UNKNOWN: '无法计算', SKIPPED: '已跳过', ADD: '预计新增', EXPIRE: '预计失效', UNCHANGED: '保持不变' };
 const initial = (): Condition => ({ field: 'ageYears', operator: 'LT', value: 40 });
 
 export function Rules() {
@@ -96,6 +96,25 @@ export function Rules() {
       setPreviewId(''); setPreview(null); setSelected(null); setRevision(revision + 1); setNotice('规则已发布，重算批次已排队。不会创建提醒任务。');
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
+  async function deactivate(rule: Rule) {
+    if (!window.confirm(`确认停用「${rule.name}」？本规则来源立即停止生效，后台保留失效记录；人工和其他规则来源不受影响。`)) return;
+    setBusy(true);
+    setError('');
+    try {
+      await send(`/rules/${rule.id}/deactivate`, { expectedVersion: rule.version, confirmation: true });
+      setSelected(null);
+      setPreviewId('');
+      setPreview(null);
+      setConfirmed(false);
+      setRevision(revision + 1);
+      setNotice('规则已停用，其来源不再用于选人或统计。后台正在归档失效依据；重新启用须重新预览并确认发布。');
+    } catch (e) {
+      setError((e as Error).message);
+      setRevision(revision + 1);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function recompute(rule: Rule) {
     if (!window.confirm(`确认按当前规则重算「${rule.name}」？人工删除状态不会被恢复。`)) return;
     setBusy(true); setError('');
@@ -110,8 +129,9 @@ export function Rules() {
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
       <section className="panel overflow-auto"><table className="w-full text-left text-sm"><thead><tr>{['规则', '目标标签', '状态', '操作'].map(label => <th className="p-4" key={label}>{label}</th>)}</tr></thead>
         <tbody>{rules.map(rule => <tr className="border-t border-slate-100" key={rule.id}><td className="p-4">{rule.name}</td><td className="p-4">{rule.tagName}</td><td className="p-4">{states[rule.state]}</td>
-          <td className="flex gap-3 p-4">{canConfigure && <button className="text-blue-700" onClick={() => { setSelected(rule); setCondition(Object.keys(rule.condition).length ? rule.condition : initial()); setPreviewId(''); setPreview(null); setConfirmed(false); }}>配置 {rule.name}</button>}
-            {canBatch && rule.state === 'ACTIVE' && <button className="text-blue-700" disabled={busy} onClick={() => recompute(rule)}>重算 {rule.name}</button>}</td></tr>)}</tbody>
+          <td className="flex flex-wrap gap-3 p-4">{canConfigure && <button className="text-blue-700" onClick={() => { setSelected(rule); setCondition(Object.keys(rule.condition).length ? rule.condition : initial()); setPreviewId(''); setPreview(null); setConfirmed(false); }}>配置 {rule.name}</button>}
+            {canBatch && rule.state === 'ACTIVE' && <button className="text-blue-700" disabled={busy} onClick={() => recompute(rule)}>重算 {rule.name}</button>}
+            {canConfigure && rule.state === 'ACTIVE' && <button className="text-rose-700" disabled={busy} onClick={() => deactivate(rule)}>停用 {rule.name}</button>}</td></tr>)}</tbody>
       </table>{rules.length === 0 && <p className="muted p-6">尚无自动规则。新标签仍可人工维护。</p>}</section>
       {canConfigure && <form className="panel space-y-4 p-5" onSubmit={create}><h2 className="font-semibold">新建规则</h2>
         <label className="block text-sm">规则名称<input className="mt-2 w-full" required maxLength={100} value={name} onChange={event => setName(event.target.value)} /></label>
@@ -123,6 +143,7 @@ export function Rules() {
     </div>
     {selected && canConfigure && <section className="panel mt-6 space-y-5 p-6">
       <h2 className="font-semibold">配置规则 · {selected.name}</h2>
+      {selected.state === 'INACTIVE' && <p className="text-sm text-amber-800">规则已停用。核对条件后重新预览并确认发布，才会重新启用。</p>}
       <ConditionEditor value={condition} onChange={value => { setCondition(value); setPreviewId(''); setPreview(null); setConfirmed(false); }} organizations={organizations} tags={tags} />
       <p className="muted">使用当前有效职务及可靠字段。无法计算只影响本规则；本规则旧贡献将暂停，其他来源保留。年龄以北京时间日期计算。</p>
       <button className="primary" disabled={busy} onClick={propose}>预览全库影响</button>
@@ -143,9 +164,9 @@ export function Rules() {
         </>}
       </>}
     </section>}
-    {canBatch && <section className="panel mt-6 p-6"><h2 className="font-semibold">规则重算批次</h2><p className="muted mt-2">“已计算”包括命中和未命中，不等于全部人员新增标签。</p>
-      <div className="mt-4 overflow-auto"><table className="w-full text-left text-sm"><thead><tr>{['状态', '进度', '已计算', '无法计算', '跳过', '明细'].map(label => <th className="p-3" key={label}>{label}</th>)}</tr></thead><tbody>{batches.map(batch => <tr className="border-t border-slate-100" key={batch.id}>
-        <td className="p-3">{states[batch.state]}</td><td className="p-3">{batch.processed} / {batch.total}</td><td className="p-3">{batch.success}</td><td className="p-3">{batch.unknown}</td><td className="p-3">{batch.skipped}</td><td className="p-3"><button className="text-blue-700" onClick={() => { setResultBatch(batch.id); setResultPage(0); }}>查看结果</button></td>
+    {canBatch && <section className="panel mt-6 p-6"><h2 className="font-semibold">规则处理批次</h2><p className="muted mt-2">规则重算按人员与规则计项；停用清理按来源贡献和待处理项计数。“已处理”不等于新增标签人数。</p>
+      <div className="mt-4 overflow-auto"><table className="w-full text-left text-sm"><thead><tr>{['类型', '状态', '进度', '已处理', '无法计算', '失败', '跳过', '明细'].map(label => <th className="p-3" key={label}>{label}</th>)}</tr></thead><tbody>{batches.map(batch => <tr className="border-t border-slate-100" key={batch.id}>
+        <td className="p-3">{batch.kind === 'RULE_DEACTIVATE' ? '停用清理' : '规则重算'}</td><td className="p-3">{states[batch.state]}</td><td className="p-3">{batch.processed} / {batch.total}</td><td className="p-3">{batch.success}</td><td className="p-3">{batch.unknown}</td><td className="p-3">{batch.failed}</td><td className="p-3">{batch.skipped}</td><td className="p-3"><button className="text-blue-700" onClick={() => { setResultBatch(batch.id); setResultPage(0); }}>查看结果</button></td>
       </tr>)}</tbody></table></div>
       {results && <div className="mt-5 rounded-lg bg-slate-50 p-4"><h3 className="font-semibold">逐项评估结果</h3><ul className="mt-3 space-y-2 text-sm">{results.items.map(row => <li key={row.id}>{row.name} · {row.organization} · {states[row.outcome]} · {row.reason}</li>)}</ul>
         <div className="mt-4 flex gap-4"><button className="secondary" disabled={resultPage === 0} onClick={() => setResultPage(resultPage - 1)}>上页结果</button><button className="secondary" disabled={(resultPage + 1) * results.size >= results.total} onClick={() => setResultPage(resultPage + 1)}>下页结果</button></div>

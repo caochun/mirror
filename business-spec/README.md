@@ -6,7 +6,7 @@ Foundry 位于 `foundry/` 子模块，负责通用对象关系、历史、事务
 
 ## 文档
 
-- [Domain Pack 0.2.7](../domain-pack/README.md)：最新业务对象、关系、动作签名、规则、状态与两份原始文档的需求对照；定义完善不等于完整系统实现。
+- [Domain Pack 0.2.8](../domain-pack/README.md)：最新业务对象、关系、动作签名、规则、状态与两份原始文档的需求对照；定义完善不等于完整系统实现。
 - [application-plan.md](application-plan.md)：当前完整系统实施计划，先验证Domain Pack，再落实业务处理器、前端和Dashboard。
 - [dashboard-plan.md](dashboard-plan.md)：大屏的信息架构、指标口径和 Mock 边界。
 - [progress.md](progress.md)：阶段实现、实际验证证据和未完成边界。

@@ -18,13 +18,15 @@ import java.util.Set;
 @Service
 public class PersonTagCommands {
     private final StorageProvider storage;
+    private final TagActivity activity;
     private final DirectoryService directory;
     private final BusinessCommands commands;
     private final DomainContracts contracts;
 
-    public PersonTagCommands(StorageProvider storage, DirectoryService directory,
+    public PersonTagCommands(StorageProvider storage, TagActivity activity, DirectoryService directory,
                              BusinessCommands commands, DomainContracts contracts) {
         this.storage = storage;
+        this.activity = activity;
         this.directory = directory;
         this.commands = commands;
         this.contracts = contracts;
@@ -72,7 +74,7 @@ public class PersonTagCommands {
                 if (!action.equals("RemovePersonTag")) parameters.put("tagVersionId", tagVersionId);
                 contracts.validateInputs(actor, action, parameters);
 
-                String before = previous == null ? null : normalizedState(previous);
+                String before = previous == null ? null : activity.state(actor, previous);
                 boolean removing = action.equals("RemovePersonTag");
                 String after = removing ? "SUPPRESSED" : "ACTIVE";
                 if (previous != null) {
@@ -134,7 +136,7 @@ public class PersonTagCommands {
         if (assignment == null) return List.of();
         return directory.links(actor, assignment.key(), "AssignmentHasContribution", StorageProvider.Direction.OUTBOUND)
                 .stream().map(l -> required(actor, "TagContribution", l.to().id()))
-                .map(c -> new ContributionView(c.id(), text(c, "source"), text(c, "state"),
+                .map(c -> new ContributionView(c.id(), text(c, "source"), activity.contributionActive(actor, c) ? "ACTIVE" : "EXPIRED",
                         text(c, "sourceReference"), text(c, "effectiveFrom"), text(c, "effectiveTo"),
                         text(c, "actorId"), text(c, "organizationId"), text(c, "reason"))).toList();
     }
@@ -201,11 +203,6 @@ public class PersonTagCommands {
         var object = storage.getObject(actor.context(), type, id);
         if (object == null || object.isDeleted()) throw new BusinessConflict("关联对象不存在或已删除");
         return object;
-    }
-
-    private static String normalizedState(ObjectRecord assignment) {
-        return Boolean.TRUE.equals(assignment.properties().get("manualSuppressed"))
-                || text(assignment, "state").equals("REMOVED") ? "SUPPRESSED" : text(assignment, "state");
     }
 
     private static String text(ObjectRecord object, String field) {

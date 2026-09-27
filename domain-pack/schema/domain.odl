@@ -1,4 +1,4 @@
-extend schema @namespace(name: "gov.object-library", version: "0.2.7")
+extend schema @namespace(name: "gov.object-library", version: "0.2.8")
 
 type Person @objectType {
   id: ID! @primary
@@ -130,6 +130,8 @@ type TagVersion @objectType {
 }
 
 type TagRule @objectType {
+  deactivatedAt: DateTime
+  deactivationBatchId: String
   name: String
   currentVersionId: String
   lastScanStamp: String
@@ -185,6 +187,7 @@ type TagCandidate @objectType {
 }
 
 type TagProcessingIssue @objectType {
+  ruleVersionId: String
   ruleId: String
   personId: String
   tagVersionId: String
@@ -201,6 +204,9 @@ type TagProcessingIssue @objectType {
 }
 
 type TagBatch @objectType {
+  ruleId: String
+  contributionIdsJson: String
+  issueIdsJson: String
   ruleVersionIdsJson: String
   tagVersionsJson: String
   personIdsJson: String
