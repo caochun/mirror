@@ -115,6 +115,8 @@ type MatterParticipation @objectType {
 }
 
 type RecipientSelection @objectType {
+  criteriaJson: String
+  entriesJson: String
   id: ID! @primary
   state: String!
   organizationRootsJson: String!
@@ -140,6 +142,9 @@ type SelectionEntry @objectType {
 }
 
 type ReviewRound @objectType {
+  taskId: String @indexed
+  versionId: String
+  organizationId: String
   id: ID! @primary
   roundNumber: Int!
   state: String!

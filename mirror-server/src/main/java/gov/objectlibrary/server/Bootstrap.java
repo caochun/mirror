@@ -46,7 +46,7 @@ class Bootstrap implements ApplicationRunner {
                     String id="demo-person-"+String.format("%03d",i);
                     String org=i<=8?"demo-a":i<=16?"demo-child":"demo-b";
                     tx.createObject("Person",id,Map.of("name","演示人员"+String.format("%02d",i),
-                            "employeeNo","DEMO-"+i,"status","ACTIVE","identityStatus","PENDING","title","业务经办"));
+                            "employeeNo","DEMO-"+i,"status","ACTIVE","identityStatus","OK","title","业务经办","identityReference","mock:"+id));
                     tx.createLink("PersonBelongsToOrganization","org-"+id,new EntityKey("Person",id),
                             new EntityKey("Organization",org),Map.of("startedAt","2026-01-01T00:00:00Z"));
                 }

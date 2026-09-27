@@ -76,8 +76,8 @@ metrics:
     code: "targetRecipients"
     grain: "TASK_PERSON"
     object: "RecipientRecord"
-    definition: "跨任务为人次；单任务按稳定接收记录；不按版本重复计算"
-    numerator: "count frozen task-person records"
+    definition: "跨任务为人次；单任务按稳定接收记录，不按版本重复计算。取当前有效审核/发布版本的VersionTargetsRecipient成员；历次驳回或撤回审核的历史接收名单不加入当前目标总数。"
+    numerator: "count stable task-person members of the current effective snapshot"
     denominator: "none"
     organizationBasis: "task owner + recipient organization snapshot"
   -

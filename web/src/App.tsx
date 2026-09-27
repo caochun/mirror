@@ -7,6 +7,8 @@ import { ErrorBox } from './ui';
 import { People, PersonDetail } from './People';
 import { TagDirectory } from './Tags';
 import { Dashboard } from './CoreDashboard';
+import { ReminderList, ReminderTaskDetail } from './Reminders';
+import { ReminderEditor } from './ReminderEditor';
 
 const Session = createContext<{ actor: Actor; logout: () => void } | null>(null);
 const roleNames: Record<string, string> = { SUPER_ADMIN: '超级管理员', UNIT_ADMIN: '单位管理员', AREA_ADMIN: '片区管理员', REVIEWER: '推送审核员' };
@@ -32,6 +34,10 @@ export function App() {
     <Route path="/people" element={<People />} />
     <Route path="/people/:id" element={<PersonDetail />} />
     <Route path="/tags" element={<TagDirectory />} />
+    <Route path="/reminders" element={<ReminderList />} />
+    <Route path="/reminders/new" element={<ReminderEditor />} />
+    <Route path="/reminders/:id/edit" element={<ReminderEditor />} />
+    <Route path="/reminders/:id" element={<ReminderTaskDetail />} />
     <Route path="*" element={<Navigate to="/workbench" replace />} />
   </Routes></Shell></Session.Provider>;
 }
@@ -65,7 +71,7 @@ function Shell({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen">
     <aside className="hidden w-56 shrink-0 border-r border-slate-200 bg-white md:block">
       <div className="flex h-20 items-center gap-3 px-6"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-700 text-lg text-white">镜</span><div className="font-semibold">明镜<span className="ml-2 text-xs tracking-wider text-slate-400">MIRROR</span></div></div>
-      <p className="eyebrow px-6 py-6">业务工作空间</p><nav className="space-y-2 px-3"><Menu to="/workbench">工作台</Menu>{actor.role !== 'REVIEWER' && <><Menu to="/people">人员与组织</Menu><Menu to="/tags">标签目录</Menu></>}</nav>
+      <p className="eyebrow px-6 py-6">业务工作空间</p><nav className="space-y-2 px-3"><Menu to="/workbench">工作台</Menu><Menu to="/reminders">{actor.role === 'REVIEWER' ? '审核工作台' : '提醒任务'}</Menu>{actor.role !== 'REVIEWER' && <><Menu to="/people">人员与组织</Menu><Menu to="/tags">标签目录</Menu></>}</nav>
       <div className="mx-5 mt-14 border-t border-slate-100 pt-5 text-xs leading-6 text-slate-400">对象信息 · 业务留痕<br />按当前授权范围展示</div>
     </aside>
     <div className="min-w-0 flex-1">
@@ -73,7 +79,7 @@ function Shell({ children }: { children: ReactNode }) {
         <div><p className="text-sm font-semibold">政务系统对象库</p><p className="mt-1 text-xs text-slate-500">{actor.role === 'SUPER_ADMIN' ? '全市数据范围' : actor.role === 'UNIT_ADMIN' ? '本单位及全部下级单位' : actor.role === 'AREA_ADMIN' ? '授权组织及下级单位' : '本单位审核职责'}</p></div>
         <div className="flex items-center gap-4"><div className="text-right"><p className="text-sm">{actor.displayName}</p><p className="text-xs text-slate-400">{roleNames[actor.role]}</p></div><button className="secondary" onClick={logout}>退出</button></div>
       </header>
-      <nav className="flex gap-4 px-5 py-3 text-sm md:hidden"><Link to="/workbench">工作台</Link>{actor.role !== 'REVIEWER' && <><Link to="/people">人员与组织</Link><Link to="/tags">标签目录</Link></>}</nav>
+      <nav className="flex gap-4 px-5 py-3 text-sm md:hidden"><Link to="/workbench">工作台</Link><Link to="/reminders">提醒任务</Link>{actor.role !== 'REVIEWER' && <><Link to="/people">人员与组织</Link><Link to="/tags">标签目录</Link></>}</nav>
       <main className="mx-auto max-w-[1600px] p-5 lg:p-9">{children}</main>
     </div>
   </div>;

@@ -15,3 +15,5 @@
 11. 旧TransferAssignment未包含完整校验且now为字面量，已退出执行注册。新的权威来源同步通过SynchronizePersonFacts契约执行，所有Handler需单独落实后才可开放。
 
 迁移后应验证：关系端点/唯一键一致、旧时间和外部ID可追溯、人工抑制未丢失、原接收总数不因版本膨胀、原截止时间不延长、未授权操作者不能通过新对象关系获取旧数据。
+
+提醒处理器接入时新增了可选的selectionId、draftSequence、contentCheckId、activeReviewId、criteriaJson、entriesJson等查找投影，以及ReviewRound的taskId/versionId/organizationId投影。它们与对应关系、冻结版本保持一致；未审草稿可以新建版本，但旧冻结版本不覆盖。旧任务缺少这些依据时返回需要核实迁移，不把旧原型自动包装成已审核任务。历次驳回/撤回轮次的接收记录可保留，发送与目标人数应使用当前有效审核/发布版本的VersionTargetsRecipient成员，而不是历史接收记录并集。

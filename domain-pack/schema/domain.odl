@@ -269,6 +269,11 @@ type ReminderTask @objectType {
   snapshotId: String
   reviewedBy: String
   reviewComment: String
+  selectionId: String
+  draftSequence: Int
+  contentCheckId: String
+  activeReviewId: String
+  cancelReason: String
   currentPublishedVersionId: String
   pendingVersionId: String
   categorySnapshot: String

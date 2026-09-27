@@ -21,3 +21,14 @@
   .dashboard-shell .panel { min-width: 0; max-width: 100%; }
   .dashboard-shell button { @apply transition-colors; }
 }
+
+@layer components {
+  .reminder-body { @apply break-words text-sm leading-7 text-slate-800; }
+  .reminder-body p { @apply mb-3; }
+  .reminder-body ul { @apply ml-6 list-disc; }
+  .reminder-body ol { @apply ml-6 list-decimal; }
+  .reminder-body h2 { @apply my-4 text-xl font-semibold; }
+  .reminder-body h3 { @apply my-3 text-lg font-semibold; }
+  .reminder-body a { @apply text-blue-700 underline; }
+  .reminder-body blockquote { @apply my-3 border-l-4 border-slate-200 pl-4 text-slate-500; }
+}

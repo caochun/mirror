@@ -14,7 +14,15 @@
 
 `DomainContracts`启动时读取Pack动作与状态定义，权限名来自契约；动作、状态、模型和规则内容摘要进入结果/审计。仅明确登记的处理器可通过此执行路径，未定义或未接通动作拒绝。自由文本规则仍由业务代码实现，不声称YAML文本已经成为自动规则引擎。
 
-原 `TagService` 的目录配置和旧提醒原型尚未全部迁移到此路径；它们不因注册器存在就被标记为契约实现完成。后续应按实施计划逐域替换。
+原 `TagService` 的目录配置尚未全部迁移到此路径；它不因注册器存在就被标记为契约实现完成。提醒原型已由下述处理器替换，其他业务按实施计划逐域推进。
+
+## 提醒准备与审核处理器
+
+`ReminderService`新增SaveReminderDraft、UpdateRecipientSelection、ConfirmRecipientSelection、ConfirmReminderContent、SubmitReminderReview、DecideReminderReview、WithdrawReminderReview、CancelScheduledReminder与内部ExpireReminderReview路径。保存/确认HTTP命令组合了对应的业务子动作，执行仍在同一Foundry事务内。
+
+它们目前覆盖文字/列表/可信链接，媒体尚未开放，不能把ConfirmReminderContent视为逐图确认已交付。发送审批只创建QUEUED作业，DispatchReminder仍未登记，也未执行真实渠道调用。到期作业由服务端内部上下文触发，没有面向用户的系统权限绕过入口。
+
+名单再次计算保留排除意图，确认检查输入摘要，审核结果只作用于本轮冻结版本。旧草稿遗留接收记录保留审计关联；后续发送及统计必须从批准版本的VersionTargetsRecipient取名单，不能扫描任务历次草稿的接收记录并集。
 
 ## 人员标签兼容策略
 
@@ -36,4 +44,4 @@ npm --prefix web run build
 npm --prefix web run test:e2e
 ```
 
-当前工作区仍有未提交的ReminderWorkflowTest原型，其Map.of空值测试准备会导致完整Maven测试失败。上面的定向测试命令明确用于本阶段，不是完整系统测试结果；提醒原型和对应测试将在提醒阶段按Pack重做，不能靠跳过它们宣布目标完成。
+ReminderWorkflowTest原型已替换为符合Pack的实际流程测试，当前`mvn package`全量通过。上面的定向命令仍可用于标签迭代；完整目标还需发送/H5/规则等其余业务验收，不以当前测试数量代表全部完成。

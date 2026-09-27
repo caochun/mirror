@@ -22,7 +22,9 @@ import java.util.Set;
 @Component
 public class DomainContracts {
     private static final Set<String> CONNECTED_ACTIONS = Set.of(
-            "AddPersonTag", "RemovePersonTag", "RestorePersonTag");
+            "AddPersonTag", "RemovePersonTag", "RestorePersonTag", "SaveReminderDraft",
+            "UpdateRecipientSelection", "ConfirmRecipientSelection", "ConfirmReminderContent", "SubmitReminderReview",
+            "DecideReminderReview", "WithdrawReminderReview", "CancelScheduledReminder", "ExpireReminderReview");
 
     private final Map<String, Map<String, Object>> actions = new LinkedHashMap<>();
     private final Map<String, Map<String, Object>> states = new LinkedHashMap<>();
@@ -53,6 +55,13 @@ public class DomainContracts {
         }
         if (!actions.keySet().containsAll(CONNECTED_ACTIONS)) {
             throw new IllegalArgumentException("Connected action is absent from Domain Pack");
+        }
+    }
+
+    void authorizeSystem(String action) {
+        var definition = requireConnected(action);
+        if (!action.equals("ExpireReminderReview") || !text(definition.get("actor")).equals("scheduler")) {
+            throw new org.springframework.security.access.AccessDeniedException("Not an internal scheduler action");
         }
     }
 
