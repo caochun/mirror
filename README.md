@@ -30,7 +30,7 @@ cd mirror/foundry
 mvn test
 ```
 
-Foundry及上游参考版本均通过submodule固定。当前参考上游v0.3.0；[平台覆盖审计](platform-review/foundry-vs-open-foundry.md)区分已有、部分实现、缺失及有意差异。Java版尚非完整等价重制；[首批治理修复](platform-review/governance-repair.md)已接通注册Action鉴权、字段策略及进程内幂等隔离，[时间转换修复](platform-review/temporal-repair.md)已支持普通历史查询和顺序迟到事实，[属性约束修复](platform-review/property-validation-repair.md)已接通对象/关系必填、类型、枚举、唯一及不可变校验；旧历史迁移、任意区间更正和持久幂等等仍待完成。更新平台版本时，在本仓库更新submodule指针并运行业务验证。
+Foundry及上游参考版本均通过submodule固定。当前参考上游v0.3.0；[平台覆盖审计](platform-review/foundry-vs-open-foundry.md)区分已有、部分实现、缺失及有意差异。Java版尚非完整等价重制；[首批治理修复](platform-review/governance-repair.md)已接通注册Action鉴权、字段策略及进程内幂等隔离，[时间转换修复](platform-review/temporal-repair.md)已支持普通历史查询和顺序迟到事实，[属性约束修复](platform-review/property-validation-repair.md)已接通对象/关系必填、类型、枚举、唯一及不可变校验；[持久回执](platform-review/transactional-receipts.md)已验证事务提交与进程恢复；旧历史迁移、任意区间更正、外部副作用和其余上游能力仍待完成。更新平台版本时，在本仓库更新submodule指针并运行业务验证。
 
 ## 当前可运行版本
 

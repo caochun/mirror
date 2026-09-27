@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry事务命令回执
+
+继续核心重制：Storage SPI支持事务回执、事务内读取和写入边界；JDBC回执与业务/历史/审计/outbox同事务，两个独立JVM同键只提交一次，提交前后强制退出恢复通过。等待锁后再授权、单连接池关系删除回放及失败重试均已验证。Foundry122项、Mirror232项通过，详见[持久回执报告](../platform-review/transactional-receipts.md)。
+
+Mirror业务回执未迁移或替换；本轮未新增业务功能、未修改运行库。完整Foundry上游覆盖目标保持active。
+
 ## 2026-09-28：Foundry属性约束与兼容验证
 
 当前主目标为完整重制Java Foundry核心并覆盖上游；Mirror只做下游兼容。本轮Foundry增加严格属性/枚举/唯一/不可变校验、数据库租户锁、事务失败保护及深不可变值；修正内存租户组合键。Foundry110项、根reactor220项通过，独立探针确认原属性约束绕过已消失。详见[属性约束修复](../platform-review/property-validation-repair.md)。
