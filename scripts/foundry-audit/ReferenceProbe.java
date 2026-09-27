@@ -157,6 +157,7 @@ public class ReferenceProbe {
         computedData.setURL("jdbc:h2:mem:audit_computed;DB_CLOSE_DELAY=-1");
         computed.put("jdbc_h2", computedProbe(new JdbcStorageProvider(computedData, DatabaseDialect.h2())));
         observations.put("computed_read_behavior", computed);
+        observations.put("typed_action_graphql", typedActionProbe());
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -223,6 +224,31 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> typedActionProbe() {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name: "typed", version: "1.0.0")
+                enum State { READY DONE }
+                type Thing @objectType { id: ID! @primary state: State! }
+                type SetState @actionType(permission: "can_set") { thing: Thing! @param state: State! @param }
+                """);
+        var storage = new InMemoryStorageProvider();
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) { tx.createObject("Thing", "item", Map.of("state", "READY")); tx.commit(); }
+        var action = new ActionManifest("SetState", 1, false, List.of(), List.of(new ActionManifest.UpdateObject("thing", Map.of("state", "params.state"))));
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> true), new ActionExecutor(), schema,
+                Map.of("SetState", action), Map.of());
+        var graph = GraphqlApiRuntime.create(schema, app, Map.of("SetState", action));
+        var context = Map.<String, Object>of("request", new ApiRequestContext(CTX, PRINCIPAL));
+        var rejected = graph.execute(ExecutionInput.newExecutionInput("mutation { setState(input: {thing: \"item\", state: MISSING}) { success } }")
+                .graphQLContext(context).build());
+        long afterRejected = storage.getObject(CTX, "Thing", "item").version();
+        var accepted = graph.execute(ExecutionInput.newExecutionInput("mutation { setState(input: {thing: \"item\", state: DONE}) { success affectedObjects { typeName id changeType } } }")
+                .graphQLContext(context).build());
+        return Map.of("invalid_enum_rejected", !rejected.getErrors().isEmpty(), "version_after_rejected", afterRejected,
+                "accepted_errors", accepted.getErrors().stream().map(error -> error.getMessage()).toList(), "accepted_data", accepted.getData(),
+                "stored_state", storage.getObject(CTX, "Thing", "item").properties().get("state"));
     }
 
     static void create(StorageProvider storage, String id, Map<String, Object> values) {

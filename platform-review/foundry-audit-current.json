@@ -34,32 +34,32 @@
   },
   "upstream_library_workflow" : {
     "memory" : {
-      "borrow_status" : "COMPLETED",
-      "event_data" : {
-        "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
-        "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
-      },
       "event_count" : 1,
       "return_status" : "COMPLETED",
       "book_after_return" : "AVAILABLE",
       "book_after_borrow" : "ON_LOAN",
       "authorization_mode" : "ONTOLOGY_TARGETS",
       "replay_same_result" : true,
-      "active_loans_after_return" : 0
+      "active_loans_after_return" : 0,
+      "borrow_status" : "COMPLETED",
+      "event_data" : {
+        "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
+        "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
+      }
     },
     "jdbc_h2" : {
-      "borrow_status" : "COMPLETED",
-      "event_data" : {
-        "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
-        "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
-      },
       "event_count" : 1,
       "return_status" : "COMPLETED",
       "book_after_return" : "AVAILABLE",
       "book_after_borrow" : "ON_LOAN",
       "authorization_mode" : "ONTOLOGY_TARGETS",
       "replay_same_result" : true,
-      "active_loans_after_return" : 0
+      "active_loans_after_return" : 0,
+      "borrow_status" : "COMPLETED",
+      "event_data" : {
+        "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
+        "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
+      }
     }
   },
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
@@ -78,11 +78,11 @@
     "failurePolicy" : "ROLLBACK_ALL"
   } ],
   "upstream_return_manifest" : {
-    "from" : "book",
     "action" : "ReturnBook",
     "failurePolicy" : "ROLLBACK_ALL",
     "linkType" : "BorrowedBy",
-    "expect" : "ALL"
+    "expect" : "ALL",
+    "from" : "book"
   },
   "consumer_delivery_recovery" : {
     "memory" : {
@@ -114,6 +114,22 @@
       "initial" : 2,
       "hidden_endpoint_count" : 0
     }
+  },
+  "typed_action_graphql" : {
+    "version_after_rejected" : 1,
+    "accepted_errors" : [ ],
+    "accepted_data" : {
+      "setState" : {
+        "success" : true,
+        "affectedObjects" : [ {
+          "typeName" : "Thing",
+          "id" : "item",
+          "changeType" : "UPDATED"
+        } ]
+      }
+    },
+    "stored_state" : "DONE",
+    "invalid_enum_rejected" : true
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],

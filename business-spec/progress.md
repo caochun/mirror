@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry类型化Action API与参数
+
+Foundry提交3717339：Schema感知枚举/标量及递归列表校验、具名GraphQL输入/结果、变更类型与错误说明，旧JSON模式显式保留。无依据的旧回执变更类型为UNKNOWN，回执目标与效果记录不一致时拒绝。常规根reactor430项，其中Foundry320项，全通过，见[阶段报告](../platform-review/typed-action-api.md)。
+
+结构值/接口型参数、完整查询/批量/订阅、注册表和同步仍待完成。Mirror仅更新平台引用和证据，运行库未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry LAZY计算字段
 
 Foundry提交9b1dcc1：计算声明、继承、摘要和依赖不再丢失，接通countLinks、对象/列表/GraphQL/REST读取及可见关系计数。原始历史不补造派生值，双时间查询保持端点与关系的同一口径。常规根reactor413项，其中Foundry303项，全通过，详见[阶段报告](../platform-review/computed-fields.md)。
