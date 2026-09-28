@@ -228,6 +228,12 @@ public class ReferenceProbe {
         ingestion.put("jdbc_h2", ingestionProbe(new JdbcStorageProvider(ingestionData, DatabaseDialect.h2())));
         observations.put("transactional_lineage_and_ingestion", ingestion);
         observations.put("upstream_mapping_language", mappingProbe(Path.of(args[0])));
+        var relationshipSync = new LinkedHashMap<String, Object>();
+        relationshipSync.put("memory", relationshipSyncProbe(new InMemoryStorageProvider()));
+        var relationData = new JdbcDataSource();
+        relationData.setURL("jdbc:h2:mem:audit_relation_sync;DB_CLOSE_DELAY=-1");
+        relationshipSync.put("jdbc_h2", relationshipSyncProbe(new JdbcStorageProvider(relationData, DatabaseDialect.h2())));
+        observations.put("transactional_relationship_sync", relationshipSync);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -294,6 +300,52 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> relationshipSyncProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name:"relationship-sync-probe",version:"1")
+                type Person @objectType { id: ID! @primary name: String! }
+                type Unit @objectType { id: ID! @primary name: String! }
+                type Member @linkType(from:"Person",to:"Unit",cardinality:MANY_TO_ONE) { id: ID! @primary note: String }
+                """);
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Unit", "u1", Map.of("name", "First"));
+            tx.createObject("Unit", "u2", Map.of("name", "Second"));
+            tx.commit();
+        }
+        var mapping = new MappingConfig("Person", new KeyMapping("id", "id", null), Map.of("name", new PropertyMapping("name")),
+                List.of(new LinkMapping("Member", "Unit", new KeyMapping("unit", "id", null), Map.of("note", new PropertyMapping("note")))));
+        var service = new MaterializedSyncService(storage, new ConflictResolver(ConflictResolver.Strategy.ACTION_PRIORITY, Map.of(), Map.of()))
+                .withAuthorization((context, connector, plan, target, transaction) -> true);
+        Instant time = Instant.now().minusSeconds(10);
+        java.util.function.BiFunction<Long, String, SourceRecord> record = (sequence, unit) -> new SourceRecord("hr", "row", "UPSERT", time.plusSeconds(sequence),
+                Map.of("id", "p", "name", "Person", "unit", unit, "note", "Imported"), null, new SourcePosition("p0", "event-" + sequence, sequence, "cursor-" + sequence));
+        var one = record.apply(1L, "u1");
+        var first = service.sync(sourceConnector(List.of(one)), new SourceQuery("people", Map.of()), mapping, CTX);
+        var from = new EntityKey("Person", "p");
+        String oldId;
+        try (var tx = storage.beginTransaction(CTX)) { oldId = tx.findLinks("Member", from, null).getFirst().id(); }
+        var second = service.sync(sourceConnector(List.of(record.apply(2L, "u2"))), new SourceQuery("people", Map.of()), mapping, CTX);
+        String newId;
+        try (var tx = storage.beginTransaction(CTX)) {
+            var current = tx.findLinks("Member", from, null).getFirst();
+            newId = current.id();
+            tx.mutationSource(MutationSource.action("ManualClear", "manual-clear", Instant.now(), false));
+            tx.deleteLink("Member", current.id(), current.version());
+            tx.commit();
+        }
+        var rejected = service.sync(sourceConnector(List.of(record.apply(3L, "u1"))), new SourceQuery("people", Map.of()), mapping, CTX);
+        var replay = service.sync(sourceConnector(List.of(one)), new SourceQuery("people", Map.of()), mapping, CTX);
+        boolean empty;
+        try (var tx = storage.beginTransaction(CTX)) { empty = tx.findLinks("Member", from, null).isEmpty(); }
+        var scope = new RelationshipScope(from, "Member", StorageProvider.Direction.OUTBOUND);
+        return Map.of("first_relationship_changes", first.relationshipChanges(), "retarget_changes", second.relationshipChanges(),
+                "old_identity_ended", storage.getLink(CTX, "Member", oldId).isDeleted(), "new_identity_created", !oldId.equals(newId),
+                "manual_clear_preserved", empty && rejected.relationshipChanges().isEmpty(), "relationship_conflicts", rejected.conflicts(),
+                "old_event_replayed", replay.replayed(), "scope_source", storage.getRelationshipAssertions(CTX, scope, 1, null).getFirst().source().kind().name(),
+                "checkpoint", service.checkpoint("hr-probe", mapping, "p0", CTX).sequence());
     }
 
     static Map<String, Object> mappingProbe(Path upstream) throws Exception {

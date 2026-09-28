@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry事务关系物化
+
+Foundry提交8b141ea：关系映射与对象/来源/回执/检查点同事务；稳定来源/槽/端点身份、改派及恢复、成员scope历史保护人工清除、属性来源独立判断、两端权限/反向单值约束。关系format-2回执重放原目标，不重做当前关系；对象映射旧回执保持兼容。全仓872项，其中Foundry762项，全通过，新增47项含独立JVM恢复/竞争，见[阶段报告](../platform-review/relationship-ingestion.md)。
+
+独立探针在memory/H2确认改派、人工清除保留、旧事件重放及检查点3，旧观测语义不变。每出向scope最多1000个历史身份；完整运行装配、连接器/CDC/overlay/writeback、真实目标库和性能等继续，完整目标保持active。Mirror运行库与JAR未改动。
+
 ## 2026-09-28：Foundry映射声明与变换执行
 
 Foundry提交e944882：上游映射YAML、全部内置变换、版本化custom、主键/属性及关系引用映射；属性物化接入新映射，旧简单摘要兼容，Pack校验类型/字段/依赖。全仓825项，其中Foundry715项，全通过，新增27项。独立探针解析原始PAS/ERP/TMS配置，输出预期主键、姓名、日期和数值，见[阶段报告](../platform-review/datasource-mapping-language.md)。

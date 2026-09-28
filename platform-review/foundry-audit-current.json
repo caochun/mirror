@@ -511,6 +511,40 @@
     },
     "custom_version_changes_configuration" : true
   },
+  "transactional_relationship_sync" : {
+    "memory" : {
+      "scope_source" : "ACTION",
+      "new_identity_created" : true,
+      "retarget_changes" : {
+        "deleted" : 1,
+        "created" : 1
+      },
+      "checkpoint" : 3,
+      "manual_clear_preserved" : true,
+      "old_event_replayed" : 1,
+      "relationship_conflicts" : 3,
+      "old_identity_ended" : true,
+      "first_relationship_changes" : {
+        "created" : 1
+      }
+    },
+    "jdbc_h2" : {
+      "scope_source" : "ACTION",
+      "new_identity_created" : true,
+      "retarget_changes" : {
+        "deleted" : 1,
+        "created" : 1
+      },
+      "checkpoint" : 3,
+      "manual_clear_preserved" : true,
+      "old_event_replayed" : 1,
+      "relationship_conflicts" : 3,
+      "old_identity_ended" : true,
+      "first_relationship_changes" : {
+        "created" : 1
+      }
+    }
+  },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces", "scalars" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],
   "java_manifest_components" : [ "action", "version", "reversible", "preconditions", "effects", "onSideEffectFailure", "sideEffects" ],
