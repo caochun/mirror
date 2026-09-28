@@ -1,0 +1,376 @@
+enum ContentStatus { ENABLED DISABLED }
+enum MediaStatus { AVAILABLE RETAINED REMOVED }
+enum TaskLifecycle { OPEN CANCELLED CLOSED }
+enum ReminderVersionState { DRAFT FROZEN }
+enum SendMode { IMMEDIATE SCHEDULED }
+enum ReviewDecision { PENDING APPROVED REJECTED WITHDRAWN EXPIRED }
+enum DeliveryState { NOT_SUBMITTED SUBMITTED SUCCEEDED FAILED UNKNOWN }
+enum AttemptState { PREPARED SUBMITTED SUCCEEDED FAILED UNKNOWN }
+enum WithdrawalState { REQUESTED PROCESSING SUCCEEDED FAILED UNKNOWN }
+enum OverdueState { OPEN CLEARED }
+enum OverdueClearReason { READ SUPERSEDED WITHDRAWN }
+
+# 已发布示例的稳定身份及开关；编辑草稿留在Mirror配置工作区。
+type ContentExample @objectType {
+    id: ID! @primary
+    status: ContentStatus!
+}
+
+# 不可变已发布示例版本；正文和媒体成员共同受发布服务保护。
+type ContentVersion @objectType {
+    id: ID! @primary
+    versionKey: String! @unique @immutable
+    revision: Int! @immutable
+    title: String! @immutable
+    body: JSON! @immutable
+    category: String! @immutable
+    contentHash: String! @immutable
+    publishedBy: String! @immutable
+    publishedAt: DateTime! @immutable
+}
+
+# 受控不可变媒体元数据；二进制/访问票据/垃圾回收由Mirror管理。
+type MediaAsset @objectType {
+    id: ID! @primary
+    status: MediaStatus!
+    storageRef: String! @immutable @sensitive
+    contentHash: String! @immutable
+    mimeType: String! @immutable
+    byteSize: Int! @immutable
+    createdBy: String! @immutable
+    createdAt: DateTime! @immutable
+}
+
+# 任务自身生命周期；审核、内容发布、投递和撤回分别表达，页面综合状态为查询投影。
+type ReminderTask @objectType {
+    working: ReminderVersion @link(type: "TaskWorkingVersion")
+    organization: Organization @link(type: "TaskCreatedIn")
+    published: ReminderVersion @link(type: "TaskPublishedVersion")
+    id: ID! @primary
+    lifecycle: TaskLifecycle!
+    createdBy: String! @immutable
+    createdAt: DateTime! @immutable
+    cancelReason: String
+    cancelledBy: String
+    cancelledAt: DateTime
+    closedAt: DateTime
+}
+
+# 内容草稿可编辑，提交后FROZEN；审核结果在ReviewRound，当前发布由TaskPublishedVersion关系选择。
+type ReminderVersion @objectType {
+    task: ReminderTask @link(type: "ReminderVersionOf")
+    audience: AudienceSnapshot @link(type: "VersionAudience")
+    id: ID! @primary
+    versionKey: String! @unique @immutable
+    revision: Int! @immutable
+    state: ReminderVersionState!
+    title: String!
+    body: JSON!
+    category: String!
+    contentHash: String
+    safetyEvidence: JSON
+    submittedAt: DateTime
+}
+
+# 一次独立审核证据；审批不是Foundry通用状态机自动执行的结果。
+type ReviewRound @objectType {
+    version: ReminderVersion @link(type: "ReviewVersion")
+    id: ID! @primary
+    roundKey: String! @unique @immutable
+    roundNumber: Int! @immutable
+    decision: ReviewDecision!
+    submittedBy: String! @immutable
+    submittedAt: DateTime! @immutable
+    snapshotHash: String! @immutable
+    reviewedBy: String
+    reviewedAt: DateTime
+    comment: String
+}
+
+# 任务+人员稳定接收身份；首次成功时间和期限不因重试/修订而重置。
+type TaskRecipient @objectType {
+    task: ReminderTask @link(type: "RecipientTask")
+    person: Person @link(type: "RecipientPerson")
+    id: ID! @primary
+    recipientKey: String! @unique @immutable
+    deliveryState: DeliveryState!
+    firstDeliveredAt: DateTime
+    deadlineAt: DateTime
+    withdrawnAt: DateTime
+}
+
+# 每份AudienceSnapshot的名单成员；内容修订复用名单，原始姓名/单位及选人依据保持。
+type RecipientSnapshot @objectType {
+    id: ID! @primary
+    snapshotKey: String! @unique @immutable
+    personName: String! @immutable
+    organizationName: String! @immutable
+    selectionBasis: JSON! @immutable
+    capturedAt: DateTime! @immutable
+}
+
+# 一次有稳定请求身份的业务投递尝试；网络重传复用原尝试，技术重试日志不入本体。
+type DeliveryAttempt @objectType {
+    id: ID! @primary
+    requestKey: String! @unique @immutable
+    state: AttemptState!
+    channel: String! @immutable
+    isMock: Boolean! @immutable
+    submittedAt: DateTime
+    completedAt: DateTime
+    failureCode: String
+}
+
+# 每次渠道回调的不可变证据，迟到/乱序不覆盖旧回执。
+type DeliveryReceipt @objectType {
+    id: ID! @primary
+    eventKey: String! @unique @immutable
+    state: DeliveryState! @immutable
+    channelOccurredAt: DateTime! @immutable
+    receivedAt: DateTime! @immutable
+    errorCode: String @immutable
+    protectedResponseRef: String @immutable @sensitive
+}
+
+# 接收人+版本的首次有效阅读，不是时长/点击统计。
+type ReadReceipt @objectType {
+    id: ID! @primary
+    readKey: String! @unique @immutable
+    firstReadAt: DateTime! @immutable
+    renderedContentHash: String! @immutable
+    identityEvidenceRef: String @immutable @sensitive
+}
+
+# 针对一个稳定接收记录的撤回意图与汇总结果；批量请求由服务编排。
+type Withdrawal @objectType {
+    id: ID! @primary
+    status: WithdrawalState!
+    reason: String! @immutable
+    requestedBy: String! @immutable
+    requestedAt: DateTime! @immutable
+    operationGroup: String @immutable
+    completedAt: DateTime
+}
+
+# 一次有稳定请求身份的业务撤回尝试；网络重传不新增尝试对象。
+type WithdrawalAttempt @objectType {
+    id: ID! @primary
+    requestKey: String! @unique @immutable
+    state: AttemptState!
+    channel: String! @immutable
+    isMock: Boolean! @immutable
+    submittedAt: DateTime
+    completedAt: DateTime
+}
+
+# 撤回的不可变逐次回执；未知结果不冒充成功。
+type WithdrawalReceipt @objectType {
+    id: ID! @primary
+    eventKey: String! @unique @immutable
+    state: AttemptState! @immutable
+    occurredAt: DateTime! @immutable
+    receivedAt: DateTime! @immutable
+    errorCode: String @immutable
+    protectedResponseRef: String @immutable @sensitive
+}
+
+# 版本+接收人的逾期事实，业务解除后保留历史；不记录线下整改反馈。
+type OverdueEpisode @objectType {
+    id: ID! @primary
+    episodeKey: String! @unique @immutable
+    state: OverdueState!
+    openedAt: DateTime! @immutable
+    deadlineAt: DateTime! @immutable
+    clearedAt: DateTime
+    clearReason: OverdueClearReason
+}
+
+# 内容示例版本。
+type ContentVersionOf @linkType(from: "ContentVersion", to: "ContentExample", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 按当时标签版本推荐，最终选择由管理员确认。
+type ContentForTag @linkType(from: "ContentVersion", to: "TagVersion", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 被引用文件保留，元数据关系不是公开URL。
+type ContentUsesMedia @linkType(from: "ContentVersion", to: "MediaAsset", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 提交时冻结任务创建单位，之后不随人员调动改变。
+type TaskCreatedIn @linkType(from: "ReminderTask", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 版本所属任务；修订仍同一任务。
+type ReminderVersionOf @linkType(from: "ReminderVersion", to: "ReminderTask", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 可不引用示例；复制后独立。
+type ReminderCopiedFrom @linkType(from: "ReminderVersion", to: "ContentVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 审核时媒体成员冻结。
+type ReminderUsesMedia @linkType(from: "ReminderVersion", to: "MediaAsset", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 审核精确绑定版本及快照摘要。
+type ReviewVersion @linkType(from: "ReviewRound", to: "ReminderVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 稳定接收身份所属任务。
+type RecipientTask @linkType(from: "TaskRecipient", to: "ReminderTask", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 稳定人员关系，外部身份由适配层解析。
+type RecipientPerson @linkType(from: "TaskRecipient", to: "Person", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 冻结名单成员所属AudienceSnapshot。
+type SnapshotAudience @linkType(from: "RecipientSnapshot", to: "AudienceSnapshot", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 不同准备阶段的名单快照引用同一稳定任务接收人。
+type SnapshotRecipient @linkType(from: "RecipientSnapshot", to: "TaskRecipient", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 发送准备时归属，不作为当前管理权限依据。
+type SnapshotOrganization @linkType(from: "RecipientSnapshot", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 保存用于选人的历史标签语义；名称来自不可变TagVersion。
+type SnapshotTagVersion @linkType(from: "RecipientSnapshot", to: "TagVersion", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 发送尝试的接收人。
+type DeliveryRecipient @linkType(from: "DeliveryAttempt", to: "TaskRecipient", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 本次实际提交的批准版本。
+type DeliveryVersion @linkType(from: "DeliveryAttempt", to: "ReminderVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 回执绑定原发送请求。
+type DeliveryReceiptAttempt @linkType(from: "DeliveryReceipt", to: "DeliveryAttempt", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 本人阅读。
+type ReadRecipient @linkType(from: "ReadReceipt", to: "TaskRecipient", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 只允许新记录当前发布版本，旧阅读仍保留审计。
+type ReadVersion @linkType(from: "ReadReceipt", to: "ReminderVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 撤回针对稳定接收身份，不删除TaskRecipient。
+type WithdrawalRecipient @linkType(from: "Withdrawal", to: "TaskRecipient", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 操作时组织留痕。
+type WithdrawalOrganization @linkType(from: "Withdrawal", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 重试属于原撤回意图。
+type WithdrawalAttemptOf @linkType(from: "WithdrawalAttempt", to: "Withdrawal", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 取消/撤回目标请求集合由适配器契约决定。
+type WithdrawalTargetsDelivery @linkType(from: "WithdrawalAttempt", to: "DeliveryAttempt", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 逐次结果和迟到回执。
+type WithdrawalReceiptAttempt @linkType(from: "WithdrawalReceipt", to: "WithdrawalAttempt", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 逾期接收人。
+type OverdueRecipient @linkType(from: "OverdueEpisode", to: "TaskRecipient", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 最新版本的逾期事实。
+type OverdueVersion @linkType(from: "OverdueEpisode", to: "ReminderVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 预警生成时主管组织，查询权限仍按人员当前归属。
+type OverdueOrganization @linkType(from: "OverdueEpisode", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 送达/阅读不一致或H5异常对应本人提醒。
+type IssueRecipient @linkType(from: "DataIssue", to: "TaskRecipient", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# H5异常及版本上下文。
+type IssueReminderVersion @linkType(from: "DataIssue", to: "ReminderVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 提交审核时创建的不可变名单与发送约束快照；内容修订复用首个批准快照，不复制全名单。
+type AudienceSnapshot @objectType {
+    task: ReminderTask @link(type: "AudienceTask")
+    id: ID! @primary
+    snapshotKey: String! @unique @immutable
+    selection: JSON! @immutable
+    selectionHash: String! @immutable
+    sendMode: SendMode! @immutable
+    scheduledAt: DateTime @immutable
+    deadlineHours: Int! @immutable
+    confirmedBy: String! @immutable
+    confirmedAt: DateTime! @immutable
+    capturedAt: DateTime! @immutable
+}
+
+# 当前示例版本；必须属于同一个ContentExample。
+type ContentCurrentVersion @linkType(from: "ContentExample", to: "ContentVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 当前已审核发布内容；关系effectiveAt作为该次发布生效时间，换版保留历史。
+type TaskPublishedVersion @linkType(from: "ReminderTask", to: "ReminderVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 当前准备/待审内容，允许与已发布内容同时存在；审核是否结束由ReviewRound判断。
+type TaskWorkingVersion @linkType(from: "ReminderTask", to: "ReminderVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 名单及发送约束所属任务。
+type AudienceTask @linkType(from: "AudienceSnapshot", to: "ReminderTask", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 每个已提交版本引用一份冻结名单；同任务内容修订复用TaskApprovedAudience。
+type VersionAudience @linkType(from: "ReminderVersion", to: "AudienceSnapshot", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 首轮通过时固定且不可换绑；新的接收范围或时限必须创建新任务。
+type TaskApprovedAudience @linkType(from: "ReminderTask", to: "AudienceSnapshot", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}

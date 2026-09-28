@@ -1,20 +1,26 @@
-name: government-object-library
-version: 0.2.9
-namespace: gov.object-library
-description: "政务对象库业务事实、关系与动作契约；不是完整业务执行实现"
+name: mirror-domain
+version: 1.0.0
+namespace: mirror.domain
+description: "待确认的政务对象库领域事实模型；不包含业务服务、规则执行器或渠道实现"
 schema:
-  - schema/domain.odl
-  - schema/business-evidence.odl
-  - schema/runtime-support.odl
-# Current Foundry loader only executes this list. Do not register definition-only contracts here.
-actions: []
-# Mirror definition index; ignored by the current Foundry runtime loader and checked by business-verification.
-x-business-contracts:
-  - contracts/actions.yaml
-  - contracts/rules.yaml
-  - contracts/states.yaml
-  - contracts/metrics.yaml
-  - contracts/scenarios.yaml
-  - contracts/tag-catalog.yaml
-  - contracts/coverage.yaml
-x-action-signatures: contracts/action-types.odl
+  - schema/foundation.odl
+  - schema/tags.odl
+  - schema/supervision.odl
+  - schema/reminders.odl
+  - schema/actions.odl
+# Only implemented atomic transitions are registered here; Mirror orchestrates workflows.
+actions:
+  - actions/membership.yaml
+  - actions/organization.yaml
+  - actions/child-organization.yaml
+  - actions/position.yaml
+  - actions/person.yaml
+  - actions/transfer.yaml
+  - actions/tag.yaml
+  - actions/assign-tag.yaml
+  - actions/appointment.yaml
+  - actions/manual-tag.yaml
+  - actions/participation.yaml
+  - actions/risk.yaml
+  - actions/review.yaml
+  - actions/reading.yaml

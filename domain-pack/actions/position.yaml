@@ -1,0 +1,14 @@
+action: RegisterManualPosition
+version: 1
+preconditions:
+  - expr: "size(params.name) > 0"
+    error: "Position name is required"
+effects:
+  - type: createObject
+    objectType: Position
+    properties:
+      name: params.name
+      sourceCode: params.sourceCode
+      standardCategory: params.standardCategory
+      positionGradeCode: params.positionGradeCode
+      sourceStatus: "'ACTIVE'"

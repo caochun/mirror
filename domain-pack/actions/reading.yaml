@@ -1,0 +1,38 @@
+action: RecordFirstRead
+version: 1
+preconditions:
+  - expr: "version._version == params.expectedVersion"
+    error: "Stale content version"
+  - expr: "version.state == 'FROZEN'"
+    error: "Content is not frozen"
+  - expr: "recipient.person != null && recipient.task != null && version.task != null && recipient.task.id == version.task.id"
+    error: "Recipient and version do not belong to the same task"
+  - expr: "recipient.task.lifecycle != 'CANCELLED'"
+    error: "Task is cancelled"
+  - expr: "recipient.task.published != null && recipient.task.published.id == version.id"
+    error: "Only the current published version may be read"
+  - expr: "!has(recipient.withdrawnAt) || recipient.withdrawnAt == null"
+    error: "Recipient has been withdrawn"
+  - expr: "has(version.contentHash) && version.contentHash == params.renderedContentHash"
+    error: "Rendered content hash mismatch"
+  - expr: "size(params.receiptId) > 0 && size(params.readKey) > 0"
+    error: "Read identity is required"
+effects:
+  - type: createObject
+    objectType: "ReadReceipt"
+    target: "params.receiptId"
+    properties:
+      readKey: "params.readKey"
+      firstReadAt: "now"
+      renderedContentHash: "params.renderedContentHash"
+      identityEvidenceRef: "params.identityEvidenceRef"
+  - type: createLink
+    linkType: "ReadRecipient"
+    from: "readReceipt"
+    to: "recipient"
+    properties: {}
+  - type: createLink
+    linkType: "ReadVersion"
+    from: "readReceipt"
+    to: "version"
+    properties: {}

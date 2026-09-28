@@ -1,109 +1,37 @@
-# 政务系统对象库业务项目
+# Mirror：领域模型确认稿
 
-本仓库是基于 [Open Foundry](https://github.com/caochun/foundry) 构建的政务对象库具体业务项目。Foundry 作为 Git submodule 位于 [`foundry/`](foundry/)；本仓库维护政务领域对象模型、业务 Action、标签/风险/提醒等上层逻辑和部署配置。
+当前阶段：**旧应用实现已移除，新模型及原子Action可通过本地Pack体验台试用；Mirror生产业务流程仍未重建。**
 
-## 目录
+请按以下顺序审阅：
 
-- [`business-spec/`](business-spec/)：政务业务规约、对象模型、工作流和任务计划。
-- `domain-pack/`：按业务规约从零实现的政务 Domain Pack。
-- `business-core/`：基于 Foundry Storage SPI 的人员、标签、提醒、送达、权限和 AI 业务服务。
-- `business-verification/`：内存 Provider 的业务端到端验收测试。
-- `mirror-server/`：Spring Boot 应用入口、数据库账号/会话、受权限控制的业务 API。
-- `web/`：React + TypeScript + Tailwind 管理端、独立 H5 构建入口和 Playwright 测试。
-- `foundry/`：通用对象关系和状态历史底座，来自独立Java仓库。
-- `open-foundry/`：syzygyhack/open-foundry上游参考子模块，不参与Mirror构建。
-- `platform-review/`：Java重制与上游的代码覆盖对照及可重现审计结果。
-- `deployment/`：openGauss/国产关系库、鹿路通和 OpenFGA 的部署参数模板。
-- 根目录 DOCX/XLSX：原始业务材料和测试数据，已通过 `.gitignore` 忽略。
+1. [Mirror业务自述](business-spec/mirror-business.md)：根据修订后的Pack解释业务主链。
+2. [原始业务需求与责任分层](business-spec/requirements.md)：重新阅读两份DOCX的结果、业务范围及冲突。
+3. [Domain Pack](domain-pack/README.md)：对象、关系、业务语义版本和历史设计。
+4. [Mirror服务边界](business-spec/service-boundaries.md)：哪些规则由业务服务执行，哪些能力由Foundry提供。
+5. [Foundry适用性核查](business-spec/foundry-readiness.md)：实际验证证据、不能自动保证的事项和实施门槛。
+6. [待确认清单](business-spec/review-decisions.md)：确认后才能开始业务实现。
 
-## 领域边界
+## Pack体验台
 
-基础 Domain Pack 只描述对象、关系和生命周期。标签计算、风险判断、廉洁提醒、鹿路通送达和具体监督流程在本业务仓库扩展，Foundry 不包含这些政务业务语义。
+当前Pack可以先通过本地体验台试用，确认对象、关系、历史和原子Action是否符合业务直觉：见 [`pack-explorer/`](pack-explorer/)。它只使用隔离内存中的合成数据，不连接旧数据库或外部渠道。
 
-业务定义已复核为 [Domain Pack 0.2.9](domain-pack/README.md)，补充动作契约、来源依据、专项事项与版本追溯。人工标签、确定性规则预览/发布/停用及持久清理已接入；[运行契约登记](business-spec/runtime-contracts.md)区分定义与实现。可单独运行 `mvn -pl business-verification -am test` 验证定义；数据库迁移边界见 [MIGRATION.md](domain-pack/MIGRATION.md)。
+## 仓库范围
 
-## 获取和验证 Foundry
+- `domain-pack/`：全新 `mirror.domain / 1.0.0` 模型确认稿，不是旧Pack的兼容升级。
+- `business-spec/`：本次重新建模的有效规约。`archive/legacy-before-remodel-20260928/`仅保留旧文档历史，不再指导开发。
+- `model-verification/`：模型、约束及真实Action执行测试。
+- `pack-explorer/`：本地Pack驱动的React/Tailwind体验台及同源HTTP服务，使用合成内存数据。
+- `foundry/`：Java通用底座子模块，已有未提交的REST实验仍保留，不是本次模型的依赖。
+- `open-foundry/`：上游只读参考子模块。
+- `platform-review/`、`scripts/foundry-audit/`：既往平台审计历史，不代表Mirror当前实现状态。
+- 两份DOCX、XLSX及`.runtime/`：保留本地原始材料与旧运行数据，继续Git忽略；新模型没有应用到旧数据库。
 
-```bash
-git clone --recurse-submodules git@github.com:caochun/mirror.git
-cd mirror/foundry
-mvn test
-```
+旧 `business-core/`、`business-verification/`、`mirror-server/`、`web/`、`deployment/` 和旧启动脚本已删除，可从Git历史恢复。当前可运行的是独立的Pack体验台，不是旧应用或生产业务系统。
 
-Foundry及上游参考版本均通过submodule固定。当前参考上游v0.3.0；[平台覆盖审计](platform-review/foundry-vs-open-foundry.md)区分已有、部分实现、缺失及有意差异。Java版尚非完整等价重制；[首批治理修复](platform-review/governance-repair.md)已接通注册Action鉴权、字段策略及进程内幂等隔离，[时间转换修复](platform-review/temporal-repair.md)已支持普通历史查询和顺序迟到事实，[属性约束修复](platform-review/property-validation-repair.md)已接通对象/关系必填、类型、枚举、唯一及不可变校验；[持久回执](platform-review/transactional-receipts.md)已验证事务提交与进程恢复；[声明模型修复](platform-review/declarative-model-repair.md)已接通默认值、只读审计字段、CEL约束及普通接口继承；[关系导航](platform-review/relationship-navigation.md)已支持受控的双向关联及已结束关系读取；[事务筛选删除](platform-review/filtered-link-actions.md)已验证上游原始ReturnBook动作及具体目标重放鉴权；[事件恢复](platform-review/event-delivery-recovery.md)已支持outbox租约与消费完成回执，修复失败/中断导致的漏投；[Action副作用与补偿](platform-review/action-side-effects.md)已验证持久恢复和原始Library借还动作；[本体权限映射](platform-review/ontology-authorization.md)新增显式兼容模式并通过真实OpenFGA测试；[组合Pack与资产装配](platform-review/pack-bundles.md)已支持依赖模型、字段策略和事务种子；[LAZY计算字段](platform-review/computed-fields.md)已支持countLinks及权限保护的读取；[类型化Action API](platform-review/typed-action-api.md)已接通枚举/标量参数与具名GraphQL输入结果；[受控对象查询](platform-review/governed-object-queries.md)已接通过滤/排序、授权后分页及可见总数；[受控聚合](platform-review/governed-aggregations.md)已接通五种统计函数及分组分页；[受控搜索](platform-review/governed-search.md)已支持显式词/短语模式及可见评分和高亮；[Connection与双向分页](platform-review/connection-pagination.md)已将默认查询形状对齐上游并保留显式旧列表模式；[持久模型注册表](platform-review/persistent-schema-registry.md)已支持版本快照、并发登记及配置漂移检查；[模型激活与写入门禁](platform-review/schema-activation.md)已接通存量校验和旧事务拒绝；[读与应用模型绑定](platform-review/schema-read-binding.md)已防止旧模型读取及GraphQL部分结果泄露；[ObjectSet保存查询](platform-review/object-sets.md)已接通持久定义及调用者权限下的执行/聚合；[Consent策略](platform-review/consent.md)已接通记录审计及读/动作检查，默认不启用；事务Consent效果、实时撤销、独立配置发布、一致读快照、其余ODL和原生查询下推等仍待完成。更新平台版本时，在本仓库更新submodule指针并运行业务验证。
-
-## 当前可运行版本
-
-已接通账号登录、组织权限、人员查询、档案基础信息、标签目录及人工添加/删除/恢复与历史；内容示例、受控配图、提醒草稿、选人、逐图确认、提交及独立审核已可操作。持久发送作业、逐人结果和失败/未知重试已接通显式Mock；接收端H5已接通Mock身份、受控图片和首次阅读，管理端可查看当前范围内未读/逾期清单；已发布提醒可保存修订、逐图确认、独立复审并后台发布；已发送消息可逐人撤回并重试失败/未知结果；确定性规则已接通预览、发布和批次重算；映射维护、AI复核和正式渠道仍在开发。完整进度见 [业务任务清单](business-spec/tasks.md)。
-
-当前目标是完整重制Java Foundry核心并覆盖固定上游版本；Mirror暂以兼容验证为主，业务功能计划仍保留在[任务清单](business-spec/tasks.md)。`http://127.0.0.1:8080/dashboard`已改为按账号权限读取实际入库记录的业务大屏；匿名只能看到登录提示，Mock来源持续标识。
-
-本地需要 JDK 21+、Maven、Node.js 22.12+（建议当前 LTS）。从仓库根目录运行：
+## 模型验证
 
 ```bash
-mvn -pl mirror-server -am package
-npm --prefix web ci
+mvn -pl model-verification -am test -Dtest=DomainModelTest,DomainActionTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-在终端设置 `MIRROR_BOOTSTRAP_PASSWORD` 为自行选择的 12–72 字符初始密码。只在首次创建账号时使用，不会覆盖已有密码；不设置时不创建账号。显式启用演示模式后生成24名虚构人员及四种测试账号，禁止用于正式环境：
-
-```bash
-export MIRROR_DEMO=true
-java -jar mirror-server/target/mirror-server-0.1.0-SNAPSHOT.jar
-```
-
-开发阶段也可以让后端直接提供前端：
-
-```bash
-./scripts/build-and-run.sh
-```
-
-访问 `http://127.0.0.1:8080/`。账号为 `admin`；演示模式另外提供 `unit`、`area`、`reviewer`，初始密码均取上述环境变量。管理端和独立接收端都由后端同源提供；修改后端端口时设置 `MIRROR_PORT`。
-
-如果只开发前端交互，仍可单独运行 `npm --prefix web run dev`，它只用于前端热更新，不是完整应用的启动方式。
-
-演示审核流程：以`unit`登录，从“提醒任务”创建并确认草稿、提交审核；退出后以独立的`reviewer`登录审核本单位任务。审核通过会创建待发送作业，当前尚不调用真实鹿路通。设置`MIRROR_DELIVERY_MODE=mock`后后台每10秒扫描到期作业，`unit`也可在任务详情点击“执行 Mock 发送”；定时未到不会提前执行。默认`disabled`保留待发送作业。`admin`所在city单位默认没有独立审核员，不能绕过提交要求。演示人员身份引用标为mock，仅供本地验证，旧演示库缺少该引用的人员会显示身份待核实，不自动修改已有资料。
-
-Mock渠道仅对`mock:`身份引用返回模拟成功，对其他身份返回明确失败。页面持续标识模拟模式，模拟结果不代表真实人员已收到消息。工作进程中断后复用持久尝试标识恢复，只有失败/未知人员可以重试，首次成功截止时间不因重试延长。
-
-默认开发数据库为 `.runtime/mirror.mv.db`（H2文件数据库）；人员、历史、账号授权跨重启保存，会话重启后需重新登录。该环境不代表国产库兼容或生产验收。生产参数与验证边界见 [deployment/README.md](deployment/README.md)。
-
-受控图片默认存于`.runtime/media`，可通过`MIRROR_MEDIA_DIRECTORY`指定持久目录，须与数据库一并备份。图片通过`/api/media/{id}`逐次鉴权，不能把该目录公开为静态文件。内容示例由`admin`维护并启用，`unit`可在提醒创建流程中引用。
-
-## 验证应用
-
-```bash
-mvn test
-npm --prefix web run build
-cd web
-npx playwright install chromium
-npm run test:e2e
-```
-
-浏览器测试需要已构建最新后端 JAR；测试自动启动独立后端和前端，使用专用端口18080/15173、内存测试数据库及明确的测试密码，不连接本地文件库。测试覆盖真实登录、CSRF、组织范围、跨页查询、档案历史、审核员拒绝访问、标签配置/人工生命周期、弹窗键盘操作、移动宽度及失败状态；另覆盖独立审核→Mock送达→逐人结果持久显示。另有H5正文/图片失败、链接转发拒绝、首次阅读和移动页面验证；修订复审、新版阅读及逐人撤回已加入浏览器验证；完整系统验收仍按任务清单推进。
-
-## Mock本人阅读与未读管理
-
-在`MIRROR_DEMO=true`且`MIRROR_DELIVERY_MODE=mock`环境，单位管理员可从已发布任务的逐人结果点击“模拟本人阅读”。新标签页打开独立H5，仅显示该提醒的当前发布正文、截止和隐私提示；首次成功显示后生成对应版本阅读回执。链接使用短期一次性票据并绑定当前浏览器会话，复制到另一个浏览器不能读取；登录切换、退出、重启或会话过期后须重新进入。
-
-这是显式Mock身份模拟，当前管理员模拟查看不构成真实人员已读证据。正式鹿路通身份校验尚未接入，非演示环境拒绝Mock入口。发送成功不会直接产生已读；正文失败不记录阅读，图片失败展示占位提示并单独记录技术异常。
-
-“阅读与逾期”页面按人员当前主管单位展示已送达且最新版未读的记录，后台每30秒评估逾期，真实的当前版本阅读回执自动解除对应逾期。阅读截止从首次送达起算，查询分别展示提醒条数和涉及人数。无手机号不阻断列表；受保护联系方式的明文解析入口尚未完成。页面不提供代读、清单导出或手工解除逾期。
-
-修订入口在已发布任务详情中，仅可修改标题、正文、图片和受控链接。保存后确认，再提交原创建单位的独立审核员；发布前接收人仍看原版。批准后由后台发布，页面显示发布进度并自动刷新。新版本重新计算未读/逾期，但不新增接收记录、不改变原截止、不重发成功通知。新增人员或改变期限须新建任务。
-
-任务的“送达与阅读”表可勾选人员、填写原因后撤回；支持选择全部未申请人员和仅重试撤回失败/未知人员。请求先持久化，后台处理后显示逐人结果；只撤回部分人时任务为“部分撤回”，成功撤回后H5及图片不再返回，原送达、阅读和内容历史保留。展开“撤回记录”可查看每次申请、原因、操作者和包括迟到响应在内的回执。
-
-Mock渠道使用持久的取消记录处理在途发送，避免“撤回成功后，迟到发送又出现”。未提交渠道的人员本地取消并标明原因；其他未选择人员继续发送。正式渠道尚未接入，真实撤回/取消能力仍须按官方契约验证。默认disabled模式不会伪造渠道撤回成功，已提交意图保留等待可用渠道。
-
-## 业务数据 Dashboard
-
-工作台及独立`/dashboard`提供对象/组织、标签目录覆盖、来源分布、待处理、提醒送达/最新版阅读、逾期与对接问题统计。数据来自同一数据库读取快照；点击指标/组织/标签可分页下钻，数字与明细使用同一快照。快照短期有效，账号权限、人员归属或相关任务发布版变化后须刷新。
-
-对象基数按当前单位和资格；标签目录只影响标签覆盖分子和相关标签/提醒，不把有效对象基数改成“已赋该标签人数”。任务时间以首次发布（未发布批准名单按创建时间），问题与重试按事件时间。可选择包含撤回历史或仅看未撤回记录；逾期始终排除已撤回。统计需要METRICS_READ及对应人员/提醒/阅读查看权限，审核员仍只进入审核工作台。
-
-逐人发送时标签版本已冻结在名单关系中，当前更名或抑制不改历史统计；旧名单缺少依据会显示待核实。没有阅读分母显示不适用，缺少可靠状态/来源不假造0；Mock业务记录不因服务切换到disabled而被标成真实送达。正式数据来源、国产库验证及其他业务仍按任务清单推进。
-
-“标签规则”由超级管理员建立规则、配置条件树并预览全库影响，确认后创建后台重算批次。单位/片区只读规则配置；管理员可显式重算当前规则，API也支持指定人员范围。规则只改变标签，不自动生成提醒。字段缺失产生对应人员/标签的待处理项，其他规则和人工来源继续；人工删除不会被重算恢复。
-
-年龄按北京时间的业务日期计算，当前任职必须有明确有效期与标准岗位编码，不能用“局长”等自由文本关键词代替标准依据。新提拔和退休过渡期仅人工维护。单位性质、最高职务层级和岗位领域的映射读取已具备，但在线维护/预览发布映射仍待接通；未配置时明确无法计算，不伪造分类。
+该命令加载真实Pack并验证内存/H2存储，不连接旧Mirror数据库，不发送任何外部消息。测试证明模型与底座可配合，不证明业务流程、前端、性能或国产数据库已经实现/验收。

@@ -1,0 +1,12 @@
+action: RegisterManualOrganization
+version: 1
+preconditions:
+  - expr: "size(params.name) > 0"
+    error: "Organization name is required"
+effects:
+  - type: createObject
+    objectType: Organization
+    properties:
+      name: params.name
+      organizationKind: params.organizationKind
+      sourceStatus: "'ACTIVE'"

@@ -1,0 +1,18 @@
+action: TransferCurrentOrganization
+version: 1
+preconditions:
+  - expr: "person._version == params.expectedVersion"
+    error: "Stale person version"
+  - expr: "organization.sourceStatus == 'ACTIVE'"
+    error: "Target organization is inactive"
+effects:
+  - type: deleteLink
+    linkType: "PersonCurrentOrganization"
+    filter:
+      from: "person"
+    expect: "ALL"
+  - type: createLink
+    linkType: "PersonCurrentOrganization"
+    from: "person"
+    to: "organization"
+    properties: {}

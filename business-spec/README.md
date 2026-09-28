@@ -1,23 +1,16 @@
-# 政务系统对象库业务规约
+# Mirror重新建模规约
 
-本目录记录基于 Foundry 构建的政务系统对象库业务规则。它描述业务对象、对象关系、状态、角色、Action 和验收场景，不描述数据库、HTTP 框架、部署拓扑等平台实现细节。
+本目录的有效内容均基于本轮重新读取原始DOCX及用户已明确的约束：**不存在可直接复用的“明镜现有技术栈”；不照搬文档技术方案；不是所有业务要求都在Foundry层实现。**
 
-Foundry 位于 `foundry/` 子模块，负责通用对象关系、历史、事务、权限、事件和 Domain Pack 运行时。本仓库只维护政务领域业务。
+- [../pack-explorer/README.md](../pack-explorer/README.md)：本地模型体验台的启动、演示边界及验证。
+- [mirror-business.md](mirror-business.md)：由当前Pack反向梳理的Mirror业务叙述与职责。
+- [requirements.md](requirements.md)：需求来源、章节/段落、覆盖矩阵与业务解释。
+- [action-boundaries.md](action-boundaries.md)：已注册原子Action、Mirror流程编排、授权/审计与必要事务边界缺口。
+- [service-boundaries.md](service-boundaries.md)：Foundry／领域包／Mirror服务／外部系统分工及事务责任。
+- [payload-contracts.md](payload-contracts.md)：模型中JSON配置与证据的结构边界，防止把未定义业务藏进JSON。
+- [review-decisions.md](review-decisions.md)：范围分歧与待确认决定。
+- [foundry-readiness.md](foundry-readiness.md)：底座实现是否足够及验证限制。
+- [catalog-reference.md](catalog-reference.md)：试点附件4原始标签表格供配置确认，不是已启用的自动规则。
+- [tasks.md](tasks.md)：只到模型确认的任务清单。
 
-## 文档
-
-- [Domain Pack 0.2.9](../domain-pack/README.md)：最新业务对象、关系、动作签名、规则、状态与两份原始文档的需求对照；定义完善不等于完整系统实现。
-- [application-plan.md](application-plan.md)：当前完整系统实施计划，先验证Domain Pack，再落实业务处理器、前端和Dashboard。
-- [dashboard-plan.md](dashboard-plan.md)：大屏的信息架构、指标口径和 Mock 边界。
-- [progress.md](progress.md)：阶段实现、实际验证证据和未完成边界。
-- [acceptance-matrix.md](acceptance-matrix.md)：原始需求编号到页面、API、测试及剩余项的验收对照。
-- [business-plan.md](business-plan.md)：从零重建计划和阶段性交付物。
-- [domain-model.md](domain-model.md)：业务对象和关系模型。
-- [workflow-model.md](workflow-model.md)：业务状态和 Action 流程。
-- [frontend-design.md](frontend-design.md)：重新对照原始文档形成的页面、角色、交互与验收设计草案，包含范围差异和待确认事项。
-- [tasks.md](tasks.md)：当前完整系统任务清单；大屏阶段历史清单已归档。
-
-- [domain-pack-review.md](domain-pack-review.md)：原始文档业务覆盖再验证、修订发现及进入实现的门槛。
-- [runtime-contracts.md](runtime-contracts.md)：动作契约与实际处理器、API、测试和兼容策略的登记。
-
-- [原文业务需求与Domain Pack逐项对照](business-requirements-comparison.md)：最新语义复核、具体定义缺口、短信条款纠错与业务分歧；优先于旧报告的完整性结论。
+旧文档已移至 `archive/legacy-before-remodel-20260928/`，其已完成状态、页面/API、模块路径和自动goal均不再有效。旧实现和模型仍可通过Git历史追溯。

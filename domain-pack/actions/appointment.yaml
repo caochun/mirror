@@ -1,0 +1,31 @@
+action: RecordManualAppointment
+version: 1
+preconditions:
+  - expr: "person._version >= 1"
+    error: "Person registration has not been created"
+  - expr: "organization.sourceStatus == 'ACTIVE' && position.sourceStatus == 'ACTIVE'"
+    error: "Appointment organization and position must be active"
+effects:
+  - type: createObject
+    objectType: Appointment
+    properties:
+      status: "'CURRENT'"
+      startedOn: params.startedOn
+      appointmentRoleCode: params.appointmentRoleCode
+      managementScopeCode: params.managementScopeCode
+      sourceSystem: "'MANUAL'"
+  - type: createLink
+    linkType: AppointmentPerson
+    from: appointment
+    to: person
+    properties: {}
+  - type: createLink
+    linkType: AppointmentOrganization
+    from: appointment
+    to: organization
+    properties: {}
+  - type: createLink
+    linkType: AppointmentPosition
+    from: appointment
+    to: position
+    properties: {}

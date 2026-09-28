@@ -1,0 +1,33 @@
+action: DecideObjectMembership
+version: 1
+preconditions:
+  - expr: "membership._version == params.expectedVersion"
+    error: "Stale membership version"
+  - expr: "membership.person != null"
+    error: "Membership requires its person"
+  - expr: "size(params.decisionCode) > 0"
+    error: "Decision code is required"
+  - expr: "decisionOrganization.sourceStatus == 'ACTIVE'"
+    error: "Decision organization is inactive"
+  - expr: "(membership.status == 'PENDING' && (params.status == 'IN_SCOPE' || params.status == 'EXCLUDED')) || (membership.status == 'IN_SCOPE' && (params.status == 'SUSPENDED' || params.status == 'EXCLUDED')) || (membership.status == 'SUSPENDED' && (params.status == 'IN_SCOPE' || params.status == 'EXCLUDED')) || (membership.status == 'EXCLUDED' && params.status == 'IN_SCOPE')"
+    error: "Membership status transition is not permitted"
+effects:
+  - type: updateObject
+    target: "membership"
+    set:
+      status: "params.status"
+      decisionCode: "params.decisionCode"
+      evidenceRef: "params.evidenceRef"
+      decidedBy: "actor.id"
+      decidedAt: "now"
+      note: "params.note"
+  - type: deleteLink
+    linkType: "MembershipDecisionOrganization"
+    filter:
+      from: "membership"
+    expect: "ALL"
+  - type: createLink
+    linkType: "MembershipDecisionOrganization"
+    from: "membership"
+    to: "decisionOrganization"
+    properties: {}

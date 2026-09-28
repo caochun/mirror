@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@theme { --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+body { margin: 0; background: #f4f6fa; color: #1d2c46; }
+button,select,input,textarea { font: inherit; }
+button { cursor:pointer; }
+button:disabled { cursor:not-allowed; opacity:.5; }
+:focus-visible { outline:2px solid #4f64d9; outline-offset:3px; }
+.panel { @apply bg-white rounded-xl border border-slate-200 shadow-sm; }
+.btn { @apply rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50; }
+.primary { @apply bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700; }
+.input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm; }
+th { @apply text-left font-medium text-slate-500 text-xs p-3 border-b border-slate-200; }
+td { @apply p-3 border-b border-slate-100 text-sm; }
+pre { @apply text-xs leading-relaxed whitespace-pre-wrap break-all; }
+.badge { @apply inline-flex items-center rounded-md px-2 py-1 text-xs bg-slate-100 text-slate-600; }

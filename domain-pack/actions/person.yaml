@@ -1,0 +1,39 @@
+action: RegisterManualPerson
+version: 1
+preconditions:
+  - expr: "size(params.name) > 0 && organization.sourceStatus == 'ACTIVE'"
+    error: "Person name and an active current organization are required"
+effects:
+  - type: createObject
+    objectType: Person
+    properties:
+      name: params.name
+      sex: params.sex
+      birthDate: params.birthDate
+      entryDate: params.entryDate
+      personalRankCode: params.personalRankCode
+      personalRankSourceRef: params.personalRankSourceRef
+  - type: createObject
+    objectType: ObjectMembership
+    properties:
+      status: "'PENDING'"
+      decisionCode: "'MANUAL_ENTRY_PENDING'"
+      evidenceRef: params.personalRankSourceRef
+      decidedBy: actor.id
+      decidedAt: now
+      note: params.note
+  - type: createLink
+    linkType: MembershipPerson
+    from: objectMembership
+    to: person
+    properties: {}
+  - type: createLink
+    linkType: MembershipDecisionOrganization
+    from: objectMembership
+    to: organization
+    properties: {}
+  - type: createLink
+    linkType: PersonCurrentOrganization
+    from: person
+    to: organization
+    properties: {}

@@ -1,3 +1,0 @@
-INSERT INTO mirror_role_permissions VALUES ('SUPER_ADMIN', 'REMINDER_REVISE');
-INSERT INTO mirror_role_permissions VALUES ('AREA_ADMIN', 'REMINDER_REVISE');
-INSERT INTO mirror_role_permissions VALUES ('UNIT_ADMIN', 'REMINDER_REVISE');

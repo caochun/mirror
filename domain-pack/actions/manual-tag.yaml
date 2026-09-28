@@ -1,0 +1,50 @@
+action: ApplyManualTagContribution
+version: 1
+preconditions:
+  - expr: "personTag._version == params.expectedVersion"
+    error: "Stale person-tag version"
+  - expr: "personTag.person != null && personTag.tag != null"
+    error: "Person-tag endpoints are missing"
+  - expr: "tagVersion.tag != null && tagVersion.tag.id == personTag.tag.id"
+    error: "Tag version belongs to another tag"
+  - expr: "personTag.tag.current != null && personTag.tag.current.id == tagVersion.id"
+    error: "Tag version is not current"
+  - expr: "personTag.tag.status == 'ENABLED' && size(personTag.tag.children) == 0"
+    error: "Tag is disabled or not a leaf"
+  - expr: "personTag.person.membership != null && personTag.person.membership.status == 'IN_SCOPE'"
+    error: "Person is not in scope"
+  - expr: "sourceOrganization.sourceStatus == 'ACTIVE'"
+    error: "Source organization is inactive"
+  - expr: "size(params.contributionId) > 0 && size(params.contributionKey) > 0"
+    error: "Contribution identity is required"
+effects:
+  - type: createObject
+    objectType: "TagContribution"
+    target: "params.contributionId"
+    properties:
+      contributionKey: "params.contributionKey"
+      kind: "'MANUAL'"
+      status: "'ACTIVE'"
+      effectiveFrom: "now"
+      actorId: "actor.id"
+      reason: "params.note"
+  - type: createLink
+    linkType: "ContributionForPersonTag"
+    from: "tagContribution"
+    to: "personTag"
+    properties: {}
+  - type: createLink
+    linkType: "ContributionTagVersion"
+    from: "tagContribution"
+    to: "tagVersion"
+    properties: {}
+  - type: createLink
+    linkType: "ContributionOrganization"
+    from: "tagContribution"
+    to: "sourceOrganization"
+    properties: {}
+  - type: updateObject
+    target: "personTag"
+    set:
+      suppression: "'NONE'"
+      note: "params.note"

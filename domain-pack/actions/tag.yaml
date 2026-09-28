@@ -1,0 +1,17 @@
+action: SuppressPersonTag
+version: 1
+preconditions:
+  - expr: "personTag._version == params.expectedVersion"
+    error: "Stale person-tag version"
+  - expr: "personTag.person != null && personTag.tag != null"
+    error: "Person-tag endpoints are missing"
+  - expr: "personTag.suppression == 'NONE'"
+    error: "Person tag is already suppressed"
+effects:
+  - type: updateObject
+    target: "personTag"
+    set:
+      suppression: "'SUPPRESSED'"
+      suppressedBy: "actor.id"
+      suppressedAt: "now"
+      note: "params.note"

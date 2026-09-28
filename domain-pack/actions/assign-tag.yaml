@@ -1,0 +1,60 @@
+action: AssignManualTag
+version: 1
+preconditions:
+  - expr: "person._version == params.expectedPersonVersion && membership._version == params.expectedMembershipVersion && tag._version == params.expectedTagVersion"
+    error: "A person, membership, or tag changed; refresh before assigning"
+  - expr: "person.membership != null && person.membership.id == membership.id && membership.person.id == person.id"
+    error: "Membership does not belong to the selected person"
+  - expr: "membership.status == 'IN_SCOPE'"
+    error: "Person is not in scope"
+  - expr: "person.organization != null && person.organization.sourceStatus == 'ACTIVE'"
+    error: "Person has no active current organization"
+  - expr: "tag.status == 'ENABLED' && size(tag.children) == 0"
+    error: "Tag is disabled or not a leaf"
+  - expr: "tag.current != null && tag.current.id == tagVersion.id && tagVersion.tag.id == tag.id"
+    error: "Tag version is not the current version of this tag"
+  - expr: "sourceOrganization.sourceStatus == 'ACTIVE'"
+    error: "Source organization is inactive"
+effects:
+  - type: createObject
+    objectType: PersonTag
+    target: "params.personTagId"
+    properties:
+      pairKey: "params.pairKey"
+      suppression: "'NONE'"
+      note: "params.note"
+  - type: createLink
+    linkType: PersonTagPerson
+    from: personTag
+    to: person
+    properties: {}
+  - type: createLink
+    linkType: PersonTagTag
+    from: personTag
+    to: tag
+    properties: {}
+  - type: createObject
+    objectType: TagContribution
+    target: "params.contributionId"
+    properties:
+      contributionKey: "params.contributionKey"
+      kind: "'MANUAL'"
+      status: "'ACTIVE'"
+      effectiveFrom: now
+      actorId: actor.id
+      reason: "params.note"
+  - type: createLink
+    linkType: ContributionForPersonTag
+    from: tagContribution
+    to: personTag
+    properties: {}
+  - type: createLink
+    linkType: ContributionTagVersion
+    from: tagContribution
+    to: tagVersion
+    properties: {}
+  - type: createLink
+    linkType: ContributionOrganization
+    from: tagContribution
+    to: sourceOrganization
+    properties: {}

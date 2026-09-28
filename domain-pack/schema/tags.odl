@@ -1,0 +1,231 @@
+enum TagStatus { ENABLED DISABLED }
+enum TagDimension { PERSON MATTER }
+enum TagDuration { LONG_TERM STAGE }
+enum PolicyKind { RULE ORGANIZATION_MAPPING POSITION_MAPPING AI }
+enum PolicyStatus { ENABLED DISABLED }
+enum SuppressionState { NONE SUPPRESSED }
+enum ContributionKind { MANUAL RULE AI_REVIEW MATTER RISK }
+enum ContributionStatus { ACTIVE ENDED UNVERIFIED }
+enum BatchKind { RULE AI MANUAL }
+enum BatchStatus { PENDING RUNNING COMPLETED PARTIAL_FAILED FAILED CANCELLED }
+enum EvaluationOutcome { MATCH NO_MATCH UNKNOWN CALL_FAILED }
+enum SuggestionStatus { PENDING ACCEPTED REJECTED STALE }
+
+# 稳定标签及开关；末级由TagParent推导，配置草稿在Mirror工作区，发布版本才成为生效事实。
+type Tag @objectType {
+    current: TagVersion @link(type: "TagCurrentVersion")
+    children: [Tag!] @link(type: "TagParent", direction: INBOUND)
+    id: ID! @primary
+    status: TagStatus!
+}
+
+# 发布后不可变的业务语义版本，区别于Foundry技术version。
+type TagVersion @objectType {
+    tag: Tag @link(type: "TagVersionOf")
+    id: ID! @primary
+    versionKey: String! @unique @immutable
+    revision: Int! @immutable
+    name: String! @immutable
+    description: String @immutable
+    dimension: TagDimension! @immutable
+    duration: TagDuration! @immutable
+    reminderFocus: String @immutable
+    publishedAt: DateTime! @immutable
+    publishedBy: String! @immutable
+}
+
+# 稳定规则/映射/AI策略及开关；草稿不作为已发布配置。
+type TagPolicy @objectType {
+    id: ID! @primary
+    kind: PolicyKind! @immutable
+    status: PolicyStatus!
+}
+
+# 版本化白名单配置；JSON结构契约见payload-contracts.md，不能放可执行SQL/脚本。
+type TagPolicyVersion @objectType {
+    id: ID! @primary
+    versionKey: String! @unique @immutable
+    revision: Int! @immutable
+    specification: JSON! @immutable
+    contentHash: String! @immutable
+    publishedAt: DateTime! @immutable
+    publishedBy: String! @immutable
+}
+
+# 每人每标签稳定关联，只保存人工抑制控制；当前有效性由服务从准入、目录及贡献计算。
+type PersonTag @objectType {
+    person: Person @link(type: "PersonTagPerson")
+    tag: Tag @link(type: "PersonTagTag")
+    id: ID! @primary
+    pairKey: String! @unique @immutable
+    suppression: SuppressionState!
+    suppressedBy: String
+    suppressedAt: DateTime
+    note: String
+}
+
+# 独立来源依据；规则退出/事项结束只结束自己的贡献，人工抑制独立存在。
+type TagContribution @objectType {
+    id: ID! @primary
+    contributionKey: String! @unique @immutable
+    kind: ContributionKind! @immutable
+    status: ContributionStatus!
+    effectiveFrom: DateTime!
+    effectiveTo: DateTime
+    actorId: String
+    reason: String
+    inputHash: String
+}
+
+# 业务批次与范围/配置证据；不放线程、租约、队列地址等运行机制。
+type EvaluationBatch @objectType {
+    id: ID! @primary
+    kind: BatchKind!
+    status: BatchStatus!
+    selection: JSON!
+    requestedBy: String!
+    requestedAt: DateTime!
+    completedAt: DateTime
+}
+
+# 人员+具体策略的评估证据；UNKNOWN/调用失败不等同于不命中。
+type TagEvaluation @objectType {
+    id: ID! @primary
+    resultKey: String! @unique @immutable
+    outcome: EvaluationOutcome!
+    inputHash: String! @immutable
+    inputs: JSON! @immutable @sensitive
+    explanation: String
+    assessedAt: DateTime!
+}
+
+# AI候选不是有效标签，复核前不能参与选人；输入变化可使其过时。
+type TagSuggestion @objectType {
+    id: ID! @primary
+    status: SuggestionStatus!
+    inputHash: String! @immutable
+    proposedAt: DateTime! @immutable
+    reviewedBy: String
+    reviewedAt: DateTime
+    reviewNote: String
+}
+
+# 最多三级、无环、仅末级赋标由Mirror保证；关系历史记录移动。
+type TagParent @linkType(from: "Tag", to: "Tag", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 每版所属稳定标签。
+type TagVersionOf @linkType(from: "TagVersion", to: "Tag", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 每版所属规则/映射/AI策略。
+type PolicyVersionOf @linkType(from: "TagPolicyVersion", to: "TagPolicy", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 配置所用的标签语义版本；一条策略可有多个目标。
+type PolicyTargetsTagVersion @linkType(from: "TagPolicyVersion", to: "TagVersion", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 单位性质映射根/范围，映射算法由服务执行。
+type PolicyAppliesToOrganization @linkType(from: "TagPolicyVersion", to: "Organization", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 稳定逻辑标签的人员端。
+type PersonTagPerson @linkType(from: "PersonTag", to: "Person", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 稳定逻辑标签的目录端。
+type PersonTagTag @linkType(from: "PersonTag", to: "Tag", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 一个逻辑标签可有多个来源贡献。
+type ContributionForPersonTag @linkType(from: "TagContribution", to: "PersonTag", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 每次贡献绑定当时标签版本。
+type ContributionTagVersion @linkType(from: "TagContribution", to: "TagVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 规则或AI来源配置，人工来源可以没有。
+type ContributionPolicyVersion @linkType(from: "TagContribution", to: "TagPolicyVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 来源组织不随人员当前组织变化回填。
+type ContributionOrganization @linkType(from: "TagContribution", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 发起组织。
+type BatchOrganization @linkType(from: "EvaluationBatch", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 冻结本批使用的配置版本。
+type BatchPolicyVersion @linkType(from: "EvaluationBatch", to: "TagPolicyVersion", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 评估项所属批次。
+type EvaluationBatchOf @linkType(from: "TagEvaluation", to: "EvaluationBatch", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 评估人员。
+type EvaluationPerson @linkType(from: "TagEvaluation", to: "Person", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 评估策略版本。
+type EvaluationPolicyVersion @linkType(from: "TagEvaluation", to: "TagPolicyVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 字段缺失/无法解释只影响这一评估。
+type IssueEvaluation @linkType(from: "DataIssue", to: "TagEvaluation", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 建议来源评估；通过评估关联人员/策略。
+type SuggestionEvaluation @linkType(from: "TagSuggestion", to: "TagEvaluation", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 建议目标标签语义。
+type SuggestionTagVersion @linkType(from: "TagSuggestion", to: "TagVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 已复核AI贡献的依据。
+type ContributionSuggestion @linkType(from: "TagContribution", to: "TagSuggestion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 规则贡献的最近成功判断依据。
+type ContributionEvaluation @linkType(from: "TagContribution", to: "TagEvaluation", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 批量人工赋标或规则/AI应用的业务批次依据。
+type ContributionBatch @linkType(from: "TagContribution", to: "EvaluationBatch", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 当前发布的标签语义；服务验证TagVersionOf同根，换版结束旧边建立新边。
+type TagCurrentVersion @linkType(from: "Tag", to: "TagVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 当前发布策略版本；服务验证PolicyVersionOf同根。
+type PolicyCurrentVersion @linkType(from: "TagPolicy", to: "TagPolicyVersion", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}

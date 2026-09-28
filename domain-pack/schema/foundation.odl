@@ -1,0 +1,159 @@
+extend schema @namespace(name: "mirror.domain", version: "1.0.0")
+# Foundry维护对象/关系ID、version、有效时间和记录时间；领域只声明业务状态。
+enum SourceStatus { ACTIVE INACTIVE }
+enum IdentityKind { PERSON_SOURCE CHANNEL_IDENTITY }
+enum MembershipStatus { PENDING IN_SCOPE EXCLUDED SUSPENDED }
+enum ProfileMatch { MATCHED MISSING AMBIGUOUS }
+enum AppointmentStatus { CURRENT ENDED }
+enum IssueScope { PERSON ORGANIZATION PROFILE INTEGRATION RULE AI }
+enum IssueStatus { OPEN RESOLVED DISMISSED }
+
+# 自然人稳定身份；不存来源账号生命周期或对象库准入状态。
+type Person @objectType {
+    membership: ObjectMembership @link(type: "MembershipPerson", direction: INBOUND)
+    organization: Organization @link(type: "PersonCurrentOrganization")
+    id: ID! @primary
+    name: String!
+    sex: String
+    birthDate: Date
+    entryDate: Date
+    personalRankCode: String
+    personalRankSourceRef: String @sensitive
+    nationalIdRef: String @sensitive
+    phoneRef: String @sensitive
+}
+
+# 独立组织对象，名称与机构性质属于来源事实，标签性质映射另行配置。
+type Organization @objectType {
+    id: ID! @primary
+    name: String!
+    sourceCode: String
+    sourceStatus: SourceStatus!
+    organizationKind: String
+}
+
+# 岗位定义；positionGradeCode为岗位等级，不能代替Person.personalRankCode。
+type Position @objectType {
+    id: ID! @primary
+    name: String!
+    sourceCode: String
+    standardCategory: String
+    positionGradeCode: String
+    sourceStatus: SourceStatus!
+}
+
+# 任职事实；任职身份和管理范围采用可追溯来源代码，不保存推算的一把手标签。
+type Appointment @objectType {
+    id: ID! @primary
+    status: AppointmentStatus!
+    startedOn: Date
+    endedOn: Date
+    appointmentRoleCode: String
+    managementScopeCode: String
+    sourceSystem: String
+    sourceRecordRef: String @sensitive
+}
+
+# 外部档案关联及白名单投影，缺档案不删除人员；不复制家庭档案全文。
+type ProfileReference @objectType {
+    id: ID! @primary
+    match: ProfileMatch!
+    sourceSystem: String!
+    reference: String @sensitive
+    projection: JSON @sensitive
+    observedAt: DateTime!
+}
+
+# 已确认自然人的外部身份映射；来源状态不等于对象库准入；技术账号留在身份/接入服务。
+type ExternalIdentity @objectType {
+    id: ID! @primary
+    identityKey: String! @unique @immutable
+    sourceSystem: String! @immutable
+    kind: IdentityKind!
+    subjectRef: String! @sensitive
+    sourceStatus: SourceStatus!
+    verifiedAt: DateTime
+}
+
+# 需业务人员处理的关联/规则/对接问题；普通HTTP错误与技术日志留在运行层。
+type DataIssue @objectType {
+    id: ID! @primary
+    scope: IssueScope!
+    status: IssueStatus!
+    code: String!
+    summary: String!
+    affectedFields: [String!]
+    sourceSystem: String
+    sourcePayloadRef: String @sensitive
+    detectedAt: DateTime!
+    resolvedAt: DateTime
+    resolution: String
+    resolvedBy: String
+}
+
+# 组织最多一个当前父节点；无环/合法根由Mirror校验。
+type OrganizationParent @linkType(from: "Organization", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 当前归属最多一个；异常可暂缺，不能把任职机构当作自动归属。
+type PersonCurrentOrganization @linkType(from: "Person", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 每个任职归属一人，人员可多任职。
+type AppointmentPerson @linkType(from: "Appointment", to: "Person", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 任职发生的机构。
+type AppointmentOrganization @linkType(from: "Appointment", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 任职使用岗位定义。
+type AppointmentPosition @linkType(from: "Appointment", to: "Position", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 每人一条当前档案关联判断，可MISSING/AMBIGUOUS。
+type PersonProfile @linkType(from: "Person", to: "ProfileReference", cardinality: ONE_TO_ONE) {
+    id: ID! @primary
+}
+
+# 多个来源身份映射同一自然人；未匹配来源先记接入问题，不创建虚构人员。
+type IdentityPerson @linkType(from: "ExternalIdentity", to: "Person", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 已匹配人员的异常；未匹配载荷允许暂缺该关系。
+type IssuePerson @linkType(from: "DataIssue", to: "Person", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 组织或集成异常的业务范围。
+type IssueOrganization @linkType(from: "DataIssue", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 每人一份Mirror准入决定；源停用、人工排除及恢复均由业务服务根据权威依据决定。
+type ObjectMembership @objectType {
+    person: Person @link(type: "MembershipPerson")
+    id: ID! @primary
+    status: MembershipStatus!
+    decisionCode: String!
+    evidenceRef: String @sensitive
+    decidedBy: String!
+    decidedAt: DateTime!
+    note: String
+}
+
+# 最多一份当前准入记录；服务保证每个在册自然人有一份，缺失按未确认处理。
+type MembershipPerson @linkType(from: "ObjectMembership", to: "Person", cardinality: ONE_TO_ONE) {
+    id: ID! @primary
+}
+
+# 当前准入决定的操作组织；历史由Foundry保留。
+type MembershipDecisionOrganization @linkType(from: "ObjectMembership", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}

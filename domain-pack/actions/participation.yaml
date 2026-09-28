@@ -1,0 +1,25 @@
+action: RecordMatterParticipation
+version: 1
+preconditions:
+  - expr: "stage.status == 'ACTIVE' && stage.matter != null && stage.matter.status == 'ACTIVE'"
+    error: "Matter stage is not active"
+  - expr: "size(params.participationId) > 0"
+    error: "Participation identity is required"
+effects:
+  - type: createObject
+    objectType: "MatterParticipation"
+    target: "params.participationId"
+    properties:
+      role: "params.role"
+      status: "'ACTIVE'"
+      startedAt: "now"
+  - type: createLink
+    linkType: "ParticipationStage"
+    from: "matterParticipation"
+    to: "stage"
+    properties: {}
+  - type: createLink
+    linkType: "ParticipationPerson"
+    from: "matterParticipation"
+    to: "person"
+    properties: {}

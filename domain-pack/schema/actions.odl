@@ -1,0 +1,131 @@
+# Executable transaction boundaries, not Mirror workflow entry points.
+# Permission names require a trusted runtime policy; deployment is default-deny.
+enum ReminderReviewDecision { APPROVED REJECTED }
+
+# 原子写准入决定及操作组织；同状态也可更新依据。
+type DecideObjectMembership @actionType(permission: "OBJECT_MEMBERSHIP_WRITE") {
+    membership: ObjectMembership! @param
+    expectedVersion: Int! @param
+    status: MembershipStatus! @param
+    decisionCode: String! @param
+    decisionOrganization: Organization! @param
+    evidenceRef: String @param
+    note: String @param
+}
+
+type RegisterManualOrganization @actionType(permission: "ORGANIZATION_DIRECTORY_WRITE") {
+    name: String! @param
+    organizationKind: String @param
+}
+
+type RegisterManualChildOrganization @actionType(permission: "ORGANIZATION_DIRECTORY_WRITE") {
+    parent: Organization! @param
+    name: String! @param
+    organizationKind: String @param
+}
+
+type RegisterManualPosition @actionType(permission: "POSITION_DIRECTORY_WRITE") {
+    name: String! @param
+    sourceCode: String @param
+    standardCategory: String @param
+    positionGradeCode: String @param
+}
+
+type RegisterManualPerson @actionType(permission: "PERSON_DIRECTORY_WRITE") {
+    organization: Organization! @param
+    name: String! @param
+    sex: String @param
+    birthDate: Date @param
+    entryDate: Date @param
+    personalRankCode: String @param
+    personalRankSourceRef: String @param
+    note: String @param
+}
+
+type AssignManualTag @actionType(permission: "TAG_WRITE") {
+    person: Person! @param
+    expectedPersonVersion: Int! @param
+    membership: ObjectMembership! @param
+    expectedMembershipVersion: Int! @param
+    tag: Tag! @param
+    expectedTagVersion: Int! @param
+    tagVersion: TagVersion! @param
+    sourceOrganization: Organization! @param
+    personTagId: ID! @param
+    pairKey: String! @param
+    contributionId: ID! @param
+    contributionKey: String! @param
+    note: String @param
+}
+
+type RecordManualAppointment @actionType(permission: "PERSON_DIRECTORY_WRITE") {
+    person: Person! @param
+    organization: Organization! @param
+    position: Position! @param
+    startedOn: Date! @param
+    appointmentRoleCode: String @param
+    managementScopeCode: String @param
+}
+
+# 在一个事务中结束旧归属边并创建新边；不推断岗位/标签。
+type TransferCurrentOrganization @actionType(permission: "PERSON_SOURCE_WRITE") {
+    person: Person! @param
+    expectedVersion: Int! @param
+    organization: Organization! @param
+}
+
+# 仅改变人工抑制，保留所有来源贡献；原命令重放不产生新事实。
+type SuppressPersonTag @actionType(permission: "TAG_WRITE") {
+    personTag: PersonTag! @param
+    expectedVersion: Int! @param
+    note: String @param
+}
+
+# 针对已有PersonTag，原子增加人工依据、关联版本/组织、解除抑制；旧抑制字段只留痕，是否抑制以suppression为准。
+type ApplyManualTagContribution @actionType(permission: "TAG_WRITE") {
+    personTag: PersonTag! @param
+    expectedVersion: Int! @param
+    tagVersion: TagVersion! @param
+    sourceOrganization: Organization! @param
+    contributionId: ID! @param
+    contributionKey: String! @param
+    note: String @param
+}
+
+# 原子登记一次阶段参与及人员/阶段关系；不直接计算标签或发送。
+type RecordMatterParticipation @actionType(permission: "MATTER_WRITE") {
+    stage: MatterStage! @param
+    person: Person! @param
+    role: ParticipationRole! @param
+    participationId: ID! @param
+}
+
+# 原子登记未匹配风险及治理组织，不虚构人员、不形成违纪结论。
+type RecordRiskSignal @actionType(permission: "RISK_INGEST") {
+    organization: Organization! @param
+    signalId: ID! @param
+    sourceKey: String! @param
+    sourceSystem: String! @param
+    summary: String! @param
+    sourceRef: String @param
+    reportedAt: DateTime! @param
+}
+
+# 只保存本轮独立审核决定；已批准事件驱动后续发布/派发，不把授权决定等同于发送。
+type DecideReminderReview @actionType(permission: "REMINDER_REVIEW") {
+    review: ReviewRound! @param
+    expectedVersion: Int! @param
+    decision: ReminderReviewDecision! @param
+    comment: String @param
+}
+
+# 原子保存当前版本首次阅读及其两端关系；不依赖送达状态。唯一readKey只防重复，命令回执才负责网络重放。
+type RecordFirstRead @actionType(permission: "RECEIVER_READ") {
+    recipient: TaskRecipient! @param
+    version: ReminderVersion! @param
+    expectedVersion: Int! @param
+    receiptId: ID! @param
+    readKey: String! @param
+    renderedContentHash: String! @param
+    identityEvidenceRef: String @param
+}

@@ -1,0 +1,17 @@
+action: RegisterManualChildOrganization
+version: 1
+preconditions:
+  - expr: "size(params.name) > 0 && parent.sourceStatus == 'ACTIVE'"
+    error: "Organization name and an active parent are required"
+effects:
+  - type: createObject
+    objectType: Organization
+    properties:
+      name: params.name
+      organizationKind: params.organizationKind
+      sourceStatus: "'ACTIVE'"
+  - type: createLink
+    linkType: OrganizationParent
+    from: organization
+    to: parent
+    properties: {}

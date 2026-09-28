@@ -1,6 +1,5 @@
-# 政务系统对象库实现任务
+# 当前任务
 
-完整任务清单位于 [business-spec/tasks.md](business-spec/tasks.md)。
+旧Mirror实现已移除。当前只完成重新建模、分层和Foundry适用性核查。
 
-本文件是仓库根入口，后续开发以业务规约目录中的清单为准。
-
+以 [待确认清单](business-spec/review-decisions.md) 为准；用户确认前不启动业务实现、不恢复完整上游复刻目标。

@@ -1,0 +1,23 @@
+action: RecordRiskSignal
+version: 1
+preconditions:
+  - expr: "organization.sourceStatus == 'ACTIVE'"
+    error: "Risk organization is inactive"
+  - expr: "size(params.signalId) > 0 && size(params.sourceKey) > 0 && size(params.summary) > 0"
+    error: "Risk evidence is required"
+effects:
+  - type: createObject
+    objectType: "RiskSignal"
+    target: "params.signalId"
+    properties:
+      sourceKey: "params.sourceKey"
+      sourceSystem: "params.sourceSystem"
+      status: "'UNMATCHED'"
+      summary: "params.summary"
+      sourceRef: "params.sourceRef"
+      reportedAt: "params.reportedAt"
+  - type: createLink
+    linkType: "RiskOrganization"
+    from: "riskSignal"
+    to: "organization"
+    properties: {}

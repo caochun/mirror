@@ -1,0 +1,29 @@
+action: DecideReminderReview
+version: 1
+preconditions:
+  - expr: "review._version == params.expectedVersion"
+    error: "Stale review version"
+  - expr: "review.decision == 'PENDING'"
+    error: "Review is not pending"
+  - expr: "review.version != null && review.version.state == 'FROZEN'"
+    error: "Review version is not frozen"
+  - expr: "review.version.task != null && review.version.task.lifecycle == 'OPEN'"
+    error: "Task is not open"
+  - expr: "review.submittedBy != actor.id && review.version.task.createdBy != actor.id"
+    error: "Self review is forbidden"
+  - expr: "review.version.audience != null && review.version.audience.task.id == review.version.task.id"
+    error: "Review audience mismatch"
+  - expr: "review.version.audience.sendMode != 'SCHEDULED' || (review.version.task.published != null) || timestamp(review.version.audience.scheduledAt) > now"
+    error: "Initial scheduled review has expired"
+  - expr: "params.decision != 'REJECTED' || (params.comment != null && size(params.comment) > 0)"
+    error: "Rejection comment is required"
+  - expr: "review.version.task.working != null && review.version.task.working.id == review.version.id"
+    error: "Review is not for the task working version"
+effects:
+  - type: updateObject
+    target: "review"
+    set:
+      decision: "params.decision"
+      reviewedBy: "actor.id"
+      reviewedAt: "now"
+      comment: "params.comment"

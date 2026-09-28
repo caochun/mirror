@@ -1,0 +1,96 @@
+enum MatterStatus { PLANNED ACTIVE COMPLETED CANCELLED }
+enum StageKind { BEFORE DURING AFTER }
+enum StageStatus { PENDING ACTIVE ENDED }
+enum ParticipationRole { PARTICIPANT HANDLER SUPERVISOR }
+enum ParticipationStatus { ACTIVE ENDED }
+enum RiskStatus { UNMATCHED OPEN VERIFIED DISMISSED CLOSED }
+
+# 重大工作/专项事项，不复制外部行权监督的审批流程。
+type SupervisionMatter @objectType {
+    id: ID! @primary
+    name: String!
+    category: String!
+    status: MatterStatus!
+    sourceSystem: String
+    sourceRef: String
+    startsAt: DateTime
+    endsAt: DateTime
+}
+
+# 事项前/中/后阶段；阶段变化与来源标签结束由业务服务编排。
+type MatterStage @objectType {
+    matter: SupervisionMatter @link(type: "StageMatter")
+    id: ID! @primary
+    name: String!
+    kind: StageKind!
+    status: StageStatus!
+    startedAt: DateTime
+    endedAt: DateTime
+}
+
+# 人员在具体阶段中的参与角色，可同时经办/分管多个事项。
+type MatterParticipation @objectType {
+    id: ID! @primary
+    role: ParticipationRole!
+    status: ParticipationStatus!
+    startedAt: DateTime!
+    endedAt: DateTime
+}
+
+# 风险线索不是违纪结论；保留未匹配线索，不用虚构人员补齐关联。
+type RiskSignal @objectType {
+    id: ID! @primary
+    sourceKey: String! @unique @immutable
+    sourceSystem: String! @immutable
+    status: RiskStatus!
+    summary: String! @sensitive
+    sourceRef: String @sensitive
+    reportedAt: DateTime!
+    matchedAt: DateTime
+    resolvedAt: DateTime
+}
+
+# 事项责任单位。
+type MatterOrganization @linkType(from: "SupervisionMatter", to: "Organization", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 阶段所属事项。
+type StageMatter @linkType(from: "MatterStage", to: "SupervisionMatter", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 参与发生的阶段。
+type ParticipationStage @linkType(from: "MatterParticipation", to: "MatterStage", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 实际参与人。
+type ParticipationPerson @linkType(from: "MatterParticipation", to: "Person", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 风险可涉及多个事项或暂无事项。
+type RiskMatter @linkType(from: "RiskSignal", to: "SupervisionMatter", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 一个风险可对应经办/分管多人；未匹配时无此关系。
+type RiskPerson @linkType(from: "RiskSignal", to: "Person", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 风险治理范围。
+type RiskOrganization @linkType(from: "RiskSignal", to: "Organization", cardinality: MANY_TO_MANY) {
+    id: ID! @primary
+}
+
+# 阶段贡献的参与依据，结束仅结束该来源。
+type ContributionParticipation @linkType(from: "TagContribution", to: "MatterParticipation", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}
+
+# 风险来源贡献依据。
+type ContributionRisk @linkType(from: "TagContribution", to: "RiskSignal", cardinality: MANY_TO_ONE) {
+    id: ID! @primary
+}

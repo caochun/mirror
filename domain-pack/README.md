@@ -1,128 +1,93 @@
-# 政务对象库业务 Domain Pack · 0.2.9
+# Mirror Domain Pack 1.0.0（修订确认稿）
 
-本包定义政务对象库的业务事实、关系、动作与约束，覆盖《试点工作方案》及《软件需求规格说明书》的业务要求。它不沿用文档中的既有明镜技术栈、服务器品牌、页面菜单或数据库表设计，也不宣称完整系统已经实现。
+Pack定义Mirror需要保存和追溯的业务事实，不实现业务服务。依据是两份DOCX和已讨论的领域边界；XLSX只是数据形态参考，没有作为字段、表结构或状态枚举的模板。
 
-本次交付是**定义完善**。部分Java处理器已接通，但新增定义并不自动获得执行能力；具体以运行契约登记为准。
+本次在确认稿中修改人员准入、岗位属性归属、标签抑制、版本关系、提醒状态和名单复用。版本号仍为未发布的1.0.0确认稿，不表示生产兼容升级。旧应用未恢复，旧数据库未改动。
 
-当前定义包括 **53个对象类型（含3个技术支持类型）、118个关系类型、71个业务动作契约**。统计用于说明定义规模，不作为实现完成度。
+## 四组领域事实
 
-## 如何阅读
-
-| 文件 | 内容 | 当前运行时支持 |
+| 文件 | 核心内容 | 为什么需要 |
 | --- | --- | --- |
-| `pack.yaml` | 命名空间、版本、模型文件与契约索引 | Foundry加载schema列表；x-扩展仅供定义验证 |
-| `schema/domain.odl` | 原有人员/组织、标签、内容、任务、回执模型及兼容字段 | 可解析、编译和应用到Provider |
-| `schema/business-evidence.odl` | 档案投影、来源贡献、专项事项、选人、审核与阅读版本关系 | 可解析、编译和应用到Provider |
-| `schema/runtime-support.odl` | 命令回执、写入锁及规则评估游标技术对象 | 保留原型兼容，不是政务业务概念 |
-| `contracts/action-types.odl` | 全部业务动作的类型化输入签名 | 与对象schema合并后可由ODL编译；未注册到执行列表 |
-| `contracts/actions.yaml` | 操作者、权限、前置条件、效果、幂等、事件、输出 | 定义专用格式；不是Foundry effect YAML |
-| `contracts/rules.yaml` | 业务不变量、唯一性规则与文档冲突处理 | 需业务执行层落实，当前非自动策略引擎 |
-| `contracts/states.yaml` | 状态词表和关键迁移 | 需业务处理器校验 |
-| `contracts/metrics.yaml` | 人数/人次、分子分母、时间/版本/权限口径 | 查询契约，非预填统计数据 |
-| `contracts/tag-catalog.yaml` | 对照试点附件4的初始标签词表和赋标方式建议 | 定义样例，不自动写入运行库 |
-| `contracts/scenarios.yaml` | 关键业务验收场景与期望 | 是验收规格，不冒充已通过的端到端测试 |
-| `contracts/coverage.yaml` | 需求书39项功能编号＋试点3类专项/治理要求对照 | 结构测试检查无遗漏及引用一致性 |
+| [foundation.odl](schema/foundation.odl) | Person、ObjectMembership、Organization、Position、Appointment、ProfileReference、ExternalIdentity、DataIssue | 分清自然人、业务准入、单位、任职和来源身份，不把一个来源账号状态等同于整个人的业务资格 |
+| [tags.odl](schema/tags.odl) | Tag及发布版本、策略及发布版本、PersonTag、独立贡献、评估批次/结果和AI建议 | 分清事实、规则判断、人工抑制和证据；一个来源结束不删除其他来源 |
+| [supervision.odl](schema/supervision.odl) | 事项、阶段、人员参与、风险线索 | 支持因事画像和阶段性提醒，保留多人参与与风险关联，不复制外部行权流程 |
+| [reminders.odl](schema/reminders.odl) | 示例/版本、媒体、任务/内容版本、AudienceSnapshot、逐人名单快照、审核、投递/阅读/撤回/逾期证据 | 明确谁批准什么内容、当时为何选人、每人的真实结果；内容修订不改变原名单及期限 |
 
-`actions: []` 是有意的：当前Foundry执行器仅支持简单对象/关系效果，不能表达冻结快照、独立审核、条件重算、外部回执等完整业务动作。为避免不带业务校验的命令进入执行入口，旧 `actions/transfer-assignment.yaml` 仅作为历史示例保留，不再注册。71个动作已经有签名和契约，不应把它们当成71个已可调用接口。后续落实处理器后逐个提升为可执行动作，而不是填写空effects来使Loader通过。
+## 人员身份与准入
 
-## 业务主线
+Person只表示自然人及基础属性。姓名、联系方式、出生日期等可以更正，身份证号不作主键；个人职级为personalRankCode，和Position.positionGradeCode分开，前者的来源保留为personalRankSourceRef。
+
+ObjectMembership通过MembershipPerson与Person一对一，记录Mirror当前准入决定及原因、操作人、时间和来源依据。PENDING表示尚未确认，IN_SCOPE表示纳入，EXCLUDED表示明确排除，SUSPENDED表示因权威停用等原因暂停新业务。一个渠道身份停用不会自动改变准入；恢复也不清除人工标签抑制。缺少准入记录不能默认开放业务。缺档案、缺生日等局部问题不自动把已纳入人员排除。
+
+ExternalIdentity只保存已确认自然人的外部身份映射与该来源状态。运维/接口账号留在身份或接入服务，不造Person，也不挤进本体形成另一套账号管理。非对象账号清单可在接入层展示；已确认自然人的业务排除则通过ObjectMembership留痕。
+
+PersonCurrentOrganization是权威当前归属；Appointment记录任职，兼任通过多个Appointment表达。任职身份与管理范围使用有来源的appointmentRoleCode/managementScopeCode，不直接存推算的“一把手”结论。证据不足为未知；具体分类由Mirror规则服务决定。
+
+## 标签当前值是计算结果，人工抑制是独立决定
+
+Tag保存稳定身份及启停开关，末级节点由TagParent推导，不维护另一份leaf权威标志。目录无环、最多三级及仅末级赋标由Mirror校验。
+
+PersonTag每(person,tag)一个稳定关联，保存suppression=NONE/SUPPRESSED。NONE仅表示没有人工抑制，并不表示标签有效。当前有效标签须同时满足：ObjectMembership为IN_SCOPE、权威当前组织有效、目录启用且为末级、存在适用的已发布版本、suppression为NONE，并有至少一条适用期内ACTIVE贡献。结果可物化为可重建查询投影，但不能把缓存当另一份事实。
+
+TagContribution保存MANUAL/RULE/AI_REVIEW/MATTER/RISK来源。某规则不再命中或阶段结束只结束相应贡献；UNKNOWN/CALL_FAILED的处理按待确认口径，不伪装成否定结论。人工删除只置抑制，自动重算不能清除；人工再次添加清抑制并记录新的人工依据。
+
+## 草稿、发布版本和当前关系
+
+标签定义、策略与内容示例的编辑草稿放在Mirror持久配置工作区，带draftId、编辑版本、权限、基础版本和预览证据。未发布的新建条目只存在工作区；发布时才创建稳定根/不可变语义版本及关联，必要时允许为已有根暂存下一版草稿。草稿有保存/审计责任，但无需为了每次编辑都发布本体事实。
+
+TagVersion、TagPolicyVersion、ContentVersion均为发布后不可变语义版本。TagCurrentVersion、PolicyCurrentVersion、ContentCurrentVersion选择当前版本，VersionOf关系说明归属；服务必须验证同根。切换当前版本结束旧边、建立新边，历史不丢失。启停开关与当前版本选择是不同事实。
+
+ReminderVersion是任务内容草稿，保存后可编辑，提交后state=FROZEN。审核结果在ReviewRound，发布在TaskPublishedVersion，待处理版本在TaskWorkingVersion。草稿/冻结、审核结果、当前发布和任务生命周期分别表达，没有一个总枚举覆盖所有组合。冻结后更改形成新内容版本；撤回本轮审核不解冻旧证据。
+
+## 名单及发送约束独立冻结
+
+选人工作区保存组织、标签ANY/ALL、指定人员和持久排除；确认后提交时创建AudienceSnapshot，固定selection、摘要、发送方式/计划时间、阅读时限及确认记录。RecipientSnapshot保存该名单中的姓名、单位和选人依据，SnapshotAudience指向名单，SnapshotRecipient指向稳定TaskRecipient。
+
+VersionAudience将内容版本与其审核名单关联。首轮审核通过后TaskApprovedAudience固定，之后内容修订只复用这份快照，不复制整份名单，不重算当前标签，不更换时限。初次批准前调整名单或计划时间可创建新名单快照；批准后要换接收范围/时限则新建任务。已批准未发送的定时任务可以按业务规则取消。
+
+TaskRecipient按(task,person)稳定；它是否进入正式发送范围，由批准名单成员决定，不按所有准备过程中产生的接收记录并集发送。修订发布不重发已成功消息，不重置首次成功时间。尚未成功的原发送意图仍引用原批准内容和同一名单；发布指针可独立前进。
 
 ```mermaid
 flowchart LR
-  P[人员] --> A[任职]
-  A --> O[组织]
-  A --> J[岗位定义]
-  P --> T[逻辑人员标签]
-  T --> C[来源贡献]
-  C --> E[规则评估或AI复核]
-  C --> S[专项参与及阶段]
-  S --> M[监督事项]
-  M --> R[提醒任务]
-  R --> V[不可变内容版本]
-  R --> Q[稳定接收记录]
-  V --> H[审核轮次]
-  Q --> D[渠道送达事实]
-  Q --> W[每版本阅读事实]
-  W --> V
+    M[ObjectMembership准入] --> P[Person]
+    P --> O[Organization当前归属]
+    A[Appointment任职] --> P
+    A --> J[Position岗位]
+    PT[PersonTag人工抑制] --> P
+    C[TagContribution独立依据] --> PT
+    PT --> T[Tag及发布版本]
+    TASK[ReminderTask生命周期] --> PUB[TaskPublishedVersion当前内容]
+    TASK --> WORK[TaskWorkingVersion待处理内容]
+    PUB --> AUD[AudienceSnapshot批准名单与发送约束]
+    WORK --> AUD
+    AUD --> SNAP[RecipientSnapshot名单成员]
+    SNAP --> REC[TaskRecipient稳定接收身份]
+    REC --> P
+    REVIEW[ReviewRound] --> WORK
+    READ[ReadReceipt] --> PUB
+    READ --> REC
 ```
 
-### 人员与组织
+图仅表示业务联系，实际关系名称/方向以ODL为准；列表成员通过SnapshotAudience反向查询。
 
-- Person为稳定人员身份；UserAccount为权限主体，可关联人员，但非对象账号仍可存在且不能参与画像/提醒。
-- PersonProfile存受控档案投影与可用字段、来源版本，不复制整个上游档案系统。身份证/手机号采用受保护引用，字段实际值在受权服务中解析。不得把工号当作渠道身份。
-- 人员当前归属来自明确权威来源；Assignment通过AssignmentUsesPosition关联岗位，兼任和历史均可表达。
-- OrganizationParent的树无环与“一人恰有一个当前组织”是业务约束；MANY_TO_ONE只代表最多一个，不能替代存在性和有效期校验。
-- 分类映射独立于组织主数据，单位性质继承及职务层级优先级由ClassificationMapping表达。
+## 并行状态与业务证据
 
-组织与授权另有`SynchronizeOrganizationFacts`和`SynchronizeAccountAuthority`契约：无人组织也可独立调整层级；账号不必关联人员。当前权限根据组织树、账号状态和有效授权重新判断，旧会话不能保留已撤销权限。来源系统可以替换，不要求已有明镜账号或组织实现。
+ReminderTask.lifecycle仅OPEN/CANCELLED/CLOSED。“待审核”“部分送达”“撤回中”等页面状态由Mirror按版本、审核与逐人结果计算，允许同时显示多个维度。CLOSED表示明确结束新操作的业务决定，不因全员已读或全部送达自动关闭。
 
-### 标签、贡献与依据
+DeliveryAttempt和WithdrawalAttempt是一项有稳定请求身份的业务尝试，网络重传必须复用它；只有明确发起新的业务重试才另建尝试。响应证据不可变保存，原始报文、连接错误和worker重试日志放运行存储。单人Withdrawal没有PARTIAL_FAILED，部分撤回是多人或多个渠道请求的聚合视图；如果一个撤回需多个目标请求，未全部完成则保持PROCESSING/UNKNOWN或FAILED并保留各请求结果。
 
-- `(tenant, personId, tagDefinitionId)`唯一一条PersonTagAssignment表示逻辑标签。
-- TagContribution记录人工、规则、经复核AI或专项来源。规则失效只结束自己的贡献，不能删除其他来源。
-- manualSuppressed对整个逻辑标签生效。自动规则、重新启用、AI复核不能解除；只有显式人工恢复可以。
-- TagEvaluation与TagProcessingIssue可以在从未成功赋标时存在，关联人员、具体标签/规则、批次、输入摘要；不强制先有人员标签。
-- TagVersion、RuleVersion、AiPolicyVersion冻结定义/规则/提示词配置。历史推送引用当时版本，不能随更名或规则修改漂移。
-- TagCandidate明确关联人员、标签版本、策略、输入依据与批次，确认时验证是否过时。
+ReadReceipt按(recipient,version)唯一保存首次阅读；当前阅读从TaskPublishedVersion判断，旧版仅审计。逾期依据本人首次真实成功+AudienceSnapshot.deadlineHours，期限已固定，改内容不延长；OverdueEpisode保留产生及解除事实。DataIssue只收需业务处理的关联/评估/对接不一致问题；普通HTTP错误不全量转为领域对象。批次汇总、投递总数、阅读率和重试次数均是查询投影。
 
-### 因事专项
+## 原子Action与Mirror流程
 
-SupervisionMatter涵盖项目、资金、整改、节庆、任免、采购、换届等事项；Project是可选的工程项目细节。MatterStage描述具体阶段，MatterParticipation描述某人以经办/分管/参与等角色参与的有效区间。
+Pack现登记14个可执行事务Action：人员/组织/岗位/任职登记、准入决定、当前组织转移、标签抑制/人工赋标、事项参与、风险登记、审核决定、首次阅读：准入决定、当前组织转移、标签抑制、已有标签关联的人工贡献、事项参与登记、未匹配风险登记、审核决定、首次阅读。它们都有真实Manifest和必要关系导航，而非空effects或只列命令名称。
 
-专项贡献连到参与关系、阶段及风险依据。A事项结束只结束A贡献，不结束同一人的B事项贡献及长期性标签。RiskEvent是外部或人工登记的风险线索，不等于违纪结论，不在本包建设所有行权监督模型。
+复杂Mirror流程不登记到Foundry。Mirror计算、等待人工、调用外部系统并编排已注册的Action；必要的全有或全无变更必须封装进同一Action。动态名单冻结、初次标签关联等边界还待实现，不能把多次独立提交当成一个事务。具体目录、部署所需授权策略、缺口及安全验收见[Action边界](../business-spec/action-boundaries.md)。
 
-### 名单、审核与内容
+## 分层与验证
 
-RecipientSelection保存组合条件与修订号，SelectionEntry保存条件命中、显式指定、手工排除和资格结果；这些独立布尔值支持重叠计数。确认绑定摘要，重算不能清除手工排除。
+Foundry提供模型/关系历史、约束、事务、Action执行和成功审计/outbox。Mirror提供业务算法、身份与组织授权、工作流与异步任务。ActionAuthorizer是可信扩展点，默认拒绝；没有Mirror策略时不开放这些Action。当前底座没有之前文字描述的任意Java Handler注册机制或共享事务Action批量入口。
 
-ReminderTaskVersion是最终清洗内容、链接、图片摘要/副本、时限、名单、标签依据的冻结快照。ReviewRound独立保存每轮提交/决定人、单位、时间和快照摘要。内容安全检查和逐图确认绑定版本摘要。待审修订与当前发布版同时存在，不能以一个snapshotId混淆。
+[业务自述](../business-spec/mirror-business.md)、[服务边界](../business-spec/service-boundaries.md)、[结构契约](../business-spec/payload-contracts.md)、[底座核查](../business-spec/foundry-readiness.md)是配套定义。
 
-### 稳定接收与版本阅读
-
-RecipientRecord按`任务＋人员`唯一，直接连接任务与人员；不因内容修订重建。firstDeliveredAt和deadlineAt只在首次真实送达成功后设置，修订/后续重试不延长。
-
-VersionTargetsRecipient改为多对多，是每个冻结版本对稳定接收名单的引用。RecipientVersionState按`接收记录＋内容版本`唯一，ReadReceipt同键首条有效；送达、撤回状态独立于阅读状态。允许“送达未知但本人已阅读”，同时记录对接不一致。
-
-OverdueRecord针对接收记录和发布版本，并保留产生时主管组织；当前督促范围按当前人员归属判断。真实新版阅读解除当前逾期，修订/撤回关闭旧记录只记关闭原因，不冒充已读。
-
-## 定义边界与未决项
-
-详见rules.yaml中的冲突表：
-
-- 试点方案需要专项阶段标签，需求书3.2.1首期只含长期性目录；保留`pilot-extension`定义，不擅自宣称首期实现范围扩张。
-- 当前按3.5.1采用鹿路通唯一触达、H5记录本人阅读，暂不自动短信；5.2第7条另有“短息接口”要求，冲突待明确。此前称该条款不存在的复核结论错误。
-- 非对象标记是独立权限，默认仅超级管理员，下放待确认。
-- 阅读率给出送达者阅读率和全目标覆盖率两种明确口径；UI不能混淆。
-- 党委/纪委/职能部门的责任分工不是三个硬编码角色，也不是三套内容库；用组织责任类型、任务归属和授权表达。
-
-时间、授权、幂等和审计为共用执行契约。JSON承载可变业务快照不意味着允许任意脚本；结构规则见 `contracts/payloads.md`。数据库布局、消息中间件、身份票据协议、服务部署不由业务Pack规定。
-
-## 验证与迁移
-
-```bash
-mvn -pl business-verification -am test
-```
-
-验证包加载、契约引用与动作签名、需求编号覆盖、状态迁移动作引用、初始目录层级，以及“同人员多候选/同标签多内容/两事项贡献/同接收人跨版本”的模型可表达性。测试不证明真实授权、规则引擎、渠道或UI全部实现。
-
-0.2.0改变关系基数和接收记录语义，不能直接宣称无损在线升级。现有数据库须先备份，按 `MIGRATION.md` 评估、迁移和验收。定义文件变更不会自动迁移生产数据；运行层接通情况以运行契约登记和逐阶段验证记录为准。
-
-定义复核修订0.2.2及其业务依据见 [再验证报告](../business-spec/domain-pack-review.md)。
-
-Mirror应用已开始接入部分Java处理器，进度见 [运行契约登记](../business-spec/runtime-contracts.md)。包内`actions: []`仍仅针对当前Foundry YAML执行器；不能据此把71个业务契约都宣称为可执行。已接通的标签、提醒和统计子集也不意味着完整业务已经实现。
-
-业务覆盖范围及Foundry责任边界见 [业务解读](BUSINESS-COVERAGE.md)。0.2.2补充独立组织/授权同步、专项退出及迟到回执状态、待处理人数口径，共23项业务验收场景；场景定义不等于已执行验收。
-
-0.2.3补充SaveReminderRevision及独立revisionState，明确修订草稿确认→独立审核→持久发布的准备阶段；当前共24项验收规格。该状态与任务送达汇总分开，避免修订把已发送任务改回草稿。
-
-0.2.4补充撤回作业派发契约、原始回执与有效结果区分、撤回取消待发布修订，以及在途发送取消和按完整名单汇总的语义；当前68动作、26项验收规格。
-
-0.2.5细化12项统计口径、权限快照与撤回历史筛选，并在VersionTargetsRecipient上冻结逐人标签版本。该版68个动作、28项验收规格。
-
-0.2.6补充CreateTagRule和规则评估游标，声明SKIPPED以及无法计算时仅暂停本规则贡献的策略；后台批次逐项保存评估/问题/来源及进度。
-
-0.2.7补齐映射预览证据及确认发布契约、规则独立停用和重新启用链路。当前53对象、118关系、71动作、31项验收规格；新增映射/停用契约未接通运行处理器。UNKNOWN贡献策略标为业务假设，不把实现选择冒充原文要求。
-
-0.2.8细化规则停用清理：批次冻结贡献和问题ID、当前有效查询即刻排除停用来源、问题关闭保留原因、新旧发布隔离及重启恢复。当前32项验收规格，DeactivateTagRule已接通；映射预览/发布仍待实现。
-
-0.2.9补充已有Person.title只读职务摘要字段，适配Foundry严格属性校验；规则识别仍读取Assignment/Position标准事实，不使用该摘要猜测岗位。演示初始化和规则赋标补齐实际关联时间，原型/测试补齐声明的必要字段，不改变数据底座与业务层边界。
+运行 `mvn -pl model-verification -am test -Dtest=DomainModelTest,DomainActionTest -Dsurefire.failIfNoSpecifiedTests=false` 可验证模型和真实Action执行。测试授权器只验证底座钩子；未实施Mirror服务、真实安全策略、前端或旧数据迁移。
