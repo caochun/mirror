@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry映射声明与变换执行
+
+Foundry提交e944882：上游映射YAML、全部内置变换、版本化custom、主键/属性及关系引用映射；属性物化接入新映射，旧简单摘要兼容，Pack校验类型/字段/依赖。全仓825项，其中Foundry715项，全通过，新增27项。独立探针解析原始PAS/ERP/TMS配置，输出预期主键、姓名、日期和数值，见[阶段报告](../platform-review/datasource-mapping-language.md)。
+
+关系引用尚不是关系状态协调，当前物化器明确拒绝带关系的计划；关系应用器、完整模式/连接器运行能力继续，完整目标保持active。Mirror运行库与JAR未改动。
+
 ## 2026-09-28：Foundry事务血缘与可恢复同步
 
 Foundry提交619c5aa：对象/关系字段来源与事实同事务，Action/人工重新确认/补偿标识；受控Java/REST血缘要求独立权限并隐藏源指针。对象同步接入来源冲突、存在断言、稳定事件回执与分区Checkpoint，失败停止流、旧事件不重做，并支持约束保护的对象恢复。全仓797项通过，最后边界补测后测试集798项，其中Foundry688项，全通过；新增73项含独立JVM中断/竞争及真实JDBC/HTTP输入，见[阶段报告](../platform-review/transactional-lineage-and-ingestion.md)。

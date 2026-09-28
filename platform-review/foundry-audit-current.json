@@ -464,6 +464,53 @@
       "source_kind_chain" : [ "ACTION", "SYNC" ]
     }
   },
+  "upstream_mapping_language" : {
+    "pas" : {
+      "mode_retained" : "OVERLAY",
+      "datasource" : "PAS_Patients",
+      "type" : "Patient",
+      "id" : "patient-123",
+      "values" : {
+        "nhsNumber" : "example",
+        "name" : "Ms Ada Lovelace",
+        "dateOfBirth" : "1815-12-10",
+        "status" : "ACTIVE"
+      },
+      "connection_placeholder_unexpanded" : true
+    },
+    "erp" : {
+      "mode_retained" : "OVERLAY",
+      "datasource" : "ERP_Products",
+      "type" : "Product",
+      "id" : "product-1",
+      "values" : {
+        "reorderPoint" : 10,
+        "name" : "Part",
+        "unitOfMeasure" : "EA",
+        "category" : "RAW",
+        "reorderQuantity" : 2,
+        "sku" : "SKU-1"
+      },
+      "connection_placeholder_unexpanded" : true
+    },
+    "tms" : {
+      "mode_retained" : "OVERLAY",
+      "datasource" : "TMS_Transactions",
+      "type" : "Transaction",
+      "id" : "txn-1",
+      "values" : {
+        "type" : "PAYMENT",
+        "country" : "GB",
+        "referenceId" : "R1",
+        "status" : "PENDING",
+        "transactionDate" : "2026-01-15T09:30:00Z",
+        "amount" : 12.5,
+        "currency" : "USD"
+      },
+      "connection_placeholder_unexpanded" : true
+    },
+    "custom_version_changes_configuration" : true
+  },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces", "scalars" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],
   "java_manifest_components" : [ "action", "version", "reversible", "preconditions", "effects", "onSideEffectFailure", "sideEffects" ],

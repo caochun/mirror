@@ -227,6 +227,7 @@ public class ReferenceProbe {
         ingestionData.setURL("jdbc:h2:mem:audit_ingestion;DB_CLOSE_DELAY=-1");
         ingestion.put("jdbc_h2", ingestionProbe(new JdbcStorageProvider(ingestionData, DatabaseDialect.h2())));
         observations.put("transactional_lineage_and_ingestion", ingestion);
+        observations.put("upstream_mapping_language", mappingProbe(Path.of(args[0])));
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -293,6 +294,32 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> mappingProbe(Path upstream) throws Exception {
+        var parser = new MappingConfigParser();
+        var results = new LinkedHashMap<String, Object>();
+        var configs = Map.of("pas", "domain-packs/nhs-acute/connectors/pas-jdbc.yaml",
+                "erp", "domain-packs/supply-chain/connectors/erp-jdbc.yaml", "tms", "domain-packs/aml/connectors/tms-jdbc.yaml");
+        var pas = new LinkedHashMap<String, Object>();
+        pas.put("patient_id", "123"); pas.put("nhs_no", "example"); pas.put("title", "Ms"); pas.put("forename", "Ada");
+        pas.put("surname", "Lovelace"); pas.put("dob", "10/12/1815"); pas.put("discharge_date", null);
+        var erp = Map.<String, Object>of("material_id", "1", "material_number", "SKU-1", "material_description", "Part",
+                "material_group", "RAW", "base_uom", "EA", "reorder_point", "10 items", "reorder_qty", "2");
+        var tms = Map.<String, Object>of("txn_id", "1", "reference_number", "R1", "txn_type", "PAYMENT", "status", "PENDING",
+                "amount", "12.50 USD", "currency_code", "USD", "txn_date", "2026-01-15 09:30:00", "jurisdiction", "GB");
+        var inputs = Map.<String, Map<String, Object>>of("pas", pas, "erp", erp, "tms", tms);
+        for (String name : List.of("pas", "erp", "tms")) {
+            var config = parser.parse(Files.readString(upstream.resolve(configs.get(name))));
+            var mapped = new RecordMapper(config.mapping()).map(new SourceRecord(name, "row", "UPSERT", Instant.EPOCH, inputs.get(name), null));
+            results.put(name, Map.of("datasource", config.datasource(), "mode_retained", config.sync().mode().name(),
+                    "connection_placeholder_unexpanded", config.connection().url().startsWith("${"), "type", mapped.key().type(), "id", mapped.key().id(), "values", mapped.properties()));
+        }
+        var custom = new MappingConfig("Item", new KeyMapping("id", "id", null), Map.of("name", new PropertyMapping("name", "custom('normalize')")), List.of());
+        var first = new RecordMapper(custom, new TransformRegistry().with("normalize", "1", (value, row) -> value));
+        var second = new RecordMapper(custom, new TransformRegistry().with("normalize", "2", (value, row) -> value));
+        results.put("custom_version_changes_configuration", !first.fingerprint().equals(second.fingerprint()));
+        return results;
     }
 
     static Map<String, Object> ingestionProbe(StorageProvider storage) {
