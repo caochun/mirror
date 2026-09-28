@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry ObjectSet保存查询
+
+Foundry提交0aa60b0：定义SPI、内存/JDBC元数据存储、创建者/租户共享边界、受控动态执行和交集聚合、REST/GraphQL及版本并发控制。常规根reactor593项，其中Foundry483项，全通过，新增24项含持久恢复、并发、权限、模型变化及接口测试。独立探针确认调用者可见结果、筛选交集和取消共享生效，见[阶段报告](../platform-review/object-sets.md)。
+
+ObjectSet复用现有查询能力，完整筛选/原生下推、Consent、数据快照、配置发布、审计及其他上游范围继续。Mirror运行库和服务JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry读与应用模型绑定
 
 Foundry提交46352d7：JDBC本体读前后验证激活身份，内存模型epoch，ApplicationService/计算器固定模型，命令使用显式绑定事务。GraphQL完整Query收尾丢弃旧结果，成功Mutation回执保留。常规根reactor569项，其中Foundry459项，全通过，新增25项覆盖竞态、接口、单连接池及模型数值默认值。独立探针确认Provider重绑后旧应用拒绝、新应用正确隐藏字段，见[阶段报告](../platform-review/schema-read-binding.md)。

@@ -190,6 +190,12 @@ public class ReferenceProbe {
         readData.setURL("jdbc:h2:mem:audit_read_binding;DB_CLOSE_DELAY=-1");
         reads.put("jdbc_h2", readBindingProbe(new JdbcStorageProvider(readData, DatabaseDialect.h2())));
         observations.put("application_schema_read_binding", reads);
+        var sets = new LinkedHashMap<String, Object>();
+        sets.put("memory", objectSetProbe(new InMemoryStorageProvider(), new InMemoryObjectSetStore()));
+        var setsData = new JdbcDataSource();
+        setsData.setURL("jdbc:h2:mem:audit_object_sets;DB_CLOSE_DELAY=-1");
+        sets.put("jdbc_h2", objectSetProbe(new JdbcStorageProvider(setsData, DatabaseDialect.h2()), new JdbcObjectSetStore(setsData, DatabaseDialect.h2())));
+        observations.put("governed_object_sets", sets);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -256,6 +262,39 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> objectSetProbe(StorageProvider storage, ObjectSetStore store) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name:"sets", version:"1.0.0")
+                type Item @objectType { id: ID! @primary amount: Int! secret: String @sensitive }
+                """);
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Item", "a", Map.of("amount", 1));
+            tx.createObject("Item", "b", Map.of("amount", 2));
+            tx.createObject("Item", "c", Map.of("amount", 3));
+            tx.commit();
+        }
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> principal.id().equals(PRINCIPAL.id()) || key.id().equals("b")),
+                new ActionExecutor(), schema, Map.of(), Map.of());
+        var service = new ObjectSetService(app, store);
+        var saved = service.create(CTX, PRINCIPAL, Map.of("name", "Saved cohort", "objectType", "Item", "isPublic", true,
+                "filter", Map.of("field", "amount", "operator", "gte", "value", 2),
+                "aggregation", Map.of("fields", List.of(Map.of("field", "amount", "fn", "SUM", "alias", "total")),
+                        "filter", Map.of("field", "amount", "operator", "lte", "value", 2))));
+        var otherContext = RequestContext.system(CTX.tenantId(), "other-reader");
+        var other = new SecurityPrincipal("other-reader", CTX.tenantId(), Set.of());
+        var result = service.execute(otherContext, other, saved.id(), 20, 0);
+        boolean changeRejected = false;
+        try { service.update(otherContext, other, saved.id(), Map.of("name", "Forbidden"), null); }
+        catch (SecurityException expected) { changeRejected = true; }
+        double total = service.aggregate(CTX, PRINCIPAL, saved.id()).groups().getFirst().values().get("total").doubleValue();
+        service.update(CTX, PRINCIPAL, saved.id(), Map.of("isPublic", false), saved.version());
+        return Map.of("reader_visible_ids", result.edges().stream().map(edge -> edge.node().id()).toList(), "reader_total", result.totalCount(),
+                "aggregate_filter_intersection", total, "non_owner_update_rejected", changeRejected,
+                "unshared_definition_hidden", service.get(otherContext, other, saved.id()) == null,
+                "creator_from_context", saved.createdBy().equals(CTX.actorId()));
     }
 
     static Map<String, Object> readBindingProbe(StorageProvider storage) {

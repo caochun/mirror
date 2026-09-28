@@ -34,7 +34,6 @@
   },
   "upstream_library_workflow" : {
     "memory" : {
-      "return_status" : "COMPLETED",
       "event_count" : 1,
       "event_data" : {
         "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
@@ -45,10 +44,10 @@
       "replay_same_result" : true,
       "authorization_mode" : "ONTOLOGY_TARGETS",
       "book_after_borrow" : "ON_LOAN",
-      "book_after_return" : "AVAILABLE"
+      "book_after_return" : "AVAILABLE",
+      "return_status" : "COMPLETED"
     },
     "jdbc_h2" : {
-      "return_status" : "COMPLETED",
       "event_count" : 1,
       "event_data" : {
         "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
@@ -59,7 +58,8 @@
       "replay_same_result" : true,
       "authorization_mode" : "ONTOLOGY_TARGETS",
       "book_after_borrow" : "ON_LOAN",
-      "book_after_return" : "AVAILABLE"
+      "book_after_return" : "AVAILABLE",
+      "return_status" : "COMPLETED"
     }
   },
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
@@ -72,10 +72,10 @@
   } ],
   "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : false,
   "upstream_borrow_side_effects" : [ {
-    "attempts" : 3,
     "failurePolicy" : "ROLLBACK_ALL",
     "name" : "emitBorrowedEvent",
-    "type" : "event"
+    "type" : "event",
+    "attempts" : 3
   } ],
   "upstream_return_manifest" : {
     "from" : "book",
@@ -101,22 +101,21 @@
   } ],
   "computed_read_behavior" : {
     "memory" : {
-      "after_delete" : 1,
       "hidden_endpoint_count" : 0,
       "initial" : 2,
       "stored_attribute" : false,
-      "source_version" : 1
+      "source_version" : 1,
+      "after_delete" : 1
     },
     "jdbc_h2" : {
-      "after_delete" : 1,
       "hidden_endpoint_count" : 0,
       "initial" : 2,
       "stored_attribute" : false,
-      "source_version" : 1
+      "source_version" : 1,
+      "after_delete" : 1
     }
   },
   "typed_action_graphql" : {
-    "accepted_errors" : [ ],
     "version_after_rejected" : 1,
     "invalid_enum_rejected" : true,
     "stored_state" : "DONE",
@@ -129,32 +128,27 @@
           "changeType" : "UPDATED"
         } ]
       }
-    }
+    },
+    "accepted_errors" : [ ]
   },
   "governed_object_queries" : {
     "memory" : {
-      "has_next_page" : true,
-      "hidden_predicate_rejected" : true,
       "first_visible_id" : "visible-b",
       "visible_total" : 2,
-      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ]
+      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
+      "has_next_page" : true,
+      "hidden_predicate_rejected" : true
     },
     "jdbc_h2" : {
-      "has_next_page" : true,
-      "hidden_predicate_rejected" : true,
       "first_visible_id" : "visible-b",
       "visible_total" : 2,
-      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ]
+      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
+      "has_next_page" : true,
+      "hidden_predicate_rejected" : true
     }
   },
   "governed_aggregates" : {
     "memory" : {
-      "visible_totals" : {
-        "count_*" : 3,
-        "sum_amount" : 4.0,
-        "avg_amount" : 2.0
-      },
-      "page_group_count" : 1,
       "first_group_values" : {
         "count_*" : 2,
         "sum_amount" : 4.0,
@@ -164,15 +158,15 @@
       "total_visible_groups" : 2,
       "first_group_keys" : {
         "category" : "A"
-      }
+      },
+      "visible_totals" : {
+        "count_*" : 3,
+        "sum_amount" : 4.0,
+        "avg_amount" : 2.0
+      },
+      "page_group_count" : 1
     },
     "jdbc_h2" : {
-      "visible_totals" : {
-        "count_*" : 3,
-        "sum_amount" : 4.0,
-        "avg_amount" : 2.0
-      },
-      "page_group_count" : 1,
       "first_group_values" : {
         "count_*" : 2,
         "sum_amount" : 4.0,
@@ -182,31 +176,44 @@
       "total_visible_groups" : 2,
       "first_group_keys" : {
         "category" : "A"
-      }
+      },
+      "visible_totals" : {
+        "count_*" : 3,
+        "sum_amount" : 4.0,
+        "avg_amount" : 2.0
+      },
+      "page_group_count" : 1
     }
   },
   "governed_search" : {
     "memory" : {
-      "has_next_page" : true,
-      "visible_total" : 2,
       "first_id" : "a",
       "hidden_field_rejected" : true,
       "phrase_scores" : [ 1.0, 1.0 ],
       "first_term_score" : 3.0,
-      "highlights_exclude_secret" : true
+      "highlights_exclude_secret" : true,
+      "has_next_page" : true,
+      "visible_total" : 2
     },
     "jdbc_h2" : {
-      "has_next_page" : true,
-      "visible_total" : 2,
       "first_id" : "a",
       "hidden_field_rejected" : true,
       "phrase_scores" : [ 1.0, 1.0 ],
       "first_term_score" : 3.0,
-      "highlights_exclude_secret" : true
+      "highlights_exclude_secret" : true,
+      "has_next_page" : true,
+      "visible_total" : 2
     }
   },
   "connection_pagination" : {
     "memory" : {
+      "default_tail_errors" : [ ],
+      "legacy_data" : {
+        "items" : [ {
+          "id" : "a0"
+        } ]
+      },
+      "legacy_errors" : [ ],
       "default_tail_data" : {
         "items" : {
           "edges" : [ {
@@ -227,16 +234,16 @@
       },
       "zero_edges" : 0,
       "bounded_before_ids" : [ "a0" ],
-      "visible_total" : 7,
-      "default_tail_errors" : [ ],
-      "legacy_data" : {
-        "items" : [ {
-          "id" : "a0"
-        } ]
-      },
-      "legacy_errors" : [ ]
+      "visible_total" : 7
     },
     "jdbc_h2" : {
+      "default_tail_errors" : [ ],
+      "legacy_data" : {
+        "items" : [ {
+          "id" : "a0"
+        } ]
+      },
+      "legacy_errors" : [ ],
       "default_tail_data" : {
         "items" : {
           "edges" : [ {
@@ -257,49 +264,60 @@
       },
       "zero_edges" : 0,
       "bounded_before_ids" : [ "a0" ],
-      "visible_total" : 7,
-      "default_tail_errors" : [ ],
-      "legacy_data" : {
-        "items" : [ {
-          "id" : "a0"
-        } ]
-      },
-      "legacy_errors" : [ ]
+      "visible_total" : 7
     }
   },
   "persistent_schema_registry" : {
-    "approved_version" : 2,
-    "initial_version" : 1,
     "stale_version_rejected" : true,
     "old_snapshot_preserved" : true,
     "breaking_without_approval_rejected" : true,
     "persisted_plan" : "Review changed Action authorization target; registry records evidence only",
     "action_parameter_order_drift_rejected" : true,
-    "unchanged_restart_version" : 1
+    "unchanged_restart_version" : 1,
+    "approved_version" : 2,
+    "initial_version" : 1
   },
   "jdbc_schema_activation" : {
+    "pending_object_absent" : true,
+    "active_version" : 2,
+    "stale_writer_rejected" : true,
     "registered_version_after_failed_activation" : 2,
     "approved_but_invalid_data_rejected" : true,
     "registered_candidate_did_not_block_old_model" : true,
-    "in_flight_commit_rejected" : true,
-    "pending_object_absent" : true,
-    "active_version" : 2,
-    "stale_writer_rejected" : true
+    "in_flight_commit_rejected" : true
   },
   "application_schema_read_binding" : {
     "memory" : {
+      "old_application_rejected_after_provider_rebind" : true,
+      "new_application_hides_field" : true,
       "old_graphql_data_discarded" : true,
       "old_graphql_error_code" : "SCHEMA_VERSION_MISMATCH",
-      "field_visible_before_activation" : true,
-      "old_application_rejected_after_provider_rebind" : true,
-      "new_application_hides_field" : true
+      "field_visible_before_activation" : true
     },
     "jdbc_h2" : {
+      "old_application_rejected_after_provider_rebind" : true,
+      "new_application_hides_field" : true,
       "old_graphql_data_discarded" : true,
       "old_graphql_error_code" : "SCHEMA_VERSION_MISMATCH",
-      "field_visible_before_activation" : true,
-      "old_application_rejected_after_provider_rebind" : true,
-      "new_application_hides_field" : true
+      "field_visible_before_activation" : true
+    }
+  },
+  "governed_object_sets" : {
+    "memory" : {
+      "reader_visible_ids" : [ "b" ],
+      "reader_total" : 1,
+      "creator_from_context" : true,
+      "non_owner_update_rejected" : true,
+      "unshared_definition_hidden" : true,
+      "aggregate_filter_intersection" : 2.0
+    },
+    "jdbc_h2" : {
+      "reader_visible_ids" : [ "b" ],
+      "reader_total" : 1,
+      "creator_from_context" : true,
+      "non_owner_update_rejected" : true,
+      "unshared_definition_hidden" : true,
+      "aggregate_filter_intersection" : 2.0
     }
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
