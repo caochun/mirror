@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry recordConsent事务效果与恢复
+
+Foundry提交eed5248：recordConsent声明与CEL条件、同事务同意记录/审计、幂等重放、revision保护的逆序补偿，以及ApplicationService自动装配。常规根reactor659项，其中Foundry549项，全通过，新增41项含四个独立JVM提交前后中断恢复场景。独立探针确认撤回后旧请求不重授予、条件跳过、对象与同意补偿一致，见[阶段报告](../platform-review/consent-effects.md)。
+
+记录用途由部署配置，真实CEL缺字段需显式has条件；上游事务外记录/未配置静默跳过未被照搬。实时撤销、字段限制/主体映射、完整ODL/查询下推/同步等仍待推进。Mirror运行库和服务JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry Consent策略与访问
 
 Foundry提交7f315f8：内存/JDBC同意记录、opt-out、用途/关系豁免策略、统一读排除/ID-only、动作和重放检查及角色管理API/审计。常规根reactor618项，其中Foundry508项，全通过，新增25项含单连接池和故障回滚。独立探针确认受限身份、可见统计、撤回和豁免/opt-out规则，见[阶段报告](../platform-review/consent.md)。

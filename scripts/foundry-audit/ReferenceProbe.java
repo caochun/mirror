@@ -202,6 +202,12 @@ public class ReferenceProbe {
         consentData.setURL("jdbc:h2:mem:audit_consent;DB_CLOSE_DELAY=-1");
         consent.put("jdbc_h2", consentProbe(new JdbcStorageProvider(consentData, DatabaseDialect.h2()), new JdbcConsentStore(consentData, DatabaseDialect.h2())));
         observations.put("consent_governance", consent);
+        var consentEffects = new LinkedHashMap<String, Object>();
+        consentEffects.put("memory", consentEffectProbe(new InMemoryStorageProvider(), new InMemoryConsentStore()));
+        var effectsData = new JdbcDataSource();
+        effectsData.setURL("jdbc:h2:mem:audit_consent_effects;DB_CLOSE_DELAY=-1");
+        consentEffects.put("jdbc_h2", consentEffectProbe(new JdbcStorageProvider(effectsData, DatabaseDialect.h2()), new JdbcConsentStore(effectsData, DatabaseDialect.h2())));
+        observations.put("transactional_consent_effects", consentEffects);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -268,6 +274,49 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> consentEffectProbe(StorageProvider storage, ConsentStore store) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name:"consent-effects-probe",version:"1.0.0")
+                type Person @objectType { id: ID! @primary name: String! }
+                type Register @actionType(permission:"can_register") { id: ID! @param name: String! @param consent: Boolean! @param }
+                """);
+        storage.applySchema(CTX, schema);
+        var manifest = new ActionManifestParser().parse("""
+                action: Register
+                version: 1
+                effects:
+                  - type: createObject
+                    objectType: Person
+                    target: params.id
+                    properties: {name: params.name}
+                  - type: recordConsent
+                    subject: person
+                    evidence: "recorded by action"
+                    condition: "params.consent != false"
+                """);
+        var executor = new ActionExecutor().withAuthorization((context, actor, definition, values) -> true)
+                .withConsentStore(store, "PUBLIC_DUTY", Set.of("Person"), Set.of("PUBLIC_DUTY"));
+        var actor = new ActionActor(CTX.actorId(), Set.of());
+        var definition = schema.actionTypes().getFirst();
+        var parameters = Map.<String, Object>of("id", "a", "name", "A", "consent", true);
+        var result = executor.execute(manifest, definition, CTX, actor, parameters, "record", storage);
+        var subject = new EntityKey("Person", "a");
+        int initial = store.snapshot(CTX, subject).records().size();
+        store.record(CTX, subject, "PUBLIC_DUTY", ConsentRecord.Decision.DENY, "later withdrawal");
+        var replay = executor.execute(manifest, definition, CTX, actor, parameters, "record", storage);
+        var compensated = new ActionManifest(manifest.action(), manifest.version(), false, manifest.preconditions(), manifest.effects(),
+                ActionManifest.RollbackPolicy.ROLLBACK_ALL,
+                List.of(new ActionManifest.SideEffect("notify", "event", Map.of("type", "registered"), 1, java.time.Duration.ZERO)));
+        var failed = executor.withSideEffects(invocation -> { throw new IllegalStateException("delivery failed"); })
+                .execute(compensated, definition, CTX, actor, Map.of("id", "b", "name", "B", "consent", true), "rollback", storage);
+        executor.execute(manifest, definition, CTX, actor, Map.of("id", "c", "name", "C", "consent", false), "skip", storage);
+        return Map.of("initial_records", initial, "replay_same_result", result.equals(replay),
+                "after_replay", store.snapshot(CTX, subject).records().stream().map(record -> record.decision().name()).toList(),
+                "compensation_status", failed.status(), "compensated_object_deleted", storage.getObject(CTX, "Person", "b").isDeleted(),
+                "compensation_decisions", store.snapshot(CTX, new EntityKey("Person", "b")).records().stream().map(record -> record.decision().name()).toList(),
+                "false_condition_records", store.snapshot(CTX, new EntityKey("Person", "c")).records().size());
     }
 
     static Map<String, Object> consentProbe(StorageProvider storage, ConsentStore store) {

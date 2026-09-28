@@ -342,6 +342,26 @@
       "consented_sum" : 2.0
     }
   },
+  "transactional_consent_effects" : {
+    "memory" : {
+      "compensated_object_deleted" : true,
+      "initial_records" : 1,
+      "false_condition_records" : 0,
+      "compensation_status" : "ROLLED_BACK",
+      "replay_same_result" : true,
+      "after_replay" : [ "GRANT", "DENY" ],
+      "compensation_decisions" : [ "GRANT", "DENY" ]
+    },
+    "jdbc_h2" : {
+      "compensated_object_deleted" : true,
+      "initial_records" : 1,
+      "false_condition_records" : 0,
+      "compensation_status" : "ROLLED_BACK",
+      "replay_same_result" : true,
+      "after_replay" : [ "GRANT", "DENY" ],
+      "compensation_decisions" : [ "GRANT", "DENY" ]
+    }
+  },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],
   "java_manifest_components" : [ "action", "version", "reversible", "preconditions", "effects", "onSideEffectFailure", "sideEffects" ],
