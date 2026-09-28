@@ -362,7 +362,53 @@
       "compensation_decisions" : [ "GRANT", "DENY" ]
     }
   },
-  "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
+  "custom_scalar_values" : {
+    "memory" : {
+      "secret_hidden" : true,
+      "declared_scalars" : [ "Payload" ],
+      "precise_value_roundtrip" : true,
+      "idempotent_replay" : true,
+      "graphql" : {
+        "item" : {
+          "value" : {
+            "code" : "A",
+            "amount" : 1.0000000000000000001
+          },
+          "secret" : null
+        },
+        "__type" : {
+          "name" : "Payload",
+          "kind" : "SCALAR",
+          "description" : "A structured external value"
+        }
+      },
+      "equality_count" : 1,
+      "opaque_ordering_rejected" : true
+    },
+    "jdbc_h2" : {
+      "secret_hidden" : true,
+      "declared_scalars" : [ "Payload" ],
+      "precise_value_roundtrip" : true,
+      "idempotent_replay" : true,
+      "graphql" : {
+        "item" : {
+          "value" : {
+            "code" : "A",
+            "amount" : 1.0000000000000000001
+          },
+          "secret" : null
+        },
+        "__type" : {
+          "name" : "Payload",
+          "kind" : "SCALAR",
+          "description" : "A structured external value"
+        }
+      },
+      "equality_count" : 1,
+      "opaque_ordering_rejected" : true
+    }
+  },
+  "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces", "scalars" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],
   "java_manifest_components" : [ "action", "version", "reversible", "preconditions", "effects", "onSideEffectFailure", "sideEffects" ],
   "interface_primary_inheritance_errors" : [ ]

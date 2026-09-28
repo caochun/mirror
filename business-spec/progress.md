@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry自定义scalar与值链路
+
+Foundry提交485e664/7dc5a3e：scalar名称/说明保留、Pack依赖、模型摘要/迁移、对象/关系/历史/Action/GraphQL值链路及完整值筛选/分组。接通ODL/JDBC/HTTP的精确数字处理，旧快照空scalar保持原摘要。常规根reactor685项，其中Foundry575项，全通过，新增26项并完成最后定向复核，见[阶段报告](../platform-review/custom-scalars.md)。
+
+普通无注解type按实体解析；新scalar声明会进入模型身份，升级需要显式激活。内嵌结构值、完整AST/指令/代码生成、查询下推、同步和生产验收仍待推进。Mirror运行库与JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry recordConsent事务效果与恢复
 
 Foundry提交eed5248：recordConsent声明与CEL条件、同事务同意记录/审计、幂等重放、revision保护的逆序补偿，以及ApplicationService自动装配。常规根reactor659项，其中Foundry549项，全通过，新增41项含四个独立JVM提交前后中断恢复场景。独立探针确认撤回后旧请求不重授予、条件跳过、对象与同意补偿一致，见[阶段报告](../platform-review/consent-effects.md)。

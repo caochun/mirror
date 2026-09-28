@@ -208,6 +208,12 @@ public class ReferenceProbe {
         effectsData.setURL("jdbc:h2:mem:audit_consent_effects;DB_CLOSE_DELAY=-1");
         consentEffects.put("jdbc_h2", consentEffectProbe(new JdbcStorageProvider(effectsData, DatabaseDialect.h2()), new JdbcConsentStore(effectsData, DatabaseDialect.h2())));
         observations.put("transactional_consent_effects", consentEffects);
+        var scalars = new LinkedHashMap<String, Object>();
+        scalars.put("memory", customScalarProbe(new InMemoryStorageProvider()));
+        var scalarData = new JdbcDataSource();
+        scalarData.setURL("jdbc:h2:mem:audit_custom_scalars;DB_CLOSE_DELAY=-1");
+        scalars.put("jdbc_h2", customScalarProbe(new JdbcStorageProvider(scalarData, DatabaseDialect.h2())));
+        observations.put("custom_scalar_values", scalars);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -274,6 +280,46 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> customScalarProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name:"scalar-probe",version:"1.0.0")
+                "A structured external value"
+                scalar Payload
+                type Item { id: ID! @primary value: Payload! secret: Payload @sensitive }
+                type Create @actionType(permission:"can_create") { id: ID! @param value: Payload! @param }
+                """);
+        storage.applySchema(CTX, schema);
+        var action = new ActionManifestParser().parse("""
+                action: Create
+                version: 1
+                effects:
+                  - type: createObject
+                    objectType: Item
+                    target: params.id
+                    properties: {value: params.value, secret: params.value}
+                """);
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> true),
+                new ActionExecutor(), schema, Map.of("Create", action), Map.of());
+        var payload = Map.of("code", "A", "amount", new java.math.BigDecimal("1.0000000000000000001"));
+        var parameters = Map.<String, Object>of("id", "a", "value", payload);
+        var result = app.execute(action, CTX, PRINCIPAL, parameters, "scalar");
+        var replay = app.execute(action, CTX, PRINCIPAL, parameters, "scalar");
+        var record = app.getObject(CTX, PRINCIPAL, "Item", "a");
+        var filter = new ObjectConnectionQuery(Map.of("value", Map.of("eq", payload)), Map.of(), ConnectionPage.defaults());
+        var graph = GraphqlApiRuntime.create(schema, app, Map.of("Create", action));
+        var graphResult = graph.execute(graphql.ExecutionInput.newExecutionInput("{item(id:\"a\"){value secret} __type(name:\"Payload\"){name kind description}}")
+                .graphQLContext(Map.of("request", new ApiRequestContext(CTX, PRINCIPAL))).build());
+        if (!graphResult.getErrors().isEmpty()) throw new IllegalStateException(graphResult.getErrors().toString());
+        boolean ordered = false;
+        try { app.queryConnection(CTX, PRINCIPAL, "Item", new ObjectConnectionQuery(Map.of(), Map.of("value", "ASC"), ConnectionPage.defaults())); }
+        catch (IllegalArgumentException expected) { ordered = true; }
+        return Map.of("declared_scalars", schema.scalars().stream().map(type -> type.name()).toList(),
+                "precise_value_roundtrip", payload.equals(record.properties().get("value")),
+                "secret_hidden", !record.properties().containsKey("secret"), "idempotent_replay", result.equals(replay),
+                "equality_count", app.queryConnection(CTX, PRINCIPAL, "Item", filter).totalCount(),
+                "opaque_ordering_rejected", ordered, "graphql", graphResult.getData());
     }
 
     static Map<String, Object> consentEffectProbe(StorageProvider storage, ConsentStore store) {
