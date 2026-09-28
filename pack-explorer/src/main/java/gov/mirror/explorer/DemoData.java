@@ -9,7 +9,7 @@ import java.util.Map;
 final class DemoData {
     private static final String TIME = "2026-01-01T00:00:00Z";
     static void populate(InMemoryStorageProvider storage) {
-        try (var tx = storage.beginTransaction(PreviewServer.CONTEXT)) {
+        try (var tx = storage.beginTransaction(PreviewRuntime.CONTEXT)) {
             tx.createObject("Person", "p", Map.of("name", "演示人员 · 林青", "nationalIdRef", "PRIVATE-DEMO"));
             for (String org : List.of("org", "org2")) tx.createObject("Organization", org, Map.of("name", org.equals("org") ? "市级示范单位" : "开发区示范单位", "sourceStatus", "ACTIVE"));
             tx.createLink("PersonCurrentOrganization", "person-org", key("Person", "p"), key("Organization", "org"), Map.of());

@@ -24,7 +24,12 @@ class ApiError extends Error {
 
 async function api<T>(path:string, init?:RequestInit):Promise<T> {
   const response = await fetch(path, init);
-  const data = await response.json();
+  const raw = await response.text();
+  let data: any = {};
+  if (raw.trim()) {
+    try { data = JSON.parse(raw); }
+    catch { if (!response.ok) throw new ApiError(raw.slice(0, 300) || `HTTP ${response.status}`, response.status); }
+  }
   if (!response.ok) throw new ApiError(data.error || data.result?.errors?.map((e:{message:string})=>e.message).join('; ') || `HTTP ${response.status}`, response.status, data.code);
   return data;
 }
@@ -50,15 +55,34 @@ function App() {
   useEffect(()=>{
     const seq=++sequence.current;
     setLoading(true);setError('');setDetail(undefined);setSelected('');
-    api<{items:Obj[];hasMore:boolean}>(`/api/objects/${type}?offset=${offset}`).then(result=>{
+    api<Obj[]>(`/api/v1/${type}?offset=${offset}`).then(result=>{
       if(seq!==sequence.current)return;
-      setRows(result.items);setMore(result.hasMore);setSelected(pending.current?.type===type?pending.current.id:result.items[0]?.id||'');pending.current=undefined;
+      setRows(result.slice(0,100));setMore(result.length>100);setSelected(pending.current?.type===type?pending.current.id:result[0]?.id||'');pending.current=undefined;
     }).catch(e=>{if(seq===sequence.current)setError(e.message);}).finally(()=>{if(seq===sequence.current)setLoading(false);});
   },[type,offset,refresh]);
   useEffect(()=>{
     if(!selected)return;
     let current=true;setDetail(undefined);
-    api<Detail>(`/api/objects/${type}/${encodeURIComponent(selected)}`).then(d=>{if(current)setDetail(d);}).catch(e=>{if(current)setError(e.message);});
+    const definition=model?.schema.objectTypes.find(item=>item.name===type);
+    if (!definition) return;
+    Promise.all([
+      api<Obj>(`/api/v1/${type}/${encodeURIComponent(selected)}`),
+      api<History[]>(`/api/v1/${type}/${encodeURIComponent(selected)}/history`),
+      ...definition.linkFields.map(field=>api<unknown[]>(`/api/v1/${type}/${encodeURIComponent(selected)}/links/${field.name}`).then(items=>({field,items})))
+    ]).then(([object,history,...relations])=>{
+      const edges:Edge[]=[];
+      (relations as {field:{name:string;linkType:string;type:string};items:unknown[]}[]).forEach(({field,items})=>{
+        const projected=Array.isArray(items)?items:(items==null?[]:[items]);
+        projected.forEach((raw:any)=>{
+          const target={type: raw?.type || field.type.replace(/[\[\]!]/g,''), id: raw?.id};
+          if (!target.id) return;
+          edges.push({id:`${field.linkType}:${target.id}:${field.name}`,type:field.linkType,direction:field.name, target,
+            targetName:String(raw?.properties?.name||raw?.properties?.title||target.id),
+            deleted:false, version:Number(raw?.version||1), history:[]});
+        });
+      });
+      if(current)setDetail({object,history,relationships:edges});
+    }).catch(e=>{if(current)setError(e.message);});
     return ()=>{current=false;};
   },[selected,type,refresh]);
   function navigate(t:string,id?:string) {
@@ -143,7 +167,7 @@ function ActionForm({model:initialModel,action,role,current,choose,close,changed
     let live=true;
     setLoading(true);
     const needed=[...new Set(fields.map(p=>p.type).filter(t=>types.has(t)))];
-    Promise.all(needed.map(async type=>[type,(await api<{items:Obj[]}>(`/api/objects/${type}`)).items] as const)).then(entries=>{
+    Promise.all(needed.map(async type=>[type,(await api<Obj[]>(`/api/v1/${type}`)).slice(0,100)] as const)).then(entries=>{
       if(!live)return;
       const all=Object.fromEntries(entries);setOptions(all);
       const v:Record<string,string>={};
@@ -199,7 +223,7 @@ function ActionForm({model:initialModel,action,role,current,choose,close,changed
       const body:Record<string,unknown>={};
       for(const p of fields){const value=values[p.name];if(!value){if(p.required)throw new Error(`请填写 ${p.name}`);body[p.name]=null;continue;}body[p.name]=p.type==='Int'||p.type==='Float'?Number(value):p.type==='Boolean'?value==='true':p.type==='JSON'||p.type.startsWith('[')?JSON.parse(value):value;}
       const serialized=replay?last!:JSON.stringify(body);setLast(serialized);
-      const data=await api(`/api/actions/${action.name}`,{method:'POST',headers:{'Content-Type':'application/json','X-Preview-Token':model.token,'X-Preview-Role':role,'Idempotency-Key':request},body:serialized});
+      const data=await api(`/api/v1/actions/${action.name}`,{method:'POST',headers:{'Content-Type':'application/json','X-Preview-Token':model.token,'X-Preview-Role':role,'Idempotency-Key':request},body:serialized});
       setResult(data);setConfirm(false);changed();
     }catch(e){
       // The process may restart between the preflight check and POST.

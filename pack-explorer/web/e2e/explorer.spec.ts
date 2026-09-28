@@ -19,7 +19,7 @@ test('generated model, relationship navigation, action authorization and replay'
   await page.getByLabel('note',{exact:true}).fill('浏览器演示：人工删除优先');
   await page.getByRole('checkbox').check();
   await page.getByRole('button',{name:'确认执行',exact:true}).click();
-  await expect(page.getByRole('alert')).toContainText('只读预览不能执行');
+  await expect(page.getByRole('alert')).toContainText('Read-only preview cannot execute');
   await page.getByRole('button',{name:'关闭弹窗'}).click();
   await page.getByLabel('预览身份').selectOption('operator');
   await page.getByRole('button',{name:'人工抑制标签',exact:true}).click();

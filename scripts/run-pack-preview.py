@@ -14,9 +14,9 @@ args = parser.parse_args()
 if args.build:
     subprocess.run(['npm', 'ci'], cwd=root / 'pack-explorer/web', check=True)
     subprocess.run(['npm', 'run', 'build'], cwd=root / 'pack-explorer/web', check=True)
-    subprocess.run(['mvn', '-q', '-pl', 'pack-explorer', '-am', 'test', '-Dtest=PreviewServerTest',
+    subprocess.run(['mvn', '-q', '-pl', 'pack-explorer', '-am', 'test', '-Dtest=SpringPreviewTest',
                     '-Dsurefire.failIfNoSpecifiedTests=false'], cwd=root, check=True)
-report = root / 'pack-explorer/target/surefire-reports/TEST-gov.mirror.explorer.PreviewServerTest.xml'
+report = root / 'pack-explorer/target/surefire-reports/TEST-gov.mirror.explorer.SpringPreviewTest.xml'
 if not report.exists() or not (root / 'pack-explorer/web/dist/index.html').exists():
     parser.error('Build first: python3 scripts/run-pack-preview.py --build')
 properties = {p.get('name'): p.get('value') for p in ET.parse(report).findall('./properties/property')}
@@ -25,5 +25,6 @@ paths += [Path(p) for p in properties['java.class.path'].split(os.pathsep) if p.
 classpath = os.pathsep.join(dict.fromkeys(str(p) for p in paths if p.exists()))
 java = str(Path(properties['java.home']) / 'bin/java')
 os.chdir(root)
-os.execv(java, [java, '-cp', classpath, 'gov.mirror.explorer.PreviewServer',
-               str(root / 'domain-pack'), str(root / 'pack-explorer/web/dist'), str(args.port)])
+os.execv(java, [java, '-cp', classpath, '-Dmirror.preview.pack-directory=' + str(root / 'domain-pack'),
+               '-Dmirror.preview.assets-directory=' + str(root / 'pack-explorer/web/dist'),
+               '-Dserver.port=' + str(args.port), 'gov.mirror.explorer.PreviewSpringApplication'])

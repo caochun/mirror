@@ -44,7 +44,7 @@ test('old open form and old replay require reconfirmation after a real process r
   try {
     await openSuppression(page,preview.url);
     let postCount=0;
-    page.on('request',request=>{if(request.method()==='POST'&&request.url().includes('/api/actions/'))postCount++;});
+    page.on('request',request=>{if(request.method()==='POST'&&request.url().includes('/api/v1/actions/'))postCount++;});
     await stopPreview(preview.process);
     preview=await startPreview(preview.port);
     await page.getByRole('button',{name:'确认执行',exact:true}).click();
@@ -76,7 +76,7 @@ test('restart between preflight and POST recovers the token rejection without re
   try {
     await openSuppression(page,preview.url);
     let posts=0;
-    await page.route('**/api/actions/SuppressPersonTag',async route=>{
+    await page.route('**/api/v1/actions/SuppressPersonTag',async route=>{
       posts++;
       if(posts===1){
         await stopPreview(preview.process);

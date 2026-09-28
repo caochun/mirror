@@ -1,6 +1,6 @@
 {
   "date": "2026-09-28",
-  "scope": "Domain modeling and native Action execution; not production Mirror authorization or workflow implementation",
+  "scope": "Domain modeling, atomic Action execution, and Pack explorer; not production Mirror authorization/workflows",
   "foundry_commit": "ef09ac35e3acbf30c042b383aca9f8ffdc4a2b5f",
   "foundry_has_preexisting_uncommitted_changes": true,
   "model_namespace": "mirror.domain",
@@ -246,7 +246,7 @@
     "domain-pack/schema/tags.odl": "f7d5f92ca23adc5c969f996407063fa9b751782caf7f2b06002153753779a683"
   },
   "manifest_sha256": "9a513264f4c8fd760a29992eb7dfa56f58bc9ea3cc337be7d2c61a88aadad2f9",
-  "model_revision": "atomic Pack actions; Mirror workflows remain external; native effects and policies validated with fixture authorization",
+  "model_revision": "atomic Pack actions; Mirror workflows external; Spring Boot Foundry REST/GraphQL Pack explorer",
   "action_count": 14,
   "actions": [
     "DecideObjectMembership",
