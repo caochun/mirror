@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry Overlay源投影
+
+Foundry新增只读read-through OverlayEngine与ManagedOverlay：TTL缓存、键规范化、不可变来源信息、过期/清除/删除处理、mutation拒绝，并接入托管JDBC fullExtract；投影不写对象、历史、回执或检查点。Foundry全回归810项，根项目920项，全部通过。详见[阶段报告](../platform-review/overlay-projection.md)。
+
+关系投影、writeback、分布式失效、源端一致快照、真实REST/国产库和生产性能仍待继续，完整目标保持active。Mirror运行库及JAR未改动。
+
 ## 2026-09-28：Foundry Debezium CDC消费
 
 Foundry新增Debezium JSON解码、Kafka固定分区会话与事务后逐条确认，支持create/update/delete/read、tombstone、Connect Decimal/日期时间和嵌套值。失败停点不确认后续消息，重投使用已有回执恢复；暂停/恢复/关闭可控。Foundry回归804项全通过，见[阶段报告](../platform-review/debezium-cdc.md)。
