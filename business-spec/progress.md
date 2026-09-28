@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry JDBC激活与写入门禁
+
+Foundry提交4d554c4：候选登记/激活分离，显式CAS切换及全租户当前事实校验，提交门禁阻止旧模型实例和在途事务落库；支持先扩展/回填/收紧，审批不代替数据校验。常规根reactor544项，其中Foundry434项，全通过，新增15项含HTTP及独立JVM恢复。独立探针确认候选不自动切换、旧写入/提交拒绝、必填缺失的批准激活仍失败，见[阶段报告](../platform-review/schema-activation.md)。
+
+公共读SPI和ApplicationService的激活版本绑定仍待完成，列为下一重点；物理DDL初始化独立，完整迁移执行、生产装配/目标库和性能验收继续。Mirror运行库和服务JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry持久Schema Registry
 
 Foundry提交e4e1f08：新增JDBC完整模型版本、diff/审批证据持久保存、原子expectedVersion、启动去重和配置漂移检查。注册表指纹保留Action参数顺序，旧编译摘要/回执不改。常规根reactor529项，其中Foundry419项，全通过，新增17项内存/JDBC/独立JVM恢复测试。独立探针确认重建不重复登记、漂移/未批准变更/过期版本拒绝且旧快照保留，见[阶段报告](../platform-review/persistent-schema-registry.md)。

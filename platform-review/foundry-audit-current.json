@@ -1,5 +1,5 @@
 {
-  "jdbc_h2" : {
+  "memory" : {
     "missing_required_name_accepted" : false,
     "wrong_scalar_type_accepted" : false,
     "duplicate_unique_value_accepted" : false,
@@ -7,7 +7,7 @@
     "earlier_valid_time_seen_with_current_recorded_time" : "before",
     "asof_list_name" : "before"
   },
-  "memory" : {
+  "jdbc_h2" : {
     "missing_required_name_accepted" : false,
     "wrong_scalar_type_accepted" : false,
     "duplicate_unique_value_accepted" : false,
@@ -28,97 +28,95 @@
   "string_to_int_migration_class" : "BREAKING",
   "upstream_library_load" : "composed schema/actions/assets with core dependency",
   "upstream_library_assets" : {
-    "field_policy_types" : [ "Member" ],
     "permission_sources" : 1,
+    "field_policy_types" : [ "Member" ],
     "seed_files" : 1
   },
   "upstream_library_workflow" : {
     "memory" : {
-      "event_count" : 1,
+      "return_status" : "COMPLETED",
+      "book_after_return" : "AVAILABLE",
+      "book_after_borrow" : "ON_LOAN",
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "replay_same_result" : true,
+      "active_loans_after_return" : 0,
+      "borrow_status" : "COMPLETED",
       "event_data" : {
         "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
         "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
       },
-      "borrow_status" : "COMPLETED",
-      "active_loans_after_return" : 0,
-      "replay_same_result" : true,
-      "authorization_mode" : "ONTOLOGY_TARGETS",
-      "book_after_borrow" : "ON_LOAN",
-      "book_after_return" : "AVAILABLE",
-      "return_status" : "COMPLETED"
+      "event_count" : 1
     },
     "jdbc_h2" : {
-      "event_count" : 1,
+      "return_status" : "COMPLETED",
+      "book_after_return" : "AVAILABLE",
+      "book_after_borrow" : "ON_LOAN",
+      "authorization_mode" : "ONTOLOGY_TARGETS",
+      "replay_same_result" : true,
+      "active_loans_after_return" : 0,
+      "borrow_status" : "COMPLETED",
       "event_data" : {
         "bookId" : "seed_e933b606a03c8c342444fe914c6bd2f077b48449919f00f202dadafdbac8f410",
         "memberId" : "seed_e8366c077324db83a076757bcf1028293336e57baaae45550090a83918b6cfaa"
       },
-      "borrow_status" : "COMPLETED",
-      "active_loans_after_return" : 0,
-      "replay_same_result" : true,
-      "authorization_mode" : "ONTOLOGY_TARGETS",
-      "book_after_borrow" : "ON_LOAN",
-      "book_after_return" : "AVAILABLE",
-      "return_status" : "COMPLETED"
+      "event_count" : 1
     }
   },
   "upstream_book_fields_retained" : [ "id", "isbn", "title", "author", "status", "borrower" ],
   "upstream_book_navigation_fields" : [ {
-    "name" : "borrower",
-    "history" : false,
-    "linkType" : "BorrowedBy",
+    "target" : "Member",
     "direction" : "OUTBOUND",
-    "target" : "Member"
+    "linkType" : "BorrowedBy",
+    "history" : false,
+    "name" : "borrower"
   } ],
   "upstream_borrow_manifest_accepted_with_sideeffects_unrepresented" : false,
   "upstream_borrow_side_effects" : [ {
-    "failurePolicy" : "ROLLBACK_ALL",
-    "name" : "emitBorrowedEvent",
     "type" : "event",
+    "name" : "emitBorrowedEvent",
+    "failurePolicy" : "ROLLBACK_ALL",
     "attempts" : 3
   } ],
   "upstream_return_manifest" : {
-    "from" : "book",
-    "expect" : "ALL",
-    "linkType" : "BorrowedBy",
+    "action" : "ReturnBook",
     "failurePolicy" : "ROLLBACK_ALL",
-    "action" : "ReturnBook"
+    "linkType" : "BorrowedBy",
+    "expect" : "ALL",
+    "from" : "book"
   },
   "consumer_delivery_recovery" : {
     "memory" : {
-      "failed_delivery_retried" : true,
-      "completed_duplicate_suppressed" : true
+      "completed_duplicate_suppressed" : true,
+      "failed_delivery_retried" : true
     },
     "jdbc_h2" : {
-      "failed_delivery_retried" : true,
-      "completed_duplicate_suppressed" : true
+      "completed_duplicate_suppressed" : true,
+      "failed_delivery_retried" : true
     }
   },
   "upstream_ward_computed_fields" : [ {
-    "name" : "currentOccupancy",
+    "function" : "countLinks",
     "cache" : "LAZY",
-    "function" : "countLinks"
+    "name" : "currentOccupancy"
   } ],
   "computed_read_behavior" : {
     "memory" : {
-      "hidden_endpoint_count" : 0,
-      "initial" : 2,
-      "stored_attribute" : false,
+      "after_delete" : 1,
       "source_version" : 1,
-      "after_delete" : 1
+      "stored_attribute" : false,
+      "initial" : 2,
+      "hidden_endpoint_count" : 0
     },
     "jdbc_h2" : {
-      "hidden_endpoint_count" : 0,
-      "initial" : 2,
-      "stored_attribute" : false,
+      "after_delete" : 1,
       "source_version" : 1,
-      "after_delete" : 1
+      "stored_attribute" : false,
+      "initial" : 2,
+      "hidden_endpoint_count" : 0
     }
   },
   "typed_action_graphql" : {
-    "version_after_rejected" : 1,
-    "invalid_enum_rejected" : true,
-    "stored_state" : "DONE",
+    "accepted_errors" : [ ],
     "accepted_data" : {
       "setState" : {
         "success" : true,
@@ -129,37 +127,39 @@
         } ]
       }
     },
-    "accepted_errors" : [ ]
+    "stored_state" : "DONE",
+    "invalid_enum_rejected" : true,
+    "version_after_rejected" : 1
   },
   "governed_object_queries" : {
     "memory" : {
-      "first_visible_id" : "visible-b",
-      "visible_total" : 2,
-      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
+      "hidden_predicate_rejected" : true,
       "has_next_page" : true,
-      "hidden_predicate_rejected" : true
+      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
+      "visible_total" : 2,
+      "first_visible_id" : "visible-b"
     },
     "jdbc_h2" : {
-      "first_visible_id" : "visible-b",
-      "visible_total" : 2,
-      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
+      "hidden_predicate_rejected" : true,
       "has_next_page" : true,
-      "hidden_predicate_rejected" : true
+      "legacy_list_visible_ids" : [ "visible-a", "visible-b" ],
+      "visible_total" : 2,
+      "first_visible_id" : "visible-b"
     }
   },
   "governed_aggregates" : {
     "memory" : {
-      "hidden_metric_rejected" : true,
-      "total_visible_groups" : 2,
-      "first_group_keys" : {
-        "category" : "A"
-      },
+      "page_group_count" : 1,
       "visible_totals" : {
         "count_*" : 3,
         "sum_amount" : 4.0,
         "avg_amount" : 2.0
       },
-      "page_group_count" : 1,
+      "first_group_keys" : {
+        "category" : "A"
+      },
+      "total_visible_groups" : 2,
+      "hidden_metric_rejected" : true,
       "first_group_values" : {
         "count_*" : 2,
         "sum_amount" : 4.0,
@@ -167,17 +167,17 @@
       }
     },
     "jdbc_h2" : {
-      "hidden_metric_rejected" : true,
-      "total_visible_groups" : 2,
-      "first_group_keys" : {
-        "category" : "A"
-      },
+      "page_group_count" : 1,
       "visible_totals" : {
         "count_*" : 3,
         "sum_amount" : 4.0,
         "avg_amount" : 2.0
       },
-      "page_group_count" : 1,
+      "first_group_keys" : {
+        "category" : "A"
+      },
+      "total_visible_groups" : 2,
+      "hidden_metric_rejected" : true,
       "first_group_values" : {
         "count_*" : 2,
         "sum_amount" : 4.0,
@@ -187,33 +187,28 @@
   },
   "governed_search" : {
     "memory" : {
-      "first_id" : "a",
-      "hidden_field_rejected" : true,
-      "phrase_scores" : [ 1.0, 1.0 ],
-      "first_term_score" : 3.0,
-      "highlights_exclude_secret" : true,
       "has_next_page" : true,
+      "highlights_exclude_secret" : true,
+      "first_term_score" : 3.0,
+      "phrase_scores" : [ 1.0, 1.0 ],
+      "hidden_field_rejected" : true,
+      "first_id" : "a",
       "visible_total" : 2
     },
     "jdbc_h2" : {
-      "first_id" : "a",
-      "hidden_field_rejected" : true,
-      "phrase_scores" : [ 1.0, 1.0 ],
-      "first_term_score" : 3.0,
-      "highlights_exclude_secret" : true,
       "has_next_page" : true,
+      "highlights_exclude_secret" : true,
+      "first_term_score" : 3.0,
+      "phrase_scores" : [ 1.0, 1.0 ],
+      "hidden_field_rejected" : true,
+      "first_id" : "a",
       "visible_total" : 2
     }
   },
   "connection_pagination" : {
     "memory" : {
-      "default_tail_errors" : [ ],
-      "legacy_data" : {
-        "items" : [ {
-          "id" : "a0"
-        } ]
-      },
-      "legacy_errors" : [ ],
+      "bounded_before_ids" : [ "a0" ],
+      "zero_edges" : 0,
       "default_tail_data" : {
         "items" : {
           "edges" : [ {
@@ -232,18 +227,18 @@
           }
         }
       },
-      "zero_edges" : 0,
-      "bounded_before_ids" : [ "a0" ],
+      "legacy_errors" : [ ],
+      "legacy_data" : {
+        "items" : [ {
+          "id" : "a0"
+        } ]
+      },
+      "default_tail_errors" : [ ],
       "visible_total" : 7
     },
     "jdbc_h2" : {
-      "default_tail_errors" : [ ],
-      "legacy_data" : {
-        "items" : [ {
-          "id" : "a0"
-        } ]
-      },
-      "legacy_errors" : [ ],
+      "bounded_before_ids" : [ "a0" ],
+      "zero_edges" : 0,
       "default_tail_data" : {
         "items" : {
           "edges" : [ {
@@ -262,20 +257,34 @@
           }
         }
       },
-      "zero_edges" : 0,
-      "bounded_before_ids" : [ "a0" ],
+      "legacy_errors" : [ ],
+      "legacy_data" : {
+        "items" : [ {
+          "id" : "a0"
+        } ]
+      },
+      "default_tail_errors" : [ ],
       "visible_total" : 7
     }
   },
   "persistent_schema_registry" : {
-    "stale_version_rejected" : true,
-    "old_snapshot_preserved" : true,
-    "breaking_without_approval_rejected" : true,
-    "persisted_plan" : "Review changed Action authorization target; registry records evidence only",
-    "action_parameter_order_drift_rejected" : true,
-    "unchanged_restart_version" : 1,
+    "initial_version" : 1,
     "approved_version" : 2,
-    "initial_version" : 1
+    "unchanged_restart_version" : 1,
+    "action_parameter_order_drift_rejected" : true,
+    "persisted_plan" : "Review changed Action authorization target; registry records evidence only",
+    "breaking_without_approval_rejected" : true,
+    "old_snapshot_preserved" : true,
+    "stale_version_rejected" : true
+  },
+  "jdbc_schema_activation" : {
+    "registered_candidate_did_not_block_old_model" : true,
+    "approved_but_invalid_data_rejected" : true,
+    "registered_version_after_failed_activation" : 2,
+    "stale_writer_rejected" : true,
+    "active_version" : 2,
+    "pending_object_absent" : true,
+    "in_flight_commit_rejected" : true
   },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],

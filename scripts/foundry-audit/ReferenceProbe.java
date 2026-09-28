@@ -183,6 +183,7 @@ public class ReferenceProbe {
         connections.put("jdbc_h2", connectionProbe(new JdbcStorageProvider(connectionData, DatabaseDialect.h2())));
         observations.put("connection_pagination", connections);
         observations.put("persistent_schema_registry", registryProbe());
+        observations.put("jdbc_schema_activation", activationProbe());
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -249,6 +250,43 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> activationProbe() {
+        var data = new JdbcDataSource();
+        data.setURL("jdbc:h2:mem:audit_activation;DB_CLOSE_DELAY=-1");
+        String source = """
+                extend schema @namespace(name: "activation", version: "1.0.0")
+                type Item @objectType { id: ID! @primary name: String! }
+                """;
+        var initial = new OdlParser().parse(source);
+        var next = new OdlParser().parse(source.replace("name: String!", "name: String! extra: String"));
+        var old = new JdbcStorageProvider(data, DatabaseDialect.h2());
+        old.applySchema(CTX, initial);
+        var active = new JdbcStorageProvider(data, DatabaseDialect.h2());
+        active.applySchema(CTX, initial);
+        var registry = new JdbcSchemaRegistry(data, DatabaseDialect.h2(), "storage", java.time.Clock.systemUTC());
+        registry.applyIfChanged(next, null);
+        try (var tx = old.beginTransaction(CTX)) { tx.createObject("Item", "before", Map.of("name", "Before")); tx.commit(); }
+        boolean inFlightRejected = false;
+        try (var tx = old.beginTransaction(CTX)) {
+            tx.createObject("Item", "pending", Map.of("name", "Must roll back"));
+            active.activateSchema(CTX, next, null, 1);
+            try { tx.commit(); } catch (SchemaVersionMismatchException expected) { inFlightRejected = true; }
+        }
+        boolean staleRejected = false;
+        try (var tx = old.beginTransaction(CTX)) {
+            try { tx.createObject("Item", "stale", Map.of("name", "Stale")); }
+            catch (SchemaVersionMismatchException expected) { staleRejected = true; }
+        }
+        var required = new OdlParser().parse(source.replace("name: String!", "name: String! extra: String required: String!"));
+        boolean missingRejected = false;
+        try { active.activateSchema(CTX, required, new MigrationPlan("Approval does not manufacture missing values", true), 2); }
+        catch (PropertyValidationException expected) { missingRejected = true; }
+        return Map.of("registered_candidate_did_not_block_old_model", old.getObject(CTX, "Item", "before") != null,
+                "active_version", active.boundSchemaVersion(), "in_flight_commit_rejected", inFlightRejected,
+                "pending_object_absent", active.getObject(CTX, "Item", "pending") == null, "stale_writer_rejected", staleRejected,
+                "approved_but_invalid_data_rejected", missingRejected, "registered_version_after_failed_activation", registry.currentVersion());
     }
 
     static Map<String, Object> registryProbe() {
