@@ -545,6 +545,32 @@
       }
     }
   },
+  "managed_jdbc_polling" : {
+    "memory" : {
+      "first_object_version" : 1,
+      "final_checkpoint" : 3,
+      "unchanged_pass_mutations" : 0,
+      "stopped_checkpoint" : 1,
+      "changed_source_rejected" : true,
+      "resumed_created" : 2,
+      "later_record_absent_after_failure" : true,
+      "first_created" : 1,
+      "first_failures" : 1,
+      "resumed_failures" : 0
+    },
+    "jdbc_h2" : {
+      "first_object_version" : 1,
+      "final_checkpoint" : 3,
+      "unchanged_pass_mutations" : 0,
+      "stopped_checkpoint" : 1,
+      "changed_source_rejected" : true,
+      "resumed_created" : 2,
+      "later_record_absent_after_failure" : true,
+      "first_created" : 1,
+      "first_failures" : 1,
+      "resumed_failures" : 0
+    }
+  },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces", "scalars" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],
   "java_manifest_components" : [ "action", "version", "reversible", "preconditions", "effects", "onSideEffectFailure", "sideEffects" ],

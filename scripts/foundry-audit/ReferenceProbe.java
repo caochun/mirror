@@ -234,6 +234,12 @@ public class ReferenceProbe {
         relationData.setURL("jdbc:h2:mem:audit_relation_sync;DB_CLOSE_DELAY=-1");
         relationshipSync.put("jdbc_h2", relationshipSyncProbe(new JdbcStorageProvider(relationData, DatabaseDialect.h2())));
         observations.put("transactional_relationship_sync", relationshipSync);
+        var managedPolling = new LinkedHashMap<String, Object>();
+        managedPolling.put("memory", managedJdbcPollingProbe(new InMemoryStorageProvider()));
+        var pollingData = new JdbcDataSource();
+        pollingData.setURL("jdbc:h2:mem:managed_polling_audit;DB_CLOSE_DELAY=-1");
+        managedPolling.put("jdbc_h2", managedJdbcPollingProbe(new JdbcStorageProvider(pollingData, DatabaseDialect.h2())));
+        observations.put("managed_jdbc_polling", managedPolling);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -300,6 +306,47 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> managedJdbcPollingProbe(StorageProvider storage) throws Exception {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name:"source_audit",version:"1")
+                type Person @objectType { id: ID! @primary name: String! }
+                """);
+        storage.applySchema(CTX, schema);
+        var source = new JdbcDataSource();
+        source.setURL("jdbc:h2:mem:poll_source_" + UUID.randomUUID() + ";DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
+        try (var connection = source.getConnection(); var statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE people (id BIGINT PRIMARY KEY, name VARCHAR, updated_at TIMESTAMP NOT NULL)");
+            statement.execute("INSERT INTO people VALUES (1,'First',TIMESTAMP '2026-01-01 00:00:00'),(2,NULL,TIMESTAMP '2026-01-01 00:00:00'),(10,'Tenth',TIMESTAMP '2026-01-01 00:00:00')");
+        }
+        String yaml = """
+                datasource: People
+                connector: jdbc
+                connection: {url: '${PEOPLE_DB}', table: people}
+                mapping:
+                  objectType: Person
+                  primaryKey: {source: id, target: id}
+                  properties: {name: {source: name}}
+                sync: {mode: POLLING, interval: PT1M, conflictResolution: ACTION_PRIORITY}
+                """;
+        var mapping = new MappingConfigParser().parse(yaml);
+        var runner = new DatasourceRunner(storage, ConnectorRegistry.jdbc(configuration -> source),
+                (context, connector, config, target, tx) -> true);
+        var options = new ManagedConnector.ExtractOptions(2, null, java.time.Duration.ofSeconds(5));
+        var first = runner.runOnce(mapping, CTX, options);
+        long stoppedAt = runner.checkpoint(mapping, CTX).sequence();
+        boolean laterAbsent = storage.getObject(CTX, "Person", "10") == null;
+        try (var connection = source.getConnection(); var statement = connection.createStatement()) {
+            statement.execute("UPDATE people SET name='Repaired' WHERE id=2");
+        }
+        var resumed = runner.runOnce(mapping, CTX, options);
+        var empty = runner.runOnce(mapping, CTX, options);
+        boolean changedSourceRejected = !attempt(() -> runner.runOnce(new MappingConfigParser().parse(yaml.replace("table: people", "table: different")), CTX));
+        return Map.of("first_created", first.created(), "first_failures", first.failures().size(), "stopped_checkpoint", stoppedAt,
+                "later_record_absent_after_failure", laterAbsent, "resumed_created", resumed.created(), "resumed_failures", resumed.failures().size(),
+                "final_checkpoint", runner.checkpoint(mapping, CTX).sequence(), "unchanged_pass_mutations", empty.created() + empty.updated() + empty.observed(),
+                "first_object_version", storage.getObject(CTX, "Person", "1").version(), "changed_source_rejected", changedSourceRejected);
     }
 
     static Map<String, Object> relationshipSyncProbe(StorageProvider storage) {

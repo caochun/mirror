@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry托管JDBC与数据源运行
+
+Foundry提交b6aa296：连接器生命周期/插件、JDBC模式发现/按需分批、暂停/恢复/限速、联合时间/主键游标与BATCH/POLLING单次装配。实际端点/Schema及声明配置绑定，失败不越过检查点，同时间剩余行可恢复；源批次消费前释放连接。全仓907项，其中Foundry797项，全通过，新增35项含独立JVM中断/竞争，见[阶段报告](../platform-review/managed-jdbc-extraction.md)。
+
+独立探针确认失败停点1、修复后新增剩余两条至3、首条版本1、空轮询无变更与换表拒绝。轮询不捕获物理删除/迟到旧水位；REST托管、CDC/overlay/writeback、自动调度和生产验收继续。Mirror运行库及JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry事务关系物化
 
 Foundry提交8b141ea：关系映射与对象/来源/回执/检查点同事务；稳定来源/槽/端点身份、改派及恢复、成员scope历史保护人工清除、属性来源独立判断、两端权限/反向单值约束。关系format-2回执重放原目标，不重做当前关系；对象映射旧回执保持兼容。全仓872项，其中Foundry762项，全通过，新增47项含独立JVM恢复/竞争，见[阶段报告](../platform-review/relationship-ingestion.md)。
