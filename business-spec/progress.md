@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry事务血缘与可恢复同步
+
+Foundry提交619c5aa：对象/关系字段来源与事实同事务，Action/人工重新确认/补偿标识；受控Java/REST血缘要求独立权限并隐藏源指针。对象同步接入来源冲突、存在断言、稳定事件回执与分区Checkpoint，失败停止流、旧事件不重做，并支持约束保护的对象恢复。全仓797项通过，最后边界补测后测试集798项，其中Foundry688项，全通过；新增73项含独立JVM中断/竞争及真实JDBC/HTTP输入，见[阶段报告](../platform-review/transactional-lineage-and-ingestion.md)。
+
+同步默认拒绝，宿主须配置授权；旧来源未知需显式采用，现有快照连接器不自动变成CDC。映射DSL/关系、完整连接器/增量/overlay/writeback、函数血缘与生产验收等仍待继续。Mirror运行库和JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry Action关系路径与读取证据
 
 Foundry提交a9db3de：事务内多跳/正反向/集合/已结束关系解析，CEL/效果/通知上下文，独立读取权限与Consent、沿路径目标写入门禁、带摘要的持久读取证据。旧关系结束后重放不改读新关系，通知保持原值；相关端点撤权则禁止重放/续执行。常规根reactor725项，其中Foundry615项，全通过，新增40项含单连接池及独立JVM恢复，见[阶段报告](../platform-review/action-relationship-paths.md)。

@@ -10,6 +10,7 @@ import org.openfoundry.foundation.spi.*;
 import org.openfoundry.foundation.spi.schema.*;
 import org.openfoundry.foundation.storage.jdbc.*;
 import org.openfoundry.foundation.storage.memory.*;
+import org.openfoundry.foundation.sync.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -220,6 +221,12 @@ public class ReferenceProbe {
         pathData.setURL("jdbc:h2:mem:audit_action_paths;DB_CLOSE_DELAY=-1");
         actionPaths.put("jdbc_h2", actionNavigationProbe(new JdbcStorageProvider(pathData, DatabaseDialect.h2())));
         observations.put("action_relationship_paths", actionPaths);
+        var ingestion = new LinkedHashMap<String, Object>();
+        ingestion.put("memory", ingestionProbe(new InMemoryStorageProvider()));
+        var ingestionData = new JdbcDataSource();
+        ingestionData.setURL("jdbc:h2:mem:audit_ingestion;DB_CLOSE_DELAY=-1");
+        ingestion.put("jdbc_h2", ingestionProbe(new JdbcStorageProvider(ingestionData, DatabaseDialect.h2())));
+        observations.put("transactional_lineage_and_ingestion", ingestion);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -286,6 +293,66 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> ingestionProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name:"ingestion-probe",version:"1.0.0")
+                type Person @objectType { id: ID! @primary name: String! secret: String @sensitive }
+                type Rename @actionType(permission:"can_rename") { person: Person! @param name: String! @param }
+                """);
+        storage.applySchema(CTX, schema);
+        var mapping = new MappingConfig("Person", "id", Map.of("id", "id", "name", "name", "secret", "secret"));
+        var service = new MaterializedSyncService(storage, new ConflictResolver(ConflictResolver.Strategy.ACTION_PRIORITY, Map.of(), Map.of()))
+                .withAuthorization((context, connector, plan, target, transaction) -> true);
+        Instant sourceTime = Instant.now().minusSeconds(10);
+        java.util.function.BiFunction<Long, Map<String, Object>, SourceRecord> record = (sequence, data) ->
+                new SourceRecord("hr", "private-source-" + data.get("id"), "UPSERT", sourceTime.plusSeconds(sequence), data,
+                        new Provenance("hr", "private-source-" + data.get("id"), sequence.toString(), "identity", sourceTime.plusSeconds(sequence), "hr", null),
+                        new SourcePosition("p0", "source-event-" + sequence, sequence, Map.of("offset", "cursor-" + sequence)));
+        var first = record.apply(1L, Map.of("id", "a", "name", "Imported", "secret", "Private"));
+        var initial = service.sync(sourceConnector(List.of(first)), new SourceQuery("people", Map.of()), mapping, CTX);
+        var canReadMetadata = new java.util.concurrent.atomic.AtomicBoolean();
+        var action = new ActionManifest("Rename", 1, false, List.of(), List.of(new ActionManifest.UpdateObject("person", Map.of("name", "params.name"))));
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> !relation.equals("can_view_lineage") || canReadMetadata.get()),
+                new ActionExecutor(), schema, Map.of("Rename", action), Map.of());
+        var key = new EntityKey("Person", "a");
+        boolean metadataDenied = false;
+        try { app.lineage(CTX, PRINCIPAL, key, LineageQuery.defaults()); }
+        catch (SecurityException expected) { metadataDenied = true; }
+        canReadMetadata.set(true);
+        var visible = app.lineage(CTX, PRINCIPAL, key, new LineageQuery("name", 1, null)).getFirst();
+        boolean pointerHidden = !visible.source().details().containsKey("sourcePointer")
+                && storage.getLineage(CTX, key, new LineageQuery("name", 1, null)).getFirst().source().details().containsKey("sourcePointer");
+        app.execute(action, CTX, PRINCIPAL, Map.of("person", "a", "name", "Manual"), "manual");
+        var second = record.apply(2L, Map.of("id", "a", "name", "External", "secret", "Private"));
+        second = new SourceRecord(second.sourceSystem(), second.sourceRecordId(), second.operation(), second.observedAt(), second.data(),
+                new Provenance(second.sourceSystem(), second.sourceRecordId(), "2", "identity", sourceTime.plusSeconds(60), "hr", null), second.position());
+        var controlled = service.sync(sourceConnector(List.of(second)), new SourceQuery("people", Map.of()), mapping, CTX);
+        var replay = service.sync(sourceConnector(List.of(first)), new SourceQuery("people", Map.of()), mapping, CTX);
+        var stopped = service.sync(sourceConnector(List.of(record.apply(3L, Map.of("id", "b")), record.apply(4L, Map.of("id", "c", "name", "Later")))),
+                new SourceQuery("people", Map.of()), mapping, CTX);
+        var checkpoint = service.checkpoint("hr-probe", mapping, "p0", CTX);
+        var result = new LinkedHashMap<String, Object>();
+        result.put("created", initial.created());
+        result.put("manual_value_preserved", storage.getObject(CTX, "Person", "a").properties().get("name").equals("Manual"));
+        result.put("conflicts", controlled.conflicts());
+        result.put("duplicate_replayed", replay.replayed());
+        result.put("checkpoint", checkpoint.sequence());
+        result.put("cursor", checkpoint.token());
+        result.put("failed_record_count", stopped.failures().size());
+        result.put("later_record_absent", storage.getObject(CTX, "Person", "c") == null);
+        result.put("metadata_requires_permission", metadataDenied);
+        result.put("public_source_pointer_hidden", pointerHidden);
+        result.put("source_kind_chain", storage.getLineage(CTX, key, new LineageQuery("name", 10, null)).stream().map(row -> row.source().kind().name()).toList());
+        return result;
+    }
+
+    static Connector sourceConnector(List<SourceRecord> records) {
+        return new Connector() {
+            public String name() { return "hr-probe"; }
+            public java.util.stream.Stream<SourceRecord> read(SourceQuery query) { return records.stream(); }
+        };
     }
 
     static Map<String, Object> actionNavigationProbe(StorageProvider storage) {
