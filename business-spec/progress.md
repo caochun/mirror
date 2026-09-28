@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry读与应用模型绑定
+
+Foundry提交46352d7：JDBC本体读前后验证激活身份，内存模型epoch，ApplicationService/计算器固定模型，命令使用显式绑定事务。GraphQL完整Query收尾丢弃旧结果，成功Mutation回执保留。常规根reactor569项，其中Foundry459项，全通过，新增25项覆盖竞态、接口、单连接池及模型数值默认值。独立探针确认Provider重绑后旧应用拒绝、新应用正确隐藏字段，见[阶段报告](../platform-review/schema-read-binding.md)。
+
+独立清单/字段策略/FGA配置发布epoch和普通事实的一致读快照仍未完成，完整装配及其他上游范围继续。Mirror运行库和服务JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry JDBC激活与写入门禁
 
 Foundry提交4d554c4：候选登记/激活分离，显式CAS切换及全租户当前事实校验，提交门禁阻止旧模型实例和在途事务落库；支持先扩展/回填/收紧，审批不代替数据校验。常规根reactor544项，其中Foundry434项，全通过，新增15项含HTTP及独立JVM恢复。独立探针确认候选不自动切换、旧写入/提交拒绝、必填缺失的批准激活仍失败，见[阶段报告](../platform-review/schema-activation.md)。

@@ -184,6 +184,12 @@ public class ReferenceProbe {
         observations.put("connection_pagination", connections);
         observations.put("persistent_schema_registry", registryProbe());
         observations.put("jdbc_schema_activation", activationProbe());
+        var reads = new LinkedHashMap<String, Object>();
+        reads.put("memory", readBindingProbe(new InMemoryStorageProvider()));
+        var readData = new JdbcDataSource();
+        readData.setURL("jdbc:h2:mem:audit_read_binding;DB_CLOSE_DELAY=-1");
+        reads.put("jdbc_h2", readBindingProbe(new JdbcStorageProvider(readData, DatabaseDialect.h2())));
+        observations.put("application_schema_read_binding", reads);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -252,6 +258,34 @@ public class ReferenceProbe {
                 "source_version", storage.getObject(CTX, "Node", "b").version());
     }
 
+    static Map<String, Object> readBindingProbe(StorageProvider storage) {
+        String source = """
+                extend schema @namespace(name: "read-binding", version: "1.0.0")
+                type Item @objectType { id: ID! @primary name: String! secret: String }
+                """;
+        var original = new OdlParser().parse(source);
+        var restricted = new OdlParser().parse(source.replace("secret: String", "secret: String @sensitive"));
+        storage.applySchema(CTX, original);
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Item", "a", Map.of("name", "Example", "secret", "synthetic-private"));
+            tx.commit();
+        }
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> true), new ActionExecutor(), original, Map.of(), Map.of());
+        var graph = GraphqlApiRuntime.create(original, app);
+        boolean originallyVisible = app.getObject(CTX, PRINCIPAL, "Item", "a").properties().containsKey("secret");
+        if (storage instanceof JdbcStorageProvider jdbc) jdbc.activateSchema(CTX, restricted, new MigrationPlan("Restrict field visibility", true), jdbc.boundSchemaVersion());
+        else storage.applySchema(CTX, restricted);
+        boolean rejected = false;
+        try { app.getObject(CTX, PRINCIPAL, "Item", "a"); } catch (SchemaVersionMismatchException expected) { rejected = true; }
+        var result = graph.execute(ExecutionInput.newExecutionInput("{item(id:\"a\"){id secret}}")
+                .graphQLContext(Map.of("request", new ApiRequestContext(CTX, PRINCIPAL))).build());
+        var fresh = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> true), new ActionExecutor(), restricted, Map.of(), Map.of());
+        return Map.of("field_visible_before_activation", originallyVisible, "old_application_rejected_after_provider_rebind", rejected,
+                "old_graphql_data_discarded", result.getData() == null && !result.getErrors().isEmpty(),
+                "old_graphql_error_code", result.getErrors().getFirst().getExtensions().get("code"),
+                "new_application_hides_field", !fresh.getObject(CTX, PRINCIPAL, "Item", "a").properties().containsKey("secret"));
+    }
+
     static Map<String, Object> activationProbe() {
         var data = new JdbcDataSource();
         data.setURL("jdbc:h2:mem:audit_activation;DB_CLOSE_DELAY=-1");
@@ -268,6 +302,7 @@ public class ReferenceProbe {
         var registry = new JdbcSchemaRegistry(data, DatabaseDialect.h2(), "storage", java.time.Clock.systemUTC());
         registry.applyIfChanged(next, null);
         try (var tx = old.beginTransaction(CTX)) { tx.createObject("Item", "before", Map.of("name", "Before")); tx.commit(); }
+        boolean candidateStillInactive = old.getObject(CTX, "Item", "before") != null;
         boolean inFlightRejected = false;
         try (var tx = old.beginTransaction(CTX)) {
             tx.createObject("Item", "pending", Map.of("name", "Must roll back"));
@@ -283,7 +318,7 @@ public class ReferenceProbe {
         boolean missingRejected = false;
         try { active.activateSchema(CTX, required, new MigrationPlan("Approval does not manufacture missing values", true), 2); }
         catch (PropertyValidationException expected) { missingRejected = true; }
-        return Map.of("registered_candidate_did_not_block_old_model", old.getObject(CTX, "Item", "before") != null,
+        return Map.of("registered_candidate_did_not_block_old_model", candidateStillInactive,
                 "active_version", active.boundSchemaVersion(), "in_flight_commit_rejected", inFlightRejected,
                 "pending_object_absent", active.getObject(CTX, "Item", "pending") == null, "stale_writer_rejected", staleRejected,
                 "approved_but_invalid_data_rejected", missingRejected, "registered_version_after_failed_activation", registry.currentVersion());
