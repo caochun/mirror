@@ -408,6 +408,30 @@
       "opaque_ordering_rejected" : true
     }
   },
+  "action_relationship_paths" : {
+    "memory" : {
+      "revoked_related_read_blocks_replay" : true,
+      "deliveries" : 1,
+      "completed" : true,
+      "target_note" : "North",
+      "same_result_after_link_ended" : true,
+      "captured_data" : {
+        "region" : "North"
+      },
+      "target_version" : 2
+    },
+    "jdbc_h2" : {
+      "revoked_related_read_blocks_replay" : true,
+      "deliveries" : 1,
+      "completed" : true,
+      "target_note" : "North",
+      "same_result_after_link_ended" : true,
+      "captured_data" : {
+        "region" : "North"
+      },
+      "target_version" : 2
+    }
+  },
   "java_schema_components" : [ "namespace", "version", "objectTypes", "linkTypes", "actionTypes", "enums", "interfaces", "scalars" ],
   "java_action_metadata_components" : [ "name", "parameters", "permission" ],
   "java_manifest_components" : [ "action", "version", "reversible", "preconditions", "effects", "onSideEffectFailure", "sideEffects" ],

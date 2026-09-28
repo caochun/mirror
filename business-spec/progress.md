@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry Action关系路径与读取证据
+
+Foundry提交a9db3de：事务内多跳/正反向/集合/已结束关系解析，CEL/效果/通知上下文，独立读取权限与Consent、沿路径目标写入门禁、带摘要的持久读取证据。旧关系结束后重放不改读新关系，通知保持原值；相关端点撤权则禁止重放/续执行。常规根reactor725项，其中Foundry615项，全通过，新增40项含单连接池及独立JVM恢复，见[阶段报告](../platform-review/action-relationship-paths.md)。
+
+上游接口型参数仅透传的边界已核实；完整AST/动态路径、同步/血缘/Checkpoint、查询下推和生产验收等仍待推进。Mirror运行库与JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry自定义scalar与值链路
 
 Foundry提交485e664/7dc5a3e：scalar名称/说明保留、Pack依赖、模型摘要/迁移、对象/关系/历史/Action/GraphQL值链路及完整值筛选/分组。接通ODL/JDBC/HTTP的精确数字处理，旧快照空scalar保持原摘要。常规根reactor685项，其中Foundry575项，全通过，新增26项并完成最后定向复核，见[阶段报告](../platform-review/custom-scalars.md)。

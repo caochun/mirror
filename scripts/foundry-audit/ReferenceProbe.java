@@ -214,6 +214,12 @@ public class ReferenceProbe {
         scalarData.setURL("jdbc:h2:mem:audit_custom_scalars;DB_CLOSE_DELAY=-1");
         scalars.put("jdbc_h2", customScalarProbe(new JdbcStorageProvider(scalarData, DatabaseDialect.h2())));
         observations.put("custom_scalar_values", scalars);
+        var actionPaths = new LinkedHashMap<String, Object>();
+        actionPaths.put("memory", actionNavigationProbe(new InMemoryStorageProvider()));
+        var pathData = new JdbcDataSource();
+        pathData.setURL("jdbc:h2:mem:audit_action_paths;DB_CLOSE_DELAY=-1");
+        actionPaths.put("jdbc_h2", actionNavigationProbe(new JdbcStorageProvider(pathData, DatabaseDialect.h2())));
+        observations.put("action_relationship_paths", actionPaths);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -280,6 +286,63 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> actionNavigationProbe(StorageProvider storage) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name:"action-path-probe",version:"1.0.0")
+                type Person @objectType { id: ID! @primary unit: Unit @link(type:"Assigned",direction:OUTBOUND) }
+                type Unit @objectType { id: ID! @primary note: String region: Region @link(type:"Located",direction:OUTBOUND) }
+                type Region @objectType { id: ID! @primary name: String! }
+                type Assigned @linkType(from:"Person",to:"Unit",cardinality:MANY_TO_ONE) { id: ID! @primary }
+                type Located @linkType(from:"Unit",to:"Region",cardinality:MANY_TO_ONE) { id: ID! @primary }
+                type Work @actionType(permission:"can_work") { person: Person! @param }
+                """);
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Person", "p", Map.of());
+            tx.createObject("Unit", "u", Map.of());
+            tx.createObject("Region", "r", Map.of("name", "North"));
+            tx.createLink("Assigned", "assigned", new EntityKey("Person", "p"), new EntityKey("Unit", "u"), Map.of());
+            tx.createLink("Located", "located", new EntityKey("Unit", "u"), new EntityKey("Region", "r"), Map.of());
+            tx.commit();
+        }
+        var action = new ActionManifestParser().parse("""
+                action: Work
+                version: 1
+                preconditions:
+                  - expr: "person.unit.region.name == 'North'"
+                    error: region not ready
+                effects:
+                  - type: updateObject
+                    target: person.unit
+                    set: {note: person.unit.region.name}
+                sideEffects:
+                  - name: notice
+                    type: event
+                    config: {type: unit.updated, data: {region: person.unit.region.name}}
+                    retries: 1
+                    retryDelay: PT0S
+                """);
+        var visible = new java.util.concurrent.atomic.AtomicBoolean(true);
+        var sent = new ArrayList<SideEffectHandler.Invocation>();
+        var app = new ApplicationService(storage, new AuthorizationService((principal, relation, key) -> visible.get() || !key.type().equals("Region")),
+                new ActionExecutor().withSideEffects(sent::add), schema, Map.of("Work", action), Map.of());
+        var parameters = Map.<String, Object>of("person", "p");
+        var first = app.execute(action, CTX, PRINCIPAL, parameters, "path");
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.deleteLink("Assigned", "assigned", 1);
+            tx.updateObject("Region", "r", Map.of("name", "Later"), 1);
+            tx.commit();
+        }
+        var replay = app.execute(action, CTX, PRINCIPAL, parameters, "path");
+        visible.set(false);
+        boolean denied = false;
+        try { app.execute(action, CTX, PRINCIPAL, parameters, "path"); }
+        catch (SecurityException expected) { denied = true; }
+        return Map.of("completed", first.success(), "target_note", storage.getObject(CTX, "Unit", "u").properties().get("note"),
+                "same_result_after_link_ended", first.equals(replay), "deliveries", sent.size(), "captured_data", sent.getFirst().config().get("data"),
+                "revoked_related_read_blocks_replay", denied, "target_version", storage.getObject(CTX, "Unit", "u").version());
     }
 
     static Map<String, Object> customScalarProbe(StorageProvider storage) {
