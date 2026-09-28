@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry Debezium CDC消费
+
+Foundry新增Debezium JSON解码、Kafka固定分区会话与事务后逐条确认，支持create/update/delete/read、tombstone、Connect Decimal/日期时间和嵌套值。失败停点不确认后续消息，重投使用已有回执恢复；暂停/恢复/关闭可控。Foundry回归804项全通过，见[阶段报告](../platform-review/debezium-cdc.md)。
+
+真实Kafka/Schema Registry、rebalance/租约、断线重连、死信、自动调度、overlay/writeback和生产验收继续，完整目标保持active。Mirror运行库及JAR未改动。
+
 ## 2026-09-28：Foundry托管JDBC与数据源运行
 
 Foundry提交b6aa296：连接器生命周期/插件、JDBC模式发现/按需分批、暂停/恢复/限速、联合时间/主键游标与BATCH/POLLING单次装配。实际端点/Schema及声明配置绑定，失败不越过检查点，同时间剩余行可恢复；源批次消费前释放连接。全仓907项，其中Foundry797项，全通过，新增35项含独立JVM中断/竞争，见[阶段报告](../platform-review/managed-jdbc-extraction.md)。
