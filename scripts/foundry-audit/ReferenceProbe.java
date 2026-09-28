@@ -196,6 +196,12 @@ public class ReferenceProbe {
         setsData.setURL("jdbc:h2:mem:audit_object_sets;DB_CLOSE_DELAY=-1");
         sets.put("jdbc_h2", objectSetProbe(new JdbcStorageProvider(setsData, DatabaseDialect.h2()), new JdbcObjectSetStore(setsData, DatabaseDialect.h2())));
         observations.put("governed_object_sets", sets);
+        var consent = new LinkedHashMap<String, Object>();
+        consent.put("memory", consentProbe(new InMemoryStorageProvider(), new InMemoryConsentStore()));
+        var consentData = new JdbcDataSource();
+        consentData.setURL("jdbc:h2:mem:audit_consent;DB_CLOSE_DELAY=-1");
+        consent.put("jdbc_h2", consentProbe(new JdbcStorageProvider(consentData, DatabaseDialect.h2()), new JdbcConsentStore(consentData, DatabaseDialect.h2())));
+        observations.put("consent_governance", consent);
         observations.put("java_schema_components", Arrays.stream(OntologySchema.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_action_metadata_components", Arrays.stream(ActionTypeDefinition.class.getRecordComponents()).map(c -> c.getName()).toList());
         observations.put("java_manifest_components", Arrays.stream(ActionManifest.class.getRecordComponents()).map(c -> c.getName()).toList());
@@ -262,6 +268,44 @@ public class ReferenceProbe {
         return Map.of("initial", initial, "after_delete", after, "hidden_endpoint_count", app.readComputedField(CTX, PRINCIPAL, source, "count"),
                 "stored_attribute", storage.getObject(CTX, "Node", "b").properties().containsKey("count"),
                 "source_version", storage.getObject(CTX, "Node", "b").version());
+    }
+
+    static Map<String, Object> consentProbe(StorageProvider storage, ConsentStore store) {
+        var schema = new OdlParser().parse("""
+                extend schema @namespace(name:"consent-probe",version:"1.0.0")
+                type Item @objectType { id: ID! @primary amount: Int! }
+                """);
+        storage.applySchema(CTX, schema);
+        try (var tx = storage.beginTransaction(CTX)) {
+            tx.createObject("Item", "a", Map.of("amount", 100));
+            tx.createObject("Item", "b", Map.of("amount", 2));
+            tx.commit();
+        }
+        String purpose = "PUBLIC_DUTY";
+        var auth = new AuthorizationService((principal, relation, key) -> true);
+        var service = new ConsentService(store, auth, new ConsentConfiguration(Set.of("Item"), purpose));
+        var app = new ApplicationService(storage, auth, new ActionExecutor(), schema, Map.of(), Map.of(), AuthorizationMode.STRICT_RESOURCES, service);
+        var adminContext = RequestContext.system(CTX.tenantId(), "consent-admin");
+        var admin = new SecurityPrincipal("consent-admin", CTX.tenantId(), Set.of("admin"));
+        var b = new EntityKey("Item", "b");
+        var restricted = app.readObject(CTX, PRINCIPAL, "Item", "a");
+        boolean denied = false;
+        try { service.record(CTX, PRINCIPAL, b, purpose, ConsentRecord.Decision.GRANT, "no recorder role"); }
+        catch (SecurityException expected) { denied = true; }
+        service.record(adminContext, admin, b, purpose, ConsentRecord.Decision.GRANT, "approved");
+        int visible = app.queryConnection(CTX, PRINCIPAL, "Item", new ObjectConnectionQuery(Map.of(), Map.of(), ConnectionPage.defaults())).totalCount();
+        var sum = app.aggregateObjects(CTX, PRINCIPAL, "Item", new AggregateQuery(List.of(new AggregateQuery.Field("amount", AggregateQuery.Function.SUM)), List.of(), Map.of(), List.of()))
+                .groups().getFirst().values().get("sum_amount");
+        service.revoke(adminContext, admin, b, purpose, "withdrawn");
+        int after = app.listObjects(CTX, PRINCIPAL, "Item", QueryOptions.defaults()).size();
+        var exempt = new ConsentService(store, auth, new ConsentConfiguration(Set.of("Item"), purpose, Set.of(purpose), Set.of("admin"), new ConsentConfiguration.Exemption(purpose, "viewer")));
+        boolean exemptionPrecedesDeny = exempt.check(CTX, PRINCIPAL, b, purpose).allowed();
+        exempt.setOptOut(adminContext, admin, b, true, "disable exemption");
+        return Map.of("id_only_without_consent", restricted.consentRestricted() && restricted.object() == null,
+                "non_recorder_rejected", denied, "consented_visible_count", visible, "consented_sum", sum,
+                "visible_after_revocation", after, "configured_exemption_precedes_explicit_deny", exemptionPrecedesDeny,
+                "opt_out_disables_exemption", !exempt.check(CTX, PRINCIPAL, b, purpose).allowed(),
+                "decision_history", service.records(adminContext, admin, b).records().stream().map(record -> record.decision().name()).toList());
     }
 
     static Map<String, Object> objectSetProbe(StorageProvider storage, ObjectSetStore store) {

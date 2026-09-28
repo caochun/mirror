@@ -1,5 +1,11 @@
 # 完整应用持续开发记录
 
+## 2026-09-28：Foundry Consent策略与访问
+
+Foundry提交7f315f8：内存/JDBC同意记录、opt-out、用途/关系豁免策略、统一读排除/ID-only、动作和重放检查及角色管理API/审计。常规根reactor618项，其中Foundry508项，全通过，新增25项含单连接池和故障回滚。独立探针确认受限身份、可见统计、撤回和豁免/opt-out规则，见[阶段报告](../platform-review/consent.md)。
+
+recordConsent动作效果/条件/事务补偿、活动会话/订阅终止、一致快照及字段级限制/主体映射等仍待完成。未给Mirror启用同意政策，运行库与JAR未改动，完整目标保持active。
+
 ## 2026-09-28：Foundry ObjectSet保存查询
 
 Foundry提交0aa60b0：定义SPI、内存/JDBC元数据存储、创建者/租户共享边界、受控动态执行和交集聚合、REST/GraphQL及版本并发控制。常规根reactor593项，其中Foundry483项，全通过，新增24项含持久恢复、并发、权限、模型变化及接口测试。独立探针确认调用者可见结果、筛选交集和取消共享生效，见[阶段报告](../platform-review/object-sets.md)。
