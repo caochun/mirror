@@ -1,37 +1,33 @@
-# Mirror：领域模型确认稿
+# Mirror
 
-当前阶段：**旧应用实现已移除，新模型及原子Action可通过本地Pack体验台试用；Mirror生产业务流程仍未重建。**
+Mirror 是基于 Java Foundry 和 Domain Pack 构建的政务系统对象库业务应用，采用标准 Spring Boot 项目结构，React/Tailwind 前端与领域定义随同一个可执行 JAR 发布。
 
-请按以下顺序审阅：
+当前已实现人工建档、准入决定、人工赋标/抑制/恢复和历史查询，使用独立 JDBC-H2 文件库、本地登录账号及组织权限。提醒、自动标签等后续业务仍待实现，当前尚未完成正式部署验收。
 
-1. [Mirror业务自述](business-spec/mirror-business.md)：根据修订后的Pack解释业务主链。
-2. [原始业务需求与责任分层](business-spec/requirements.md)：重新阅读两份DOCX的结果、业务范围及冲突。
-3. [Domain Pack](domain-pack/README.md)：对象、关系、业务语义版本和历史设计。
-4. [Mirror服务边界](business-spec/service-boundaries.md)：哪些规则由业务服务执行，哪些能力由Foundry提供。
-5. [Foundry适用性核查](business-spec/foundry-readiness.md)：实际验证证据、不能自动保证的事项和实施门槛。
-6. [待确认清单](business-spec/review-decisions.md)：确认后才能开始业务实现。
+## 构建与启动
 
-## Pack体验台
-
-当前Pack可以先通过本地体验台试用，确认对象、关系、历史和原子Action是否符合业务直觉：见 [`pack-explorer/`](pack-explorer/)。它只使用隔离内存中的合成数据，不连接旧数据库或外部渠道。
-
-## 仓库范围
-
-- `domain-pack/`：全新 `mirror.domain / 1.0.0` 模型确认稿，不是旧Pack的兼容升级。
-- `business-spec/`：本次重新建模的有效规约。`archive/legacy-before-remodel-20260928/`仅保留旧文档历史，不再指导开发。
-- `model-verification/`：模型、约束及真实Action执行测试。
-- `pack-explorer/`：本地Pack驱动的React/Tailwind体验台及同源HTTP服务，使用合成内存数据。
-- `foundry/`：Java通用底座子模块，已有未提交的REST实验仍保留，不是本次模型的依赖。
-- `open-foundry/`：上游只读参考子模块。
-- `platform-review/`、`scripts/foundry-audit/`：既往平台审计历史，不代表Mirror当前实现状态。
-- 两份DOCX、XLSX及`.runtime/`：保留本地原始材料与旧运行数据，继续Git忽略；新模型没有应用到旧数据库。
-
-旧 `business-core/`、`business-verification/`、`mirror-server/`、`web/`、`deployment/` 和旧启动脚本已删除，可从Git历史恢复。当前可运行的是独立的Pack体验台，不是旧应用或生产业务系统。
-
-## 模型验证
+本地首次构建（JDK 21+、Maven、Node.js/npm）：
 
 ```bash
-mvn -pl model-verification -am test -Dtest=DomainModelTest,DomainActionTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -f foundry/pom.xml -pl foundry-api,foundry-storage-jdbc,foundry-storage-memory -am install -DskipTests
+mvn package
+python3 scripts/run-mirror.py --init-local
 ```
 
-该命令加载真实Pack并验证内存/H2存储，不连接旧Mirror数据库，不发送任何外部消息。测试证明模型与底座可配合，不证明业务流程、前端、性能或国产数据库已经实现/验收。
+也可用 `python3 scripts/run-mirror.py --build --init-local` 完成上述步骤。
+
+打开 `http://127.0.0.1:8090`。首次账号密码位于 Git 忽略的 `.runtime/personnel-v1/credentials.txt`。构建产物为 `target/mirror.jar`，包含前端、Domain Pack 与运行依赖，无须部署源码目录。配置和独立 JAR 运行方式见 [运行说明](docs/development/running.md)。
+
+## 仓库导航
+
+| 目录 | 内容 |
+| --- | --- |
+| [src/main/java/](src/main/java) | Spring Boot 后端 |
+| [src/main/resources/domain-pack/](src/main/resources/domain-pack) | 领域对象、关系与原子 Action，作为应用资源打包 |
+| [src/test/java/](src/test/java) | 模型契约与应用集成测试 |
+| [web/](web) | React/Tailwind 源码；构建产物打入 JAR 的静态资源 |
+| [docs/](docs/README.md) | 业务规约、开发计划、当前进度与历史归档 |
+| [foundry/](foundry) | 独立构建的 Java 底座子模块，应用通过 Maven 制品依赖 |
+| [open-foundry/](open-foundry) | 上游只读参考子模块 |
+
+阅读业务从 [业务自述](docs/business/mirror-business.md) 开始；开发状态以 [当前进度](docs/development/progress.md) 和 [任务清单](docs/development/tasks.md) 为准。DOCX、XLSX 和 `.runtime/` 继续保留在本地并受 Git 忽略。

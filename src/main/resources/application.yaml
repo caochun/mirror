@@ -1,0 +1,11 @@
+server:
+  address: 127.0.0.1
+  port: 8090
+spring:
+  application:
+    name: mirror
+  main:
+    banner-mode: "off"
+logging:
+  level:
+    org.springframework: INFO

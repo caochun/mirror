@@ -1,0 +1,363 @@
+{
+  "datasetId": "mirror-reference-personnel-v1",
+  "description": "参考脱敏 Excel 的合成初始数据，不是原库导入或真实业务判定",
+  "people": [
+    {
+      "id": "ref-person-p001",
+      "name": "演示人员001",
+      "organizationPath": "示例经济技术开发区/党政办公室",
+      "rank": "一般干部",
+      "position": "综合管理",
+      "sex": "男",
+      "sourceStatus": "ACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p002",
+      "name": "演示人员002",
+      "organizationPath": "示例经济技术开发区/党政办公室",
+      "rank": "一般干部",
+      "position": "部门管理",
+      "sex": "女",
+      "sourceStatus": "ACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p003",
+      "name": "演示人员003",
+      "organizationPath": "示例交通发展控股集团有限公司/示例市公共交通集团有限公司/示例交通旅游车船服务有限公司",
+      "rank": "乡科级",
+      "position": "部门管理",
+      "sex": "男",
+      "sourceStatus": "ACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p004",
+      "name": "演示人员004",
+      "organizationPath": "示例城市建设投资发展集团有限公司/示例城建绿和环境科技有限公司",
+      "rank": "其他人员",
+      "position": "标准化副经理",
+      "sex": "男",
+      "sourceStatus": "ACTIVE",
+      "membershipStatus": "PENDING"
+    },
+    {
+      "id": "ref-person-p005",
+      "name": "演示人员005",
+      "organizationPath": "时代社区",
+      "rank": "正科级",
+      "position": "副科长",
+      "sex": "男",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "SUSPENDED"
+    },
+    {
+      "id": "ref-person-p006",
+      "name": "演示人员006",
+      "organizationPath": "横墅江社区",
+      "rank": "副科级",
+      "position": "项目负责人",
+      "sex": "女",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "PENDING"
+    },
+    {
+      "id": "ref-person-p007",
+      "name": "演示人员007",
+      "organizationPath": "花桥镇人大",
+      "rank": "一级科员",
+      "position": "科长",
+      "sex": "男",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p008",
+      "name": "演示人员008",
+      "organizationPath": "花溪社区",
+      "rank": "二级主任科员",
+      "position": "业务主管",
+      "sex": "女",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p009",
+      "name": "演示人员009",
+      "organizationPath": "花桥镇政协工委",
+      "rank": "事业单位管理七级",
+      "position": "副主任",
+      "sex": "男",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p010",
+      "name": "演示人员010",
+      "organizationPath": "聚福社区",
+      "rank": "未定级",
+      "position": "工作人员",
+      "sex": "女",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "PENDING"
+    },
+    {
+      "id": "ref-person-p011",
+      "name": "演示人员011",
+      "organizationPath": "绿地社区",
+      "rank": "非标准职级（模拟）",
+      "position": "主任",
+      "sex": "男",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p012",
+      "name": "演示人员012",
+      "organizationPath": "党政办",
+      "rank": "正科级",
+      "position": "副科长",
+      "sex": "女",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p013",
+      "name": "演示人员013",
+      "organizationPath": "延祥社区",
+      "rank": "副科级",
+      "position": "项目负责人",
+      "sex": "男",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p014",
+      "name": "演示人员014",
+      "organizationPath": "星浜社区",
+      "rank": "一级科员",
+      "position": "科长",
+      "sex": "女",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "IN_SCOPE"
+    },
+    {
+      "id": "ref-person-p015",
+      "name": "演示人员015",
+      "organizationPath": "花桥财政分局（花桥镇财政所）",
+      "rank": "二级主任科员",
+      "position": "业务主管",
+      "sex": "男",
+      "sourceStatus": "INACTIVE",
+      "membershipStatus": "EXCLUDED"
+    }
+  ],
+  "tags": [
+    {
+      "id": "ref-tag-tag001",
+      "name": "标签名称-演示",
+      "parent": null,
+      "status": "DISABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。"
+    },
+    {
+      "id": "ref-tag-tag002",
+      "name": "3级标签名称-演示",
+      "parent": "ref-tag-tag001",
+      "status": "DISABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。标签定义"
+    },
+    {
+      "id": "ref-tag-tag004",
+      "name": "重点领域岗位",
+      "parent": null,
+      "status": "ENABLED",
+      "description": "仅参考父标签名称补齐的合成目录节点"
+    },
+    {
+      "id": "ref-tag-tag003",
+      "name": "行政审批领域",
+      "parent": "ref-tag-tag004",
+      "status": "DISABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。承担“行政审批领域”相关岗位职责的人员"
+    },
+    {
+      "id": "ref-tag-tag005",
+      "name": "财政资金领域",
+      "parent": "ref-tag-tag004",
+      "status": "DISABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。承担“财政资金领域”相关岗位职责的人员"
+    },
+    {
+      "id": "ref-tag-tag006",
+      "name": "工程建设领域",
+      "parent": "ref-tag-tag004",
+      "status": "DISABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。承担“工程建设领域”相关岗位职责的人员"
+    },
+    {
+      "id": "ref-tag-tag008",
+      "name": "医疗卫健管理",
+      "parent": null,
+      "status": "ENABLED",
+      "description": "仅参考父标签名称补齐的合成目录节点"
+    },
+    {
+      "id": "ref-tag-tag007",
+      "name": "药品耗材与设备采购及管理",
+      "parent": "ref-tag-tag008",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。卫健系统相关采购人员及入库验收、仓储保管、出库登记、库存盘点等管理人员"
+    },
+    {
+      "id": "ref-tag-tag010",
+      "name": "统战群团",
+      "parent": null,
+      "status": "ENABLED",
+      "description": "仅参考父标签名称补齐的合成目录节点"
+    },
+    {
+      "id": "ref-tag-tag009",
+      "name": "群团服务",
+      "parent": "ref-tag-tag010",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。团市委、妇联、文联、残联、社科联、侨联、科协、工商联等组织管理岗位人员，各区镇群团工作人员、各村（社区）团组织书记、妇联主席"
+    },
+    {
+      "id": "ref-tag-tag012",
+      "name": "社会综合治理",
+      "parent": null,
+      "status": "ENABLED",
+      "description": "仅参考父标签名称补齐的合成目录节点"
+    },
+    {
+      "id": "ref-tag-tag011",
+      "name": "信访办理",
+      "parent": "ref-tag-tag012",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。信访局信访受理交办岗位人员，各区镇信访工作人员"
+    },
+    {
+      "id": "ref-tag-tag013",
+      "name": "综治维稳",
+      "parent": "ref-tag-tag012",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。政法委综治协调岗位人员，综指中心网格管理、指挥调度岗位人员，各区镇综治工作人员"
+    },
+    {
+      "id": "ref-tag-tag014",
+      "name": "社会工作",
+      "parent": "ref-tag-tag012",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。社会工作部基层治理、社工管理岗位人员，各区镇社会工作相关人员"
+    },
+    {
+      "id": "ref-tag-tag016",
+      "name": "公共安全与应急管理",
+      "parent": null,
+      "status": "ENABLED",
+      "description": "仅参考父标签名称补齐的合成目录节点"
+    },
+    {
+      "id": "ref-tag-tag015",
+      "name": "防灾减灾救灾",
+      "parent": "ref-tag-tag016",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。应急管理局防灾减灾救灾岗位人员，各区镇应急管理部门工作人员"
+    },
+    {
+      "id": "ref-tag-tag017",
+      "name": "安全生产监管",
+      "parent": "ref-tag-tag016",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。应急管理局安全生产监管执法岗位人员，各区镇应急管理部门工作人员"
+    },
+    {
+      "id": "ref-tag-tag019",
+      "name": "综合事务",
+      "parent": null,
+      "status": "ENABLED",
+      "description": "仅参考父标签名称补齐的合成目录节点"
+    },
+    {
+      "id": "ref-tag-tag018",
+      "name": "机要保密管理",
+      "parent": "ref-tag-tag019",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。各单位机要、保密岗位人员，承担保密管理职责岗位的分管领导及经办人员"
+    },
+    {
+      "id": "ref-tag-tag021",
+      "name": "发展改革与产业资金管理",
+      "parent": null,
+      "status": "ENABLED",
+      "description": "仅参考父标签名称补齐的合成目录节点"
+    },
+    {
+      "id": "ref-tag-tag020",
+      "name": "粮食和物资储备管理",
+      "parent": "ref-tag-tag021",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。发改委（粮食和物资储备部门）粮食储备、轮换、购销监管岗位人员，粮食储备企业管理人员"
+    },
+    {
+      "id": "ref-tag-tag022",
+      "name": "基层综治管理（网格）",
+      "parent": "ref-tag-tag012",
+      "status": "ENABLED",
+      "description": "参考 Excel 的演示标签；不代表已启用自动规则。在网格内开展治安巡查走访、矛盾纠纷排查、矛盾调解、回访跟踪、信访信息收集上报的各类网格员"
+    }
+  ],
+  "assignments": [
+    {
+      "person": "ref-person-p001",
+      "tag": "ref-tag-tag007",
+      "suppression": "NONE",
+      "status": "ACTIVE",
+      "reason": "合成场景（非 Excel 原人员标签关联）：当前有效的人工标签"
+    },
+    {
+      "person": "ref-person-p002",
+      "tag": "ref-tag-tag006",
+      "suppression": "NONE",
+      "status": "ACTIVE",
+      "reason": "合成场景（非 Excel 原人员标签关联）：目录已停用，保留标签依据"
+    },
+    {
+      "person": "ref-person-p003",
+      "tag": "ref-tag-tag007",
+      "suppression": "SUPPRESSED",
+      "status": "ACTIVE",
+      "reason": "合成场景（非 Excel 原人员标签关联）：人工取消生效，依据保留"
+    },
+    {
+      "person": "ref-person-p005",
+      "tag": "ref-tag-tag011",
+      "suppression": "NONE",
+      "status": "ACTIVE",
+      "reason": "合成场景（非 Excel 原人员标签关联）：准入暂停，标签不生效"
+    },
+    {
+      "person": "ref-person-p007",
+      "tag": "ref-tag-tag011",
+      "suppression": "NONE",
+      "status": "ACTIVE",
+      "reason": "合成场景（非 Excel 原人员标签关联）：同步状态与准入状态独立的演示"
+    },
+    {
+      "person": "ref-person-p015",
+      "tag": "ref-tag-tag011",
+      "suppression": "NONE",
+      "status": "ACTIVE",
+      "reason": "合成场景（非 Excel 原人员标签关联）：人员已排除，依据保留"
+    },
+    {
+      "person": "ref-person-p008",
+      "tag": "ref-tag-tag009",
+      "suppression": "NONE",
+      "status": "ENDED",
+      "reason": "合成场景（非 Excel 原人员标签关联）：来源依据已结束"
+    }
+  ]
+}
